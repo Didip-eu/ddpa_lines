@@ -31,13 +31,17 @@ def get_all_atomid_url_filename(args):
 if __name__ == "__main__":
     args, _ = fargv.fargv(p)
     if args.mode == "search_images":
-        icarus_img_path = Path(args.icarus_map)
+        icarus_img_path = Path(args.img_root)
         triplets = sorted(get_all_atomid_url_filename(args))
         open("/tmp/allrows.txt", "w").write("\n".join([f"r{n:07}:{r}" for n, r in enumerate(triplets)]))
-        for atom, url, filename in tqdm.tqdm(triplets):
-            found = icarus_img_path.rglob(filename)
-            print(f"{atom}@@{'@@'.join(found)}@@")
+        for n, (atom, url, filename) in enumerate(tqdm.tqdm(triplets)):
+            print(filename)
+            found = icarus_img_path.rglob(f"*{filename}")
+            #print(f"{atom}@@{'@@'.join(found)}@@")
+            #print("{}{n}@@{}@@".format(atom, '@@'.join(found)))
+            print(repr(atom), repr(list(found)))
     elif args.mode == "atomid_url_filename_csv":
         print("\n".join([",".join(item) for item in get_all_atomid_url_filename(args)]))
     else:
         raise ValueError
+    #280419
