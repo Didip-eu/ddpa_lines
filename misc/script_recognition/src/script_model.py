@@ -236,12 +236,12 @@ optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
 criterion = nn.CrossEntropyLoss()
 
 # Train and evaluate
-model_ft, hist = train_model(args, model_ft, dataloaders_dict, criterion, optimizer_ft, is_inception=(args.model_name=="inception"))
+#model_ft, hist = train_model(args, model_ft, dataloaders_dict, criterion, optimizer_ft, is_inception=(args.model_name=="inception"))
 
 
 
 # Initialize the non-pretrained version of the model used for this run
-scratch_model,_ = initialize_model(args.model_name, args.num_classes, feature_extract=False, use_pretrained=False)
+scratch_model,_ = initialize_model(args)
 scratch_model = scratch_model.to(args.device)
 scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
 scratch_criterion = nn.CrossEntropyLoss()
