@@ -58,7 +58,7 @@ def train_model(args, model, dataloaders, criterion, optimizer, is_inception=Fal
             for inputs, labels in dataloaders[phase]:
                 inputs = inputs.to(args.device)
                 labels = labels.to(args.device)
-                print("Labels:",np.unique(labels.detach().numpy()))
+                print("Labels:",np.unique(labels.detach().cpu().numpy()))
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
