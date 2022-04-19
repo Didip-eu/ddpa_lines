@@ -245,8 +245,8 @@ scratch_model,_ = initialize_model(args)
 scratch_model = scratch_model.to(args.device)
 scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
 scratch_criterion = nn.CrossEntropyLoss()
-_,scratch_hist = train_model(scratch_model, dataloaders_dict, scratch_criterion, scratch_optimizer, num_epochs=args.num_epochs, is_inception=(args.model_name=="inception"))
-
+#_,scratch_hist = train_model(scratch_model, dataloaders_dict, scratch_criterion, scratch_optimizer, num_epochs=args.num_epochs, is_inception=(args.model_name=="inception"))
+_, scratch_hist = train_model(args, scratch_model, dataloaders_dict, criterion, optimizer_ft, is_inception=(args.model_name=="inception"))
 # Plot the training curves of validation accuracy vs. number
 #  of training epochs for the transfer learning method and
 #  the model trained from scratch
