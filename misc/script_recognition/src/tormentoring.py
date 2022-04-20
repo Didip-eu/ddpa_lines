@@ -91,13 +91,14 @@ def resume(args, allow_filenotfound=True):
         metadata, state = data["metadata"], data["state"]
         model.load_state_dict(state)
         model.__dict__.update(metadata)
+        resumed = True
     except FileNotFoundError:
         if not allow_filenotfound:  # conditionally raising todo(anguelos) clean this up
             raise FileNotFoundError
-
-    loaded_args = last(metadata["val_history"])
-    if loaded_args.model == args.model and loaded_args.num_classes == args.num_classes:
-        raise ValueError
+        resumed = False
+    if resumed:
+        loaded_args = last(metadata["val_history"])
+        assert loaded_args.model == args.model and loaded_args.num_classes == args.num_classes
     model = model.to(args.device)
     return model
 
