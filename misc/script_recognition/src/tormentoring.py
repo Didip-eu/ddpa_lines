@@ -129,7 +129,7 @@ def iterate_epoch(model, dataloader, criterion, optimizer=None, desc=""):
         return {"targets": targets, "predictions": predictions, "losses": losses, "contexts":None}
 
 
-def evaluate_classifier_epoch(targets: torch.Tensor, predictions: torch.Tensor, contexts: Union[torch.Tensor, None]):
+def evaluate_classifier_epoch(targets: torch.Tensor, predictions: torch.Tensor, contexts: Union[torch.Tensor, None], **kwargs):
     _, prediction_idx = predictions.max(dim=1)
     accuracy = (prediction_idx == targets).float().mean()
     confusion = torch.zeros(targets.max() + 1, targets.max() + 1)
