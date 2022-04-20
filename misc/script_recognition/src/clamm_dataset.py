@@ -51,7 +51,7 @@ class ICDAR2019Script(object):
         gt_tbl = [line.split(",") for line in open(gt_fname, "r").read().strip().split("\n")[1:]]
         if script_not_date:
             script2class = {v: k for k, v in ClammDataset.class2scripts.items()}
-            self.gt = [(f"{img_root}/{row[1]}", script2class[row[1]]) for row in gt_tbl]
+            self.gt = [(f"{img_root}/{row[0]}", script2class[row[1]]) for row in gt_tbl]
             # self.gt = [(row[1], int(row[2])) for row in gt_tbl]
         else:
             raise NotImplementedError
