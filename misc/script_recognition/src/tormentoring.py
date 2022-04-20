@@ -67,7 +67,7 @@ def initialize_model(args):
         raise ValueError("Invalid model name")
     model.last_epoch = 0
     model.train_history = {}
-    model.validation_history = {}
+    model.val_history = {}
     model.args_history = {0: args}
     model = model.to(args.device)
     return model, input_size
@@ -78,7 +78,7 @@ def save(model, fname=""):
         fname = last(model.args_history).resume_fname
     metadata = {"last_epoch": model.last_epoch,
                 "train_history": model.train_history,
-                "validation_history": model.validation_history,
+                "val_history": model.val_history,
                 "args_history": model.args_history}
     state = model.state_dict()
     torch.save({"state": state, "metadata": metadata}, fname)
@@ -96,7 +96,7 @@ def resume(args, allow_filenotfound=True):
             return model
         else:
             raise FileNotFoundError
-    loaded_args = last(metadata["validation_history"])
+    loaded_args = last(metadata["val_history"])
     if loaded_args.model == args.model and loaded_args.num_classes == args.num_classes:
         raise ValueError
     return model
