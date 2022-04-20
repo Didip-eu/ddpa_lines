@@ -102,7 +102,7 @@ def resume(args, allow_filenotfound=True):
     return model
 
 
-def iterate_epoch(model, dataloader, loss_fn, optimizer=None, desc=""):
+def iterate_epoch(model, dataloader, criterion, optimizer=None, desc=""):
         device = next(model.parameters()).device
         is_training = optimizer is not None
         desc += "Training" if is_training else "Validating"
@@ -113,7 +113,7 @@ def iterate_epoch(model, dataloader, loss_fn, optimizer=None, desc=""):
             for inputs, target in tqdm.tqdm(dataloader, desc=desc):
                 inputs, target = inputs.to(device), target.to(device)
                 output = model(inputs)
-                batch_loss = loss_fn(output, target)
+                batch_loss = criterion(output, target)
                 if is_training:
                     batch_loss.sum().backward()
                     optimizer.step()

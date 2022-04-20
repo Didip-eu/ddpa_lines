@@ -36,21 +36,21 @@ train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_sz, s
 val_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_sz, shuffle=True, num_workers=args.num_workers)
 
 model = resume(args)
-criterion = torch.nn.CrossEntropyLoss()
+criterion = torch.nn.CrossEntropyLoss(reduce=False)
 optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
 while model.last_epoch < args.epochs:
     if model.last_epoch == 0:
         val_aggregations = iterate_epoch(model, val_loader, criterion, None)
-        model.val_history[0] = evaluate_classifier_epoch(val_aggregations)
+        model.val_history[0] = evaluate_classifier_epoch(**val_aggregations)
         train_aggregations = iterate_epoch(model, train_loader, criterion, None) # evaluating training before optimizing
-        model.train_history[0] = evaluate_classifier_epoch(train_aggregations)
+        model.train_history[0] = evaluate_classifier_epoch(**train_aggregations)
     current_performance = f"T:{last(model.train_history)['Accuracy']:.4} V:{last(model.val_history)['Accuracy']:.4} |"
     train_aggregations = iterate_epoch(model, train_loader, criterion, optimizer, desc=current_performance)
     model.train_history[0] = evaluate_classifier_epoch(train_aggregations)
 
     if model.last_epoch % args.validate_freq == 0:
         val_aggregations = iterate_epoch(model, val_loader, criterion, None)
-        model.val_history[0] = evaluate_classifier_epoch(val_aggregations)
+        model.val_history[0] = evaluate_classifier_epoch(**val_aggregations)
     if model.last_epoch % args.save_freq:
         save(model, args.resume_fname)
