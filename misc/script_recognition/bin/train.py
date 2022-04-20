@@ -47,7 +47,7 @@ while model.last_epoch < args.epochs:
         model.train_history[0] = evaluate_classifier_epoch(**train_aggregations)
     current_performance = f"T:{last(model.train_history)['Accuracy']:.4} V:{last(model.val_history)['Accuracy']:.4} |"
     train_aggregations = iterate_epoch(model, train_loader, criterion, optimizer, desc=current_performance)
-    model.train_history[0] = evaluate_classifier_epoch(train_aggregations)
+    model.train_history[0] = evaluate_classifier_epoch(**train_aggregations)
 
     if model.last_epoch % args.validate_freq == 0:
         val_aggregations = iterate_epoch(model, val_loader, criterion, None)

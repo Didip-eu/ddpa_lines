@@ -115,7 +115,7 @@ def iterate_epoch(model, dataloader, criterion, optimizer=None, desc=""):
                 output = model(inputs)
                 batch_loss = criterion(output, target)
                 if is_training:
-                    batch_loss.sum().backward()
+                    batch_loss.mean().backward()
                     optimizer.step()
                     optimizer.zero_grad()
                 targets.append(target.detach())
