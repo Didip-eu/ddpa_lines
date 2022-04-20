@@ -92,23 +92,26 @@ def resume(args, allow_filenotfound=True):
         model.load_state_dict(state)
         model.__dict__.update(metadata)
     except FileNotFoundError:
-        if allow_filenotfound:
-            return model
-        else:
+        if not allow_filenotfound:  # conditionally raising todo(anguelos) clean this up
             raise FileNotFoundError
+
     loaded_args = last(metadata["val_history"])
     if loaded_args.model == args.model and loaded_args.num_classes == args.num_classes:
         raise ValueError
+    model = model.to(args.device)
     return model
 
 
 def iterate_epoch(model, dataloader, criterion, optimizer=None, desc=""):
         device = next(model.parameters()).device
         is_training = optimizer is not None
-        desc += "Training" if is_training else "Validating"
+        desc += f"Training on {device}" if is_training else f"Validating on {device}"
         with ExitStack() as stack:
             if not is_training:
+                model.eval()
                 stack.enter_context(torch.no_grad())
+            else:
+                model.train()
             targets, predictions, losses = [], [], []
             for inputs, target in tqdm.tqdm(dataloader, desc=desc):
                 inputs, target = inputs.to(device), target.to(device)
@@ -126,7 +129,7 @@ def iterate_epoch(model, dataloader, criterion, optimizer=None, desc=""):
         targets = torch.cat(targets)
         predictions = torch.cat(predictions)
         losses = torch.cat(losses)
-        return {"targets": targets, "predictions": predictions, "losses": losses, "contexts":None}
+        return {"targets": targets, "predictions": predictions, "losses": losses, "contexts": None}
 
 
 def evaluate_classifier_epoch(targets: torch.Tensor, predictions: torch.Tensor, contexts: Union[torch.Tensor, None], **kwargs):
