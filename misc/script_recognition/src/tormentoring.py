@@ -97,7 +97,7 @@ def resume(args, allow_filenotfound=True):
             raise FileNotFoundError
         resumed = False
     if resumed:
-        loaded_args = last(metadata["val_history"])
+        loaded_args = last(metadata["args_history"])
         assert loaded_args.model == args.model and loaded_args.num_classes == args.num_classes
     model = model.to(args.device)
     return model
