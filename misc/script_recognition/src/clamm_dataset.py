@@ -57,7 +57,6 @@ class ICDAR2019Script(object):
             raise NotImplementedError
         self.input_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Resize()
             torchvision.transforms.RandomCrop(crop_to_size, pad_if_needed=True)
         ])
 
