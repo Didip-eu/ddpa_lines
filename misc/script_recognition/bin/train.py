@@ -4,7 +4,7 @@ import fargv
 from clamm_dataset import ICDAR2019Script, ClammDataset
 import torch
 from tormentoring import resume, save, iterate_epoch, evaluate_classifier_epoch, last
-
+from tormentor import *
 
 p = {
     "device": "cpu",
@@ -24,6 +24,7 @@ p = {
     "train_labels": "{train_root}/@ICDAR2017_CLaMM_task1_task3.csv",
     "validate_freq": 1,
     "save_freq": 1,
+    "augmentation_str":"RandomPlasmaShadow ^ RandomPlasmaBrightness ^ RandomWrap ^ Identity"
 }
 
 
@@ -33,6 +34,7 @@ train_ds = ClammDataset(img_root=args.train_root,script_not_date=True, gt_fname=
 val_ds = ICDAR2019Script(img_root=args.val_root, gt_fname=args.val_labels)
 
 train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_sz, shuffle=True, num_workers=args.num_workers)
+train_loader = AugmentedDataloader(train_loader, eval(args.augmentation_str), device=args.device)
 val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_sz, shuffle=True, num_workers=args.num_workers)
 
 model = resume(args)

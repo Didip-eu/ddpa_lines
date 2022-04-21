@@ -47,7 +47,7 @@ class ClammDataset(object):
 
 
 class ICDAR2019Script(object):
-    def __init__(self, img_root, gt_fname, script_not_date=True, crop_to_size=512):
+    def __init__(self, img_root, gt_fname, script_not_date=True, crop_to_size=1024):
         gt_tbl = [line.split(",") for line in open(gt_fname, "r").read().strip().split("\n")[1:]]
         if script_not_date:
             script2class = {v: k for k, v in ClammDataset.class2scripts.items()}
@@ -57,6 +57,7 @@ class ICDAR2019Script(object):
             raise NotImplementedError
         self.input_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize()
             torchvision.transforms.RandomCrop(crop_to_size, pad_if_needed=True)
         ])
 
@@ -70,7 +71,6 @@ class ICDAR2019Script(object):
 if __name__ == "__main__":
     ds = ClammDataset(img_root="./data/ICDAR2017_CLaMM_task1_task3/", script_not_date = True, gt_fname="data/ICDAR2017_CLaMM_task1_task3/@ICDAR2017_CLaMM_task1_task3.csv")
     dataloader = torch.utils.data.DataLoader(ds, batch_size=3, shuffle=True)
-    print(ds[0])
     for batch in dataloader:
         print(batch)
         sys.exit()
