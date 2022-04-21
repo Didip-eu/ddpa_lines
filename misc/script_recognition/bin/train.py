@@ -35,7 +35,7 @@ train_ds = ClammDataset(img_root=args.train_root,script_not_date=True, gt_fname=
 val_ds = ICDAR2019Script(img_root=args.val_root, gt_fname=args.val_labels)
 
 train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_sz, shuffle=True, num_workers=args.num_workers)
-train_loader = tormentor.AugmentedDataLoader(train_loader, eval(args.augmentation_str), device=args.device)
+train_loader = tormentor.AugmentedDataLoader(train_loader, eval(args.augmentation_str), computation_device=args.device)
 val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_sz, shuffle=True, num_workers=args.num_workers)
 
 model = resume(args)
