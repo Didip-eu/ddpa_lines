@@ -24,7 +24,7 @@ p = {
     "train_labels": "{train_root}/@ICDAR2017_CLaMM_task1_task3.csv",
     "validate_freq": 1,
     "save_freq": 1,
-    "augmentation_str":"RandomPlasmaShadow ^ RandomPlasmaBrightness ^ RandomWrap ^ Identity"
+    "augmentation_str": "RandomPlasmaShadow ^ RandomPlasmaBrightness ^ RandomWrap ^ Identity"
 }
 
 
@@ -54,5 +54,5 @@ while model.last_epoch < args.epochs:
     if model.last_epoch % args.validate_freq == 0:
         val_aggregations = iterate_epoch(model, val_loader, criterion, None)
         model.val_history[0] = evaluate_classifier_epoch(**val_aggregations)
-    if model.last_epoch % args.save_freq:
+    if model.last_epoch % args.save_freq == 0:
         save(model, args.resume_fname)
