@@ -1,0 +1,6 @@
+[submodule "misc/seals/yolov5"]
+	path = misc/seals/yolov5
+	url = git@github.com:anguelos/yolov5.git
+[submodule "misc/frat"]
+	path = misc/frat
+	url = git@github.com:anguelos/frat.git
