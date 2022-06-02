@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+
+import csv
+from io import StringIO
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+from pathlib import Path
+from tqdm import tqdm
+import fargv
+import sys
+import pickle
+
+
+from ddp_util import leech_charter, leech_spreadsheet
+
+#sample_charter_urls = ["https://www.monasterium.net/mom/SK-SNA/4156-SukromnyArchivBratislavskejKapituly/638/charter",
+#"https://www.monasterium.net/mom/AT-StiAH/HeiligenkreuzOCist/1428_IX_17/charter",
+#"https://www.monasterium.net/mom/AT-StiASF/StFlorianCanReg/1489_II_10/charter",
+#"https://www.monasterium.net/mom/IT-ASNA/ASAg/ASAg%2C261/charter"]
+
+
+if __name__ == "__main__":
+    p = {"sheet_ids_gids_names": set(["1gnIb-jlrx_6hUPLe9mrP_sfcA6TbUhUpDyqKE4HY9cA,0,StFlorian",
+        "1gnIb-jlrx_6hUPLe9mrP_sfcA6TbUhUpDyqKE4HY9cA,513762880,Heiligenkreuz",
+        "1gnIb-jlrx_6hUPLe9mrP_sfcA6TbUhUpDyqKE4HY9cA,814937970,NapoliAdSSAgostinoM",
+        "1gnIb-jlrx_6hUPLe9mrP_sfcA6TbUhUpDyqKE4HY9cA,552679258,BratislavaSNA"]),
+        "root_dir":"./tmp/data/leech",
+        "url2path_idx_path":"{root_dir}/url2path_idx.pickle",
+        "verbose": 1
+    }
+    args, _ = fargv.fargv(p)
+    if Path(args.url2path_idx_path).is_file():
+        url2path_idx = pickle.load(open(args.url2path_idx_path, "rb"))
+    else:
+        url2path_idx = {}
+    for params in args.sheet_ids_gids_names:
+        sheetid, gid, name = params.split(",")
+        leech_spreadsheet(sheetid, gid, name, root=args.root_dir, url2path_idx=url2path_idx, url2path_idx_path=args.url2path_idx_path, verbose=args.verbose)

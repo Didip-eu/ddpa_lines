@@ -4,7 +4,7 @@ import fargv
 from pathlib import Path
 from lxml import etree
 import tqdm
-import glob
+
 
 p = {
     "mode": ["search_images", "atomid_url_filename_csv"],
