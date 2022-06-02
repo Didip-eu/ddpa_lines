@@ -1,0 +1,16 @@
+# created_by_frat
+
+# cd 1000_Charters
+# frat_json2yolov5 -images $(for FILE in */*/*/*.json; do echo "${FILE%.*}";done)
+# (cd tmp && cp -Rp train validate && rm  validate/*/*0.* validate/*/*1.* validate/*/*2.* validate/*/*3.* validate/*/*4.*  validate/*/*5.*  validate/*/*6.*  validate/*/*7.*  validate/*/*8.*  validate/*/*9.* train/*/*a.* train/*/*b.* train/*/*c.* train/*/*d.* train/*/*e.* train/*/*f.*)
+
+
+path: ../seal_ds/  # dataset root dir
+train: train
+val: validate
+test:  # test images (optional)
+
+# Classes 
+nc: 11 # number of classes
+names: ['No Class', 'Ignore', 'Img:CalibrationCard', 'Img:Seal', 'Img:WritableArea', 'Wr:OldText', 'Wr:OldNote', 'Wr:NewText', 'Wr:NewOther', 'WrO:Ornament', 'WrO:Fold'] 
+
