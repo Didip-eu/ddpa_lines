@@ -1,5 +1,17 @@
 # custom
 data/
+**/tmp/**
+
+misc/1000_charters/url2path_idx.pickle
+misc/1000_charters/**/*.txt
+misc/1000_charters/**/*.png
+misc/1000_charters/**/*.jpeg
+misc/1000_charters/**/*.jpg
+misc/1000_charters/**/*.marker
+misc/1000_charters/**/*.html
+misc/1000_charters/**/*.xml
+
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
