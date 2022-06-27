@@ -2,15 +2,17 @@
 data/
 **/tmp/**
 
-misc/1000_charters/url2path_idx.pickle
-misc/1000_charters/**/*.txt
-misc/1000_charters/**/*.png
-misc/1000_charters/**/*.jpeg
-misc/1000_charters/**/*.jpg
-misc/1000_charters/**/*.marker
-misc/1000_charters/**/*.html
-misc/1000_charters/**/*.xml
-
+# Spider downloaded data
+misc/1000_Charters/url2path_idx.pickle
+misc/1000_Charters/**/*.txt
+misc/1000_Charters/**/*.png
+misc/1000_Charters/**/*.jpeg
+misc/1000_Charters/**/*.jpg
+misc/1000_Charters/**/*.marker
+misc/1000_Charters/**/*.html
+misc/1000_Charters/**/*.xml
+misc/1000_Charters/ann.json
+misc/1000_Charters/daniel_annotation_config.json
 
 
 # Byte-compiled / optimized / DLL files

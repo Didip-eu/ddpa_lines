@@ -30,6 +30,8 @@ def get_extention(img_url):
             return ext
     raise ValueError
 
+archives_root = "https://www.monasterium.net/mom/fonds"
+
 def get_archive_urls(archive_webpage_url):
     archive_list_html = str(urlopen(archive_webpage_url).read(), "utf8")
     soup = BeautifulSoup(archive_list_html, "html.parser")
@@ -50,11 +52,18 @@ def get_fonds_from_archive(archive_url):
 
 def get_charters_from_fond(fond_url):
     assert fond_url.endswith("/fond")
-    charter_list_html = str(urlopen(fond_url).read(), "utf8")
-    soup = BeautifulSoup(charter_list_html, "html.parser")
-    charter_urls = [tag.attrs.get("href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/fond")]
-    charter_urls = [f"http://monasterium{fond_url}" for fond_url in charter_urls]
-    return charter_urls
+    fond_list_html = str(urlopen(fond_url).read(), "utf8")
+    soup = BeautifulSoup(fond_list_html, "html.parser")
+    block_urls = [f"{fond_url}{tag.attrs.get('href')}" for tag in soup.find_all("a") if tag.attrs.get("href", "").startswith("?block")]
+    if len(block_urls) > 0:
+        for block_url in block_urls:
+            charter_list_html = str(urlopen(fond_url).read(), "utf8")
+            soup = BeautifulSoup(charter_list_html, "html.parser")
+            charter_urls = [tag.attrs.get("href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/charter")]
+    else:
+        charter_urls = [tag.attrs.get("href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/charter")]
+    charter_urls = [f"{fond_url}{charter_url}" for charter_url in charter_urls]
+    return sorted(set(charter_urls))
 
 
 def get_names_from_charter_html(html:str):
