@@ -11,7 +11,7 @@ setup(
     package_dir={'':'src'},
     #package_data={'frat': ['resources/*.js', 'resources/*.json', 'resources/*.jinja2']},
     #include_package_data=True,
-    scripts=['bin/ddp_leech_googlesheets', 'bin/ddp_leech_monasterium'],
+    scripts=['bin/ddp_leech_sheets', 'bin/ddp_leech_monasterium'],
     license='GPLv3',
     author='Anguelos Nicolaou et al.',
     author_email='anguelos.nicolaou@gmail.com',
