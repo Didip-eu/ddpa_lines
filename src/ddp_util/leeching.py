@@ -45,7 +45,6 @@ def get_fonds_from_archive(archive_url):
     fond_list_html = str(urlopen(archive_url).read(), "utf8")
     soup = BeautifulSoup(fond_list_html, "html.parser")
     fond_urls = [tag.attrs.get("href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/fond")]
-    url_base = archive_url[:-len("/archive")]
     fond_urls = [f"{url_base}/{fond_url}" for fond_url in fond_urls]
     return list(set(fond_urls))
 
@@ -69,13 +68,13 @@ def get_charters_from_fond(fond_url):
 def get_names_from_charter_html(html:str):
     href_list = list(BeautifulSoup(html).find_all("a"))
 
-    archive_re = re.compile("mom/[A-Za-z\-]+/archive")
+    archive_re = re.compile("mom/[0-9A-Za-z\-]+/archive")
     archive_hrefs = [a.attrs["href"] for a in href_list if len(archive_re.findall(a.attrs.get("href", "")))>0]
 
-    fond_re = re.compile("mom/[A-Za-z\-]+/.*/fond")
+    fond_re = re.compile("mom/[0-9A-Za-z\-]+/.*/fond")
     fond_hrefs = [a.attrs["href"] for a in href_list if len(fond_re.findall(a.attrs.get("href", ""))) > 0]
 
-    collection_re = re.compile("mom/[A-Za-z\-]+/collection")
+    collection_re = re.compile("mom/[0-9A-Za-z\-]+/collection")
     collection_hrefs = [a.attrs["href"] for a in href_list if len(collection_re.findall(a.attrs.get("href", "")))>0]
 
     if len(set(collection_hrefs)) == 1 and len(set(archive_hrefs)) == 0 and len(set(fond_hrefs)) == 0:
@@ -85,6 +84,14 @@ def get_names_from_charter_html(html:str):
         fond_name = fond_hrefs[0].split("/fond")[0].split("/")[-1] # TODO (anguelos) name or whole atomid
         archive_name = archive_hrefs[0].replace("/mom/", "").replace("/archive", "")  # TODO (anguelos) name or whole atomid
     else:
+        print("<<<<<<")
+        #print(html)
+        print("HREFS:\n","\n".join([a.attrs["href"] for a in href_list if len(fond_re.findall(a.attrs.get("href", ""))) > 0]))
+        print(repr(collection_hrefs))
+        print(repr(archive_hrefs))
+        print(repr(fond_hrefs))
+        print(">>>>>>")
+        sys.exit(1)
         raise ValueError # html page not a parsable charter
 
     pdf_export_href_list = [a for a in href_list if a.attrs.get("target", "") == "blank"]
@@ -185,9 +192,12 @@ def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verb
 
 
 def leech_spreadsheet(sheet_key, gid, name, root, url2path_idx={}, url2path_idx_path="", verbose=0):
+    """Leeches a google speadsheet
+    """
     #if Path(f"{root}/{name}/download_complete.marker").is_file():
     #    print(f"{root} found! skipping", file=sys.stderr)
     #    return
+
     sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_key}/export?format=csv&gid={gid}"
     failed = []
     with urlopen(sheet_url) as conn:
@@ -199,12 +209,39 @@ def leech_spreadsheet(sheet_key, gid, name, root, url2path_idx={}, url2path_idx_
             pbar.refresh()
             try:
                 leech_charter(charter_url, root=f"{root}/{name}",
-                          url2path_idx=url2path_idx, url2path_idx_path=url2path_idx_path, verbose=verbose)
+                        url2path_idx=url2path_idx, url2path_idx_path=url2path_idx_path, verbose=verbose)
             except Exception as e:
                 stack_trace = traceback.format_exc()
                 if verbose > 0:
                     print(f"\n\nCharter {charter_url} FAILED! Continuing\nException:{repr(e)}\n\n{stack_trace}\n\n",
-                          file=sys.stderr)
+                        file=sys.stderr)
                 failed.append((charter_url, stack_trace))
 
-    #open(f"{root}/{name}/download_complete.marker", "w").write("")
+        #open(f"{root}/{name}/download_complete.marker", "w").write("")
+
+
+
+
+def leech_csv(csv_path, name, root, url2path_idx={}, url2path_idx_path="", verbose=0):
+    """Leeches a speadsheet
+    """
+    #if Path(f"{root}/{name}/download_complete.marker").is_file():
+    #    print(f"{root} found! skipping", file=sys.stderr)
+    #    return
+    assert csv_path.lower().endswith(".csv") and Path(csv_path).is_file()
+    failed = []
+    csv_data = open(csv_path, "r").read()
+    pbar = tqdm(enumerate(list(csv.reader(StringIO(csv_data), delimiter=","))[1:]), desc=f"Leeching {name}")
+    for n, row in pbar:
+        charter_url = row[2]
+        pbar.set_description(f"Leeching {charter_url} ")
+        pbar.refresh()
+        try:
+            leech_charter(charter_url, root=f"{root}/{name}",
+                    url2path_idx=url2path_idx, url2path_idx_path=url2path_idx_path, verbose=verbose)
+        except Exception as e:
+            stack_trace = traceback.format_exc()
+            if verbose > 0:
+                print(f"\n\nCharter {charter_url} FAILED! Continuing\nException:{repr(e)}\n\n{stack_trace}\n\n",
+                    file=sys.stderr)
+            failed.append((charter_url, stack_trace))
