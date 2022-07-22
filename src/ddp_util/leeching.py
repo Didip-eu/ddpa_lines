@@ -245,3 +245,4 @@ def leech_csv(csv_path, name, root, url2path_idx={}, url2path_idx_path="", verbo
                 print(f"\n\nCharter {charter_url} FAILED! Continuing\nException:{repr(e)}\n\n{stack_trace}\n\n",
                     file=sys.stderr)
             failed.append((charter_url, stack_trace))
+    open(f"{root}/failed.txt","w").write("\n".join(failed))
