@@ -1,10 +1,15 @@
 # General info
-- dependencies are included for each markdown section, respectively 
-- ✔ means tested and working; 👑 means most worthy and purposeful script in given context
-- charter files refer to those in in metadata.charter.public
+- dependencies are imported once at the top of each .ipynb
+- charter files refer to those in in the monasterium db's subdirectory metadata.charter.public
+
+# 2PD.ipynb files
+- used to transform respective corpora/data types
+
+# playground.ipynb
+- contains unfinished work
 
 # legacy-notebooks
 These might be useful for
-- recycling some parts of the code
-- better understanding the code that substitutes the snippets
-- showcasing (equally valid) alternatives
+- recycling code
+- understanding code choices
+- showcasing (worse) alternatives
