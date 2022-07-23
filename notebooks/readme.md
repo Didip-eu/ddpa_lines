@@ -1,6 +1,8 @@
 # General info
+- XML2PD.ipynb = go-to
 - dependencies are imported once at the top of each .ipynb
 - charter files refer to those in in the monasterium db's subdirectory metadata.charter.public
+
 
 # 2PD.ipynb files
 - used to transform respective corpora/data types
