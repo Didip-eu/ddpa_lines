@@ -1,3 +1,4 @@
+from cmath import atan
 from pathlib import Path
 from urllib.request import urlopen
 from urllib.error import HTTPError
@@ -14,6 +15,7 @@ import traceback
 import magic
 import time
 import json
+from .namespace import atomid_to_path
 
 
 def get_extention(img_url):
@@ -127,20 +129,24 @@ def get_charter_path_elements(archive_name, fond_name, charter_atomid, trunc_md5
     return archive_path, fond_path, charter_path
 
 
-def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verbose=0):
-    if charter_url in url2path_idx:
-        if Path(f"{url2path_idx[charter_url]}/download_complete.marker").is_file():
-            if verbose > 2:
-                print(f"{url2path_idx[charter_url]} found! skipping", file=sys.stderr)
-            return
-    charter_html = str(urlopen(charter_url).read(), "utf8")
-    archive_name, fond_name, charter_atomid = get_names_from_charter_html(charter_html)
-    archive_name, fond_name, charter_name = get_charter_path_elements(archive_name, fond_name, charter_atomid)
+def download_charter(charter_full_path, url=""):
+    if url == "":
+        assert Path(f"{charter_full_path}/url.txt").is_file()
+        url = open(f"{charter_full_path}/url.txt").read()
+    else:
+        # if there is a URL in the folder and they gave us one, thay must agree
+        assert not(Path(f"{charter_full_path}/url.txt").is_file()) or url == str(open(f"{charter_full_path}/url.txt").read(),"utf-8")
+    charter_html = str(urlopen(url).read(), "utf8")
+    store_charter(charter_html, charter_full_path)
 
-    charter_full_path=f"{root}/{archive_name}/{fond_name}/{charter_name}"
-    Path(charter_full_path).mkdir(parents=True, exist_ok=True)
 
+def store_charter(charter_html, charter_full_path, charter_atomid=""):
+    """Store the crawll outcome into an existing folder
+    """
+    assert Path(charter_full_path).is_dir()
     soup = BeautifulSoup(charter_html, "html.parser")
+    if charter_atomid == "":
+        _, _, charter_atomid = get_names_from_charter_html(charter_html)
 
     image_urls = [tag.attrs.get("title") for tag in soup.find_all("a") if tag.attrs.get("class", "") == ["imageLink"]]
 
@@ -177,18 +183,35 @@ def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verb
             print(f"charter {charter_url} Failed to download : {img_url}")
             failed.append(img_url)
 
-    url2path_idx[charter_url] = charter_full_path
+    
     json.dump(imgname2imgurls, open(f"{charter_full_path}/image_urls.json", "w"), indent=2)
     open(f"{charter_full_path}/index.html", "w").write(relinked_images_html)
 
     if len(failed) == 0:
-        open(f"{url2path_idx[charter_url]}/download_complete.marker", "w").write("") # same as check at the beginning of the function
+        open(f"{charter_full_path}/download_complete.marker", "w").write("") # same as check at the beginning of the function
     else:
-        open(f"{url2path_idx[charter_url]}/failed.txt", "w").write("\n".join([f"{time.time()}, {f} " for f in failed]))
+        open(f"{charter_full_path}/failed.txt", "w").write("\n".join([f"{time.time()}, {f} " for f in failed]))
+
+
+def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verbose=0):
+    if charter_url in url2path_idx:
+        if Path(f"{url2path_idx[charter_url]}/download_complete.marker").is_file():
+            if verbose > 2:
+                print(f"{url2path_idx[charter_url]} found! skipping", file=sys.stderr)
+            return
+    charter_html = str(urlopen(charter_url).read(), "utf8")
+    archive_name, fond_name, charter_atomid = get_names_from_charter_html(charter_html)
+    archive_name, fond_name, charter_name = get_charter_path_elements(archive_name, fond_name, charter_atomid)
+
+    charter_full_path=f"{root}/{archive_name}/{fond_name}/{charter_name}"
+    Path(charter_full_path).mkdir(parents=True, exist_ok=True)
+
+    store_charter(charter_html=charter_html, charter_full_path=charter_full_path, charter_atomid=charter_atomid)
+
+    url2path_idx[charter_url] = charter_full_path
 
     if url2path_idx_path != "":
         pickle.dump(url2path_idx, open(url2path_idx_path, "wb"))
-    
 
 
 def leech_spreadsheet(sheet_key, gid, name, root, url2path_idx={}, url2path_idx_path="", verbose=0):

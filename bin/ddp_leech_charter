@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+import csv
+from io import StringIO
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+from pathlib import Path
+from tqdm import tqdm
+import fargv
+import sys
+import pickle
+
+
+from ddp_util import leech_charter, download_charter
+
+#sample_charter_urls = ["https://www.monasterium.net/mom/SK-SNA/4156-SukromnyArchivBratislavskejKapituly/638/charter",
+#"https://www.monasterium.net/mom/AT-StiAH/HeiligenkreuzOCist/1428_IX_17/charter",
+#"https://www.monasterium.net/mom/AT-StiASF/StFlorianCanReg/1489_II_10/charter",
+#"https://www.monasterium.net/mom/IT-ASNA/ASAg/ASAg%2C261/charter"]
+
+
+if __name__ == "__main__":
+    p = {
+        "root_dir":"./tmp/data/leech",
+        "url2path_idx_path":"{root_dir}/url2path_idx.pickle",
+        "verbose": 1,
+        "url":"",
+        "folder":"",
+    }
+    args, _ = fargv.fargv(p)
+    if bool(args.folder):
+        download_charter(charter_full_path=args.folder, url=args.url)
+    elif bool(args.url):  #  Standard URL way as for ddp_leech_sheets
+        if Path(args.url2path_idx_path).is_file():
+            url2path_idx = pickle.load(open(args.url2path_idx_path, "rb"))
+        else:
+            url2path_idx = {}
+        if args.csv_path != "":
+            leech_charter(charter_url=args.url, root=args.root_dir, url2path_idx=url2path_idx, url2path_idx_path=args.url2path_idx_path, verbose=args.verbose)
+    else:
+        raise ValueError
