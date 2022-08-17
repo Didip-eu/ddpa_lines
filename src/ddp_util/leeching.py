@@ -15,7 +15,7 @@ import traceback
 import magic
 import time
 import json
-from .namespace import atomid_to_path
+from .namespace import chatomid_to_path
 
 
 def get_extention(img_url):
