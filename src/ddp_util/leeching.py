@@ -47,7 +47,7 @@ def get_fonds_from_archive(archive_url):
     fond_list_html = str(urlopen(archive_url).read(), "utf8")
     soup = BeautifulSoup(fond_list_html, "html.parser")
     fond_urls = [tag.attrs.get("href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/fond")]
-    fond_urls = [f"{url_base}/{fond_url}" for fond_url in fond_urls]
+    fond_urls = [f"{archives_root}/{fond_url}" for fond_url in fond_urls]
     return list(set(fond_urls))
 
 
@@ -150,7 +150,7 @@ def store_charter(charter_html, charter_full_path, charter_atomid=""):
 
     image_urls = [tag.attrs.get("title") for tag in soup.find_all("a") if tag.attrs.get("class", "") == ["imageLink"]]
 
-    open(f"{charter_full_path}/url.txt", "w").write(charter_url)
+    open(f"{charter_full_path}/url.txt", "w").write(charter_url) #TODO if not in extra .py, integrate function to build url from atom_id here and elsewhere?
     open(f"{charter_full_path}/original.html", "w").write(charter_html)
     open(f"{charter_full_path}/atom_id.txt", "w").write(charter_atomid)
 

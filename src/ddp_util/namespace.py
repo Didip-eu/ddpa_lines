@@ -10,9 +10,9 @@ trunc_md5 = 16
 def chatomid_to_url(atomid):
     parts = atomid.split("/")                                                                                                                                  
     if len(parts) == 5:
-        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/{parts[4]}/charter "
+        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/{parts[4]}/charter"
     elif len(parts) == 4:
-        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/charter "
+        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/charter"
     else:
         raise ValueError
         #print(f"Unusual structure found at '{atom_id}'")

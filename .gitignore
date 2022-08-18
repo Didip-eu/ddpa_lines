@@ -1,7 +1,10 @@
 # custom
 data/
-data
 **/tmp/**
+
+# custom atzenhofer
+data
+didipcv.code-workspace
 
 # Spider downloaded data
 misc/1000_Charters/url2path_idx.pickle
