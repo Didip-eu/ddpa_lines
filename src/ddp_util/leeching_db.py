@@ -1,15 +1,45 @@
+# goal: derive target file structure form mom-db dump (as it is)
+
 import os
+import random
 from pathlib import Path
+from pathlib import PurePosixPath
 
-
-def get_cei_paths(charter_dir, namespaces, extension):
+# list paths of all charters in directory
+def get_charter_paths(charter_dir, namespaces, extension):
     for entry in os.scandir(charter_dir):
         if entry.is_file() and entry.name.endswith(extension):
             yield Path(entry.path)
         elif entry.is_dir():
-            yield from get_cei_paths(entry.path)
+            yield from get_charter_paths(entry.path)
         else:
             continue
+
+
+paths = [f"{PurePosixPath(path)}" for path in get_charter_paths(directoryPath)]
+
+
+paths_sample = random.sample(paths, 100)
+
+
+# get atom_id from charter
+
+
+# derive provenance from atom_id, assert file structure, build file tree
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # def get_names_from_charter_xml(xml)
