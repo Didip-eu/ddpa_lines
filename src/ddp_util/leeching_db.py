@@ -5,41 +5,51 @@ import random
 from pathlib import Path
 from pathlib import PurePosixPath
 
-# list paths of all charters in directory
-def get_charter_paths(charter_dir, namespaces, extension):
+#list paths of all charters in directory
+def get_charter_paths(charter_dir, extension):
+    """
+    returns generator of file paths
+    """
     for entry in os.scandir(charter_dir):
         if entry.is_file() and entry.name.endswith(extension):
             yield Path(entry.path)
         elif entry.is_dir():
-            yield from get_charter_paths(entry.path)
+            yield from get_charter_paths(entry.path, extension)
         else:
             continue
 
 
-paths = [f"{PurePosixPath(path)}" for path in get_charter_paths(directoryPath)]
+def get_path_list(directory, extension):
+    """returns List containing File Paths"""
+    return [f"{PurePosixPath(path)}" for path in get_charter_paths(directory, extension)]
 
 
-paths_sample = random.sample(paths, 100)
+
+if __name__ == "__main__":
+    """
+    directory in IDE --> use full path
+    in bash --> relative
+    """
+    directory = "/home/florian/Documents/zim/didipcv/data/db/mom-data/metadata.charter.public"
+    extension = ".cei.xml"
+
+    paths = get_path_list(directory, extension)
+    print(len(paths))
+
+
+# New
+
+# def get_atom_ids(path_sample):
+#     """
+#     reads paths and extracts atom id
+#     """
+#     print(path_sample[1])
 
 
 # get atom_id from charter
 
 
 # derive provenance from atom_id, assert file structure, build file tree
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # def get_names_from_charter_xml(xml)
@@ -51,10 +61,8 @@ paths_sample = random.sample(paths, 100)
 # def leech_charter_xml(charter_xml, root_dir, namespaces, extension):
 #     with open(charter_xml, "rb") as f:
 
-        
 
 #     xml = str(urlopen(charter_url).read(), "utf8")
-
 
 
 #     archive_name, fond_name, charter_atomid = get_names_from_charter_xml(xml)
