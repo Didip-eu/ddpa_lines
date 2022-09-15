@@ -71,17 +71,23 @@ def move_files(locations):
             shutil.copyfile(path, (archive + "/" + folder + "/" + filename))
 
 
-def create_directories():
+def create_directories(root):
     """
     create collections / archives folders
     """
-    if not os.path.exists("../../data/main/collections"):
-        os.mkdir("../../data/main/collections")
-    if not os.path.exists("../../data/main/archive/"):
-        os.mkdir("../../data/main/archive/")
+    if not os.path.exists(f"{root}/collections"):
+        os.mkdir(f"{root}/collections")
+    #if not os.path.exists("../../data/main/archive/"):
+    #    os.mkdir("../../data/main/archive/")
 
 
 if __name__ == "__main__":
+    p={
+            "charter_directory":"/data/anguelos/tmp/data/leech/db/",
+            "file_extension":".cei.xml"
+
+    }
+    args, _ = fargv.fargv(p)
     charter_directory = "../../data/db/mom-data/metadata.charter.public"
     file_extension = ".cei.xml"
     create_directories()
