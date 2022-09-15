@@ -24,8 +24,8 @@ def get_charter_paths(charter_dir, file_ext):
 
 
 def get_path_list(directory, file_ext):
-    """returns List containing File Paths
-
+    """
+    returns List containing File Paths
     """
     paths = [f"{PurePosixPath(path)}" for path in get_charter_paths(directory, file_ext)]
     #return random.sample(paths, 100)
@@ -88,6 +88,24 @@ if __name__ == "__main__":
     charter_paths = get_path_list(charter_directory, file_extension)
     atom_id_list = get_atom_id(charter_paths)
     move_files(atom_id_list)
+
+
+# next up
+
+#1 integrate archive, fond, collection infos and expand to file structure levels
+
+#2 integrate atom_id transformations to get urls; create url.txt for each charter
+
+#3 url to charter level leech (test  with sample)
+
+
+
+
+
+
+
+
+
 
 # def get_names_from_charter_xml(xml)
 
