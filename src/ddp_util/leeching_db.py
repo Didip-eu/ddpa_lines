@@ -28,9 +28,8 @@ def get_path_list(directory, file_ext):
 
     """
     paths = [f"{PurePosixPath(path)}" for path in get_charter_paths(directory, file_ext)]
-    #return random.sample(paths, 100)
+    # return random.sample(paths, 100)
     return paths
-
 
 
 def get_atom_id(paths):
@@ -53,22 +52,26 @@ def move_files(locations):
     missing folders and files will be added to the target archive or collection
     """
     pattern = re.compile("^tag:[a-zA-Z0-9.,:-]+/[a-zA-Z0-9.,:-]+/[a-zA-Z0-9.,:-]+/"
-                         "[a-zA-Z0-9.,:-]+$")
+                         "[a-zA-Z0-9.,:_-]+$")
     for path, atom in locations.items():
         collection = "../../data/main/collections/"
         archive = "../../data/main/archive/"
         folder = os.path.basename(os.path.dirname(path))
+        archive_path = os.path.basename(os.path.dirname(os.path.dirname(path)))
         filename = os.path.basename(path)
-        if pattern.match(atom):
+
+        if pattern.match(atom) is not None:
             if not os.path.exists((collection + "/" + folder)):
                 os.mkdir(collection + "/" + folder)
-        if pattern.match(atom):
+        if pattern.match(atom) is not None:
             if not os.path.exists(collection + "/" + folder + "/" + filename):
-                shutil.copyfile(path, (collection + "/" + folder + "/" + filename))
-        elif not os.path.exists(archive + "/" + folder):
-            os.mkdir(archive + "/" + folder)
-        elif not os.path.exists(archive + "/" + folder + "/" + filename):
-            shutil.copyfile(path, (archive + "/" + folder + "/" + filename))
+                shutil.copy(path, (collection + "/" + folder + "/" + filename))
+        elif not os.path.exists(archive + archive_path):
+            os.mkdir(archive + archive_path)
+        elif not os.path.exists(archive + archive_path + "/" + folder):
+            os.mkdir(archive + archive_path + "/" + folder)
+        elif not os.path.exists(archive + archive_path + "/" + folder + "/" + filename):
+            shutil.copy(path, (archive + archive_path + "/" + folder + "/" + filename))
 
 
 def create_directories():
@@ -82,32 +85,9 @@ def create_directories():
 
 
 if __name__ == "__main__":
-    charter_directory = "../../data/db/mom-data/metadata.charter.public"
+    charter_directory = "../../data/MiM"
     file_extension = ".cei.xml"
     create_directories()
     charter_paths = get_path_list(charter_directory, file_extension)
     atom_id_list = get_atom_id(charter_paths)
     move_files(atom_id_list)
-
-# def get_names_from_charter_xml(xml)
-
-
-# def get_charter_xml_path_elements(
-
-
-# def leech_charter_xml(charter_xml, root_dir, namespaces, extension):
-#     with open(charter_xml, "rb") as f:
-
-
-#     xml = str(urlopen(charter_url).read(), "utf8")
-
-
-#     archive_name, fond_name, charter_atomid = get_names_from_charter_xml(xml)
-#     archive_name, fond_name, charter_name = get_charter_path_elements
-#     (archive_name, fond_name, charter_atomid)
-
-#     charter_full_path=f"{root_dir}/{archive_name}/{fond_name}/{charter_name}"
-#     Path(charter_full_path).mkdir(parents=True, exist_ok=True)
-
-#     store_charter(charter_html=charter_html,
-#     charter_full_path=charter_full_path, charter_atomid=charter_atomid)
