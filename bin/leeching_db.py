@@ -78,10 +78,10 @@ def create_directories():
     """
     create collections / archives folders
     """
-    if not os.path.exists("../../data/main/collections"):
-        os.mkdir("../../data/main/collections")
-    if not os.path.exists("../../data/main/archive/"):
-        os.mkdir("../../data/main/archive/")
+    if not os.path.exists("../data/main/collections"):
+        os.mkdir("../data/main/collections")
+    if not os.path.exists("../data/main/archive/"):
+        os.mkdir("../data/main/archive/")
 
 
 if __name__ == "__main__":
