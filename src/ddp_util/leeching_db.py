@@ -85,7 +85,7 @@ def create_directories():
 
 
 if __name__ == "__main__":
-    charter_directory = "../../data/MiM"
+    charter_directory = "../../data/db/mom-data/metadata.charter.public"
     file_extension = ".cei.xml"
     create_directories()
     charter_paths = get_path_list(charter_directory, file_extension)
