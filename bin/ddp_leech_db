@@ -9,11 +9,12 @@ from lxml import etree
 import re
 import shutil
 import fargv
+from tqdm import tqdm
 
 
 def get_path_generator(directory, file_extension): 
     """
-    returns Generator of file paths in (sub)directories
+    Returns Generator of file paths in (sub)directories.
     @rtype Generator
     """
     for entry in os.scandir(directory):
@@ -27,72 +28,46 @@ def get_path_generator(directory, file_extension):
 
 def get_path_list(directory, file_extension):
     """
-    returns List containing file paths
+    Returns List containing file paths.
     @rtype List
     """
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
-
-    return random.sample(paths, 100)
+    return random.sample(paths, 1000)
     #return paths
 
 
-def get_charter_atomid_dict(paths): #if we include data types in functions, we should do it consistently - decide on this?
+def get_charter_atomid_dict(paths): #TODO if we include data types in functions, we should do it consistently - discuss this?
     """
-    returns unique ids from xml-cei files
+    Returns unique ids from xml-cei files.
     @rtype Dict
     """
-    atom_ids = {}
-    for file in paths:
+    pprint("Parsing .cei.xml for atomids.")
+    atomids = {}
+    for file in tqdm(paths):
         with open(file, 'r', encoding='utf-8') as current:
             tree = etree.parse(current)
             root = tree.getroot()
-            atom_ids[file] = root[0].text
-    return atom_ids
+            atomids[file] = root[0].text
+    return atomids
 
 
-def move_files(locations, target_directory): #maybe refactor so every function uses same names, e.g. locations everywhere, not atom_ids list or dict etc.
+def move_files(locations, target_directory): #TODO maybe refactor so every function uses same names, e.g. locations everywhere, not atom_ids list or dict etc.
     """
-    reads directory containg file path -> key and atomid -> value
-    missing folders and files will be added to the target archive or collection
+    Takes dictionary with path key to atomid as locations.
+    Builds (sub)directory structure at target based on atomids.
     """
-    pattern = re.compile("^tag:[a-zA-Z0-9.,:-]+/[a-zA-Z0-9.,:-]+/[a-zA-Z0-9.,:-]+/"
-                         "[a-zA-Z0-9.,:_-]+$")
-    for path, atom in locations.items():
-        collection = f"{target_directory}/main/collections/"
-        archive = f"{target_directory}/main/archive/"
-        folder = os.path.basename(os.path.dirname(path))
-        archive_path = os.path.basename(os.path.dirname(os.path.dirname(path)))
+    pprint("Building target directories; copying files.")
+    for path, atomid in tqdm(locations.items()):
+        parts = atomid.split("/")
         filename = os.path.basename(path)
-        
-        print("______")
-        print(f"collection:{collection}")
-        print(f"archive:{archive}")
-        print(f"archive_path:{archive_path}")
-        print(f"folder:{folder}")
-        print(f"filename:{filename}")
-
-        if pattern.match(atom) is not None:
-            if not os.path.exists((collection + "/" + folder)):
-                os.makedirs(collection + "/" + folder)
-        if pattern.match(atom) is not None:
-            if not os.path.exists(collection + "/" + folder + "/" + filename):
-                shutil.copy(path, (collection + "/" + folder + "/" + filename))
-        elif not os.path.exists(archive + archive_path):
-            os.makedirs(archive + archive_path)
-        elif not os.path.exists(archive + archive_path + "/" + folder):
-            os.makedirs(archive + archive_path + "/" + folder)
-        elif not os.path.exists(archive + archive_path + "/" + folder + "/" + filename):
-            shutil.copy(path, (archive + archive_path + "/" + folder + "/" + filename))
-
-
-def create_directories(target_directory):
-    """
-    create collections / archives folders
-    """
-    if not os.path.exists(f"{target_directory}/main/collections"):
-        os.makedirs(f"{target_directory}/main/collections")
-    if not os.path.exists(f"{target_directory}/main/archive/"):
-        os.makedirs(f"{target_directory}/main/archive/")
+        if len(parts) == 5: #archive
+            target_path = f"{target_directory}/{parts[2]}/{parts[3]}/{parts[4]}"
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            shutil.copy(path, target_path + filename)
+        else: #collection
+            target_path = f"{target_directory}/COLLECTIONS/{parts[2]}/{parts[3]}"
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            shutil.copy(path, target_path + filename)
 
 
 if __name__ == "__main__":
@@ -101,10 +76,12 @@ if __name__ == "__main__":
             "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public", 
             "target_dir": "{root_dir}/data/tmp/data/leech_db",
             "file_ext": ".cei.xml"
+            #TODO add "url2path_idx_path":"{root_dir}/url2path_idx.pickle" and respective code; this mean also checking when building directories whether it has already been done
     }
     args, _ = fargv.fargv(p) #Q: what is it that prevents improved linting for this module? e.g., when an arg is not in args -> p?; especially when nesting variables, e.g., building paths from root
-
-    create_directories(args.target_dir)
     charter_paths = get_path_list(args.charter_dir, args.file_ext)
     atom_id_dict = get_charter_atomid_dict(charter_paths)
     move_files(atom_id_dict, args.target_dir)
+
+
+# TODO: convention for docstring writing, see https://www.datacamp.com/tutorial/docstrings-python; and include datatypes
