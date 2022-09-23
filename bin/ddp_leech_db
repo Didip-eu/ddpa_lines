@@ -6,7 +6,6 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from pprint import pprint
 from lxml import etree
-import re
 import shutil
 import fargv
 from tqdm import tqdm
