@@ -4,164 +4,107 @@ import os
 import random
 from pathlib import Path
 from pathlib import PurePosixPath
-import xml.etree.ElementTree as ET
+from pprint import pprint
+from lxml import etree
 import re
 import shutil
+import fargv
 
 
-# list paths of all charters in directory
-def get_charter_paths(charter_dir, file_ext):
+def get_path_generator(directory, file_extension): 
     """
-    returns generator of file paths
+    returns Generator of file paths in (sub)directories
+    @rtype Generator
     """
-    for entry in os.scandir(charter_dir):
-        if entry.is_file() and entry.name.endswith(file_ext):
-            yield Path(entry.path)
+    for entry in os.scandir(directory):
+        if entry.is_file() and entry.name.endswith(file_extension):
+            yield Path(entry.path) 
         elif entry.is_dir():
-            yield from get_charter_paths(entry.path, file_ext)
+            yield from get_path_generator(entry.path, file_extension)
         else:
             continue
 
 
-def get_path_list(directory, file_ext):
+def get_path_list(directory, file_extension):
     """
-    returns List containing File Paths
+    returns List containing file paths
+    @rtype List
     """
-    paths = [f"{PurePosixPath(path)}" for path in get_charter_paths(directory, file_ext)]
-    #return random.sample(paths, 100)
-    return paths
+    paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
+
+    return random.sample(paths, 100)
+    #return paths
 
 
-
-def get_atom_id(paths):
+def get_charter_atomid_dict(paths): #if we include data types in functions, we should do it consistently - decide on this?
     """
-    returns unique ids from cei files
+    returns unique ids from xml-cei files
     @rtype Dict
     """
     atom_ids = {}
     for file in paths:
         with open(file, 'r', encoding='utf-8') as current:
-            tree = ET.parse(current)
+            tree = etree.parse(current)
             root = tree.getroot()
             atom_ids[file] = root[0].text
     return atom_ids
 
 
-def move_files(locations):
+def move_files(locations, target_directory): #maybe refactor so every function uses same names, e.g. locations everywhere, not atom_ids list or dict etc.
     """
     reads directory containg file path -> key and atomid -> value
     missing folders and files will be added to the target archive or collection
     """
     pattern = re.compile("^tag:[a-zA-Z0-9.,:-]+/[a-zA-Z0-9.,:-]+/[a-zA-Z0-9.,:-]+/"
-                         "[a-zA-Z0-9.,:-]+$")
+                         "[a-zA-Z0-9.,:_-]+$")
     for path, atom in locations.items():
-        collection = "../../data/main/collections/"
-        archive = "../../data/main/archive/"
+        collection = f"{target_directory}/main/collections/"
+        archive = f"{target_directory}/main/archive/"
         folder = os.path.basename(os.path.dirname(path))
+        archive_path = os.path.basename(os.path.dirname(os.path.dirname(path)))
         filename = os.path.basename(path)
-        if pattern.match(atom):
+        
+        print("______")
+        print(f"collection:{collection}")
+        print(f"archive:{archive}")
+        print(f"archive_path:{archive_path}")
+        print(f"folder:{folder}")
+        print(f"filename:{filename}")
+
+        if pattern.match(atom) is not None:
             if not os.path.exists((collection + "/" + folder)):
-                os.mkdir(collection + "/" + folder)
-        if pattern.match(atom):
+                os.makedirs(collection + "/" + folder)
+        if pattern.match(atom) is not None:
             if not os.path.exists(collection + "/" + folder + "/" + filename):
-                shutil.copyfile(path, (collection + "/" + folder + "/" + filename))
-        elif not os.path.exists(archive + "/" + folder):
-            os.mkdir(archive + "/" + folder)
-        elif not os.path.exists(archive + "/" + folder + "/" + filename):
-            shutil.copyfile(path, (archive + "/" + folder + "/" + filename))
+                shutil.copy(path, (collection + "/" + folder + "/" + filename))
+        elif not os.path.exists(archive + archive_path):
+            os.makedirs(archive + archive_path)
+        elif not os.path.exists(archive + archive_path + "/" + folder):
+            os.makedirs(archive + archive_path + "/" + folder)
+        elif not os.path.exists(archive + archive_path + "/" + folder + "/" + filename):
+            shutil.copy(path, (archive + archive_path + "/" + folder + "/" + filename))
 
 
-def create_directories(root):
+def create_directories(target_directory):
     """
     create collections / archives folders
     """
-    if not os.path.exists(f"{root}/collections"):
-        os.mkdir(f"{root}/collections")
-    #if not os.path.exists("../../data/main/archive/"):
-    #    os.mkdir("../../data/main/archive/")
+    if not os.path.exists(f"{target_directory}/main/collections"):
+        os.makedirs(f"{target_directory}/main/collections")
+    if not os.path.exists(f"{target_directory}/main/archive/"):
+        os.makedirs(f"{target_directory}/main/archive/")
 
 
 if __name__ == "__main__":
     p={
-            "charter_directory":"/data/anguelos/tmp/data/leech/db/",
-            "file_extension":".cei.xml"
-
+            "root_dir": ".", 
+            "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public", 
+            "target_dir": "{root_dir}/data/tmp/data/leech_db",
+            "file_ext": ".cei.xml"
     }
-    args, _ = fargv.fargv(p)
-    charter_directory = "../../data/db/mom-data/metadata.charter.public"
-    file_extension = ".cei.xml"
-    create_directories()
-    charter_paths = get_path_list(charter_directory, file_extension)
-    atom_id_list = get_atom_id(charter_paths)
-    move_files(atom_id_list)
+    args, _ = fargv.fargv(p) #Q: what is it that prevents improved linting for this module? e.g., when an arg is not in args -> p?; especially when nesting variables, e.g., building paths from root
 
-
-# next up
-
-#1 integrate archive, fond, collection infos and expand to file structure levels
-
-#2 integrate atom_id transformations to get urls; create url.txt for each charter
-
-#3 url to charter level leech (test  with sample)
-
-
-
-
-
-
-
-
-
-
-# def get_names_from_charter_xml(xml)
-
-
-# def get_charter_xml_path_elements(
-
-
-# def leech_charter_xml(charter_xml, root_dir, namespaces, extension):
-#     with open(charter_xml, "rb") as f:
-
-
-#     xml = str(urlopen(charter_url).read(), "utf8")
-
-
-#     archive_name, fond_name, charter_atomid = get_names_from_charter_xml(xml)
-#     archive_name, fond_name, charter_name = get_charter_path_elements
-#     (archive_name, fond_name, charter_atomid)
-
-#     charter_full_path=f"{root_dir}/{archive_name}/{fond_name}/{charter_name}"
-#     Path(charter_full_path).mkdir(parents=True, exist_ok=True)
-
-#     store_charter(charter_html=charter_html,
-#     charter_full_path=charter_full_path, charter_atomid=charter_atomid)
-
-
-
-
-# #!/usr/bin/env python3
-
-# from collections import deque
-# from lxml import etree
-# from pathlib import Path
-# from pathlib import PurePosixPath
-# from datetime import datetime
-# import fargv
-# import pickle
-# import os
-# import pandas as pd
-# import random
-
-
-# from ddp_util import leech_charter, get_cei_paths
-
-# if __name__ == "__main__":
-#     p = {"charter_dir":"./data/db/mom-data/metadata.charter.public",
-#         "root_dir":"./tmp/data/leech_from_db",
-#         "extension": ".cei.xml",
-#         "namespaces": {'atom': 'http://www.w3.org/2005/Atom', 'cei': 'http://www.monasterium.net/NS/cei'}
-#     }
-#     args, _ = fargv.fargv(p)
-
-#     paths = get_cei_paths(args)
-#     print(paths)
+    create_directories(args.target_dir)
+    charter_paths = get_path_list(args.charter_dir, args.file_ext)
+    atom_id_dict = get_charter_atomid_dict(charter_paths)
+    move_files(atom_id_dict, args.target_dir)
