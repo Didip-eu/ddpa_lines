@@ -4,11 +4,13 @@
 Leeches Monasterium's backend xml-database files to construct target file structure system.
 """
 
-#TODO: use md5 and hashing for substituting screwed strings 
+#TODO: use md5 and hashing for substituting screwed strings
+#TODO: fix permissions or make choices available in fargv for different file writing permission modes (https://stackoverflow.com/questions/5231901/permission-problems-when-creating-a-dir-with-os-makedirs-in-python)
 #TODO: move some functions to ddp_util
 #TODO: add "url2path_idx_path":"{root_dir}/url2path_idx.pickle" + code; checking dependencies etc. 
-#TODO: discuss:
+#TODO: discuss in group:
 # - if we include data types in function documentation, we should do it consistently, right? what is best practice?
+# - convention for docstring writing, see https://www.datacamp.com/tutorial/docstrings-python; and include datatypes
 
 import os
 import random
@@ -19,6 +21,7 @@ from lxml import etree
 import shutil
 import fargv
 from tqdm import tqdm
+import math
 
 
 def get_path_generator(directory, file_extension):  
@@ -41,7 +44,7 @@ def get_path_list(directory, file_extension):
     @rtype List
     """
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
-    return random.sample(paths, 100)
+    return random.sample(paths, 50)
     #return paths
 
 
@@ -68,46 +71,26 @@ def move_charter_files(locations, target_directory):
     pprint("Building target directories; copying files.")
     for path, atomid in tqdm(locations.items()):
         parts = atomid.split("/")
-        filename = os.path.basename(path)
         if len(parts) == 5:
             target_path = f"{target_directory}/{parts[2]}/{parts[3]}/{parts[4]}"
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            shutil.copy(path, target_path + filename)
+            print(target_path)
+            os.makedirs(target_path, exist_ok=True)
+            shutil.copy(path, target_path)
         else:
             target_path = f"{target_directory}/COLLECTIONS/{parts[2]}/{parts[3]}"
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            shutil.copy(path, target_path + filename)
+            print(target_path)
+            os.makedirs(target_path, exist_ok=True)
+            shutil.copy(path, target_path)
 
 
 def move_collection_files(locations, target_directory): 
-    """
-    Takes dictionary with path key to atomid as locations.
-    Builds (sub)directory structure at target based on atomids.
-    """
     pprint("Building target directories; copying files.")
     for path, atomid in tqdm(locations.items()):
         parts = atomid.split("/")
-        filename = os.path.basename(path)
-        if len(parts) == 5: #archive
-            target_path = f"{target_directory}/{parts[2]}/{parts[3]}/{parts[4]}" #TODO:
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            shutil.copy(path, target_path + filename)
-        else: #collection
-            target_path = f"{target_directory}/COLLECTIONS/{parts[2]}/{parts[3]}"
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            shutil.copy(path, target_path + filename)
-
-
-# goal: put ead/preferences info etc. into directory structure (so it makes sense, and the query can be: look for this file in parent folder---)
-# re-use functions here: path_generator 
-# first, look at notebook for info how to
-
-# 1) leech into list
-# 2) write into json (with indent)
-# 3) put into json at collection level
-
-
-
+        target_path = f"{target_directory}/COLLECTIONS/{parts[2]}"
+        print(target_path)
+        os.makedirs(target_path, exist_ok=True)
+        shutil.copy(path, target_path)
 
 
 if __name__ == "__main__":
@@ -115,31 +98,31 @@ if __name__ == "__main__":
             "root_dir": ".", 
             "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public",
             "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
-            "target_dir": "{root_dir}/data/tmp/data/leech_db",
-            #"file_ext": ".cei.xml"
-            
+            "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
+            "target_dir": "{root_dir}/data/tmp/data/leech_db"
+            #"file_ext": ".cei.xml"   
     }
     
     #params
     args, _ = fargv.fargv(p) 
 
-    #leech and move charters
+    #charters
     charter_paths = get_path_list(args.charter_dir, ".cei.xml")
     atom_id_dict = get_atomid_dict(charter_paths)
     move_charter_files(atom_id_dict, args.target_dir)
 
-    #leech and move collection data
+    #collections
     collection_paths = get_path_list(args.collection_dir, ".cei.xml")
     atom_id_dict = get_atomid_dict(collection_paths)
-    move_collection_files(atom_id_dict, )
+    move_collection_files(atom_id_dict, args.target_dir)
 
 
 
+# TODO: make same structure for archive, fond, then check how they can fit in one function (move files)
 
+    #archives
+    # put ead/preferences info etc. into directory structure (so querying for parent folder is possible
+    archive_paths = get_path_list(args.archive_dir, )
 
-
-
-    #leech and move archive/fond data
-
-
-# TODO: convention for docstring writing, see https://www.datacamp.com/tutorial/docstrings-python; and include datatypes
+    #fonds
+    # here we find the image base (name of fond.prferences.xml ..)

@@ -11,10 +11,13 @@ def in_archive(charter_atomid):
     return True if len(charter_atomid.split("/")) == 5 else False 
 
 
-# 1
+# 1) leech into list
+# 2) write into json (with indent)
+# 3) put into json at collection level
+
+
 # build image urls
 # leech xml for orig and copy links/refs
-
 # combine base urls and leeched parts and create json? on charter level
 
 
