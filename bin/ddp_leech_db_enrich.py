@@ -20,21 +20,12 @@ def in_archive(charter_atomid):
 
 # 1) leech into list
 
-def get_cei_header(paths: List[str]) -> Dict[str, str]:
-    """
-    Returns CEI Headers as Dict, Tags are Keys and their Contents are values
-    @param paths: Pathlist to Input cei.xml files
-    @return: Dict with Header-Metadata, Elements of cei:text
-    """
-    content_head = {}
-    for file in tqdm(paths):
-        with open(file, 'r', encoding='utf-8') as current:
-            tree = ET.parse(current)
-            root = tree.getroot()
-            content_head[file] = root[0].text
-    return content_head
-
 def get_cei_content(paths: List[str]) -> Dict[str, str]:
+    """
+    extracts all Elements with their contents
+    @param paths:
+    @return:
+    """
     ns = {'atom': "http://www.w3.org/2005/Atom",
           'cei': "http://www.monasterium.net/NS/cei"}
     content = {}
