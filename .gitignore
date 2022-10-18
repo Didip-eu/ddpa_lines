@@ -4,6 +4,7 @@ data/
 
 # custom atzenhofer
 data
+models
 didipcv.code-workspace
 
 # Spider downloaded data
