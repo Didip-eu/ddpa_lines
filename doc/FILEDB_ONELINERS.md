@@ -1,4 +1,9 @@
-Get A list of all charters with no (downloaded) images
+# (WSL) Pipe all charters' atom_ids into into clipboard
+```bash
+awk '{print $0}' */*/*/atom_id.txt | clip.exe
+```
+
+# Get A list of all charters with no (downloaded) images
 
 ```bash
 ls $(echo */*/*/image_urls.json) -l|awk '{ print $9 " "  $5 }'|grep -e ' 2$'
