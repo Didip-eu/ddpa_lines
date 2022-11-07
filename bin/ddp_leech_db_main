@@ -70,9 +70,10 @@ def get_path_list(directory: str, file_extension: str) -> List[str]:
     @param file_extension: specifies file type, monasterium files would be .cei.xml
     @return List with file paths
     """
+    pprint("Scanning directory for files.")
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
-    #return random.sample(paths, 60)
-    return paths
+    return random.sample(paths, 30)
+    #return paths
 
 
 def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
@@ -204,19 +205,19 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 
 # # charters ✓
-# charter_paths = get_path_list(args.charter_dir, ".cei.xml")
-# atom_id_dict = get_atomid_dict(charter_paths)
-# copy_charter_files(atom_id_dict, args.target_dir)
+charter_paths = get_path_list(args.charter_dir, ".cei.xml")
+atom_id_dict = get_atomid_dict(charter_paths)
+copy_charter_files(atom_id_dict, args.target_dir)
 
 # # collections ✓
-# collection_paths = get_path_list(args.collection_dir, ".cei.xml")
-# atom_id_dict = get_atomid_dict(collection_paths)
-# copy_collection_files(atom_id_dict, args.target_dir)
+collection_paths = get_path_list(args.collection_dir, ".cei.xml")
+atom_id_dict = get_atomid_dict(collection_paths)
+copy_collection_files(atom_id_dict, args.target_dir)
 
 # # archives ✓
-# archive_paths = get_path_list(args.archive_dir, ".eag.xml")
-# atom_id_dict = get_atomid_dict(archive_paths)
-# copy_archive_files(atom_id_dict, args.target_dir)
+archive_paths = get_path_list(args.archive_dir, ".eag.xml")
+atom_id_dict = get_atomid_dict(archive_paths)
+copy_archive_files(atom_id_dict, args.target_dir)
 
 # fonds (✓/✗)
 fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
