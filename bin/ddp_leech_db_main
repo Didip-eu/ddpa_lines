@@ -4,24 +4,6 @@
 Leeches Monasterium's backend xml-database files to construct target file structure system.
 """
 
-# TODO: write .txt to curation lvl with either or
-# fond -> xyz.preferences.xml -> 
-#     <xrx:param name="image-server-base-url">http://images.monasterium.net/img/AT-ADG/DKA</xrx:param>
-
-
-
-# collection -> xyz.cei.xml->
-#          <cei:front>
-#           <cei:image_server_address>images.monasterium.net</cei:image_server_address>
-#           <cei:image_server_folder>img/collections/AbbayeDeSaintBertin</cei:image_server_folder>
-
-# TODO: build image urls in enrich -> for those starting with http:// or https, take url directly; otherwise: build from parent curation base url.txt + url attribute 
-
-# TODO: 
-
-
-
-
 # TODO: add "url2path_idx_path":"{root_dir}/url2path_idx.pickle" + code; checking dependencies etc.
 
 # TODO: fix permissions or make choices available in fargv for different file writing permission modes (https://stackoverflow.com/questions/5231901/permission-problems-when-creating-a-dir-with-os-makedirs-in-python)
@@ -33,6 +15,7 @@ Leeches Monasterium's backend xml-database files to construct target file struct
 
 # TODO: update docstrings
 # TODO: reduce redundancy; move splits into decompose, correct in origin
+# TODO: refactor file move
 
 
 import os
@@ -72,7 +55,7 @@ def get_path_list(directory: str, file_extension: str) -> List[str]:
     """
     pprint("Scanning directory for files.")
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
-    return random.sample(paths, 30)
+    return random.sample(paths, 50)
     #return paths
 
 
@@ -150,9 +133,9 @@ def copy_charter_files(locations: Dict[str, str], target_directory: str): #see d
         elif len(parts) == 5:
             target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
             os.makedirs(target_path, exist_ok=True)
-            shutil.copy(path, f"{target_path}/{charter_hash}.xml")
+            shutil.copy(path, f"{target_path}/{charter_hash}.CH.cei.xml")
         else:
-            raise ValueError
+            raise ValueError("Length of atomid is irregular.")
 
 
 def copy_collection_files(locations: Dict[str, str], target_directory: str):
@@ -161,7 +144,7 @@ def copy_collection_files(locations: Dict[str, str], target_directory: str):
         curation_hash = to_md5(atomid)
         target_path = f"{target_directory}/COLLECTIONS/{curation_hash}"
         os.makedirs(target_path, exist_ok=True)
-        shutil.copy(path, f"{target_path}/{curation_hash}.xml")
+        shutil.copy(path, f"{target_path}/{curation_hash}.CO.cei.xml")
 
 
 def copy_archive_files(locations: Dict[str, str], target_directory: str):
@@ -170,7 +153,7 @@ def copy_archive_files(locations: Dict[str, str], target_directory: str):
         parts = atomid.split("/") 
         target_path = f"{target_directory}/{parts[2]}"
         os.makedirs(target_path, exist_ok=True)
-        shutil.copy(path, f"{target_path}/{parts[2]}.ead.xml")
+        shutil.copy(path, f"{target_path}/{parts[2]}.AR.ead.xml")
 
 
 def copy_fond_files(locations: Dict[str, str], target_directory: str):
@@ -180,15 +163,15 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
         try:
             assert Path(path_pref).is_file() #e.g. for AT-VLA/LandesregierungAmt/LandesregierungAmt.preferences.xml'
         except AssertionError:
-            print(f"preferences.xml not found for {path}.")
+            print(f"preferences.xml not found for {path}.") #TODO: logging for this, and also logging for general execution of bin
             continue
         
         parts = atomid.split("/") 
         curation_hash = to_md5(atomid)
         target_path = f"{target_directory}/{parts[2]}/{curation_hash}"
         os.makedirs(target_path, exist_ok=True)
-        shutil.copy(path, f"{target_path}/{curation_hash}.ead.xml")
-        shutil.copy(path_pref, f"{target_path}/{curation_hash}.preferences.xml")
+        shutil.copy(path, f"{target_path}/{curation_hash}.FO.ead.xml")
+        shutil.copy(path_pref, f"{target_path}/{curation_hash}.FO.preferences.xml")
 
 if __name__ == "__main__":
     p = {
