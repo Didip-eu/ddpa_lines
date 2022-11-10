@@ -6,10 +6,10 @@ Leeches .xml-files in target file structure system to construct metadata files.
 
 # TODO: discuss namespaces and whether there should be empty txt files for those fonds that have none (or have empty ones) (but their image urls in the cei files)
 
-
 # TODO: build image urls in enrich -> for those starting with http:// or https, take url directly; otherwise: build from parent curation base url.txt + url attribute 
 
-
+# TODO: account for http(s)
+# TODO: account for double http://http:// e.g. for ub.uni-heidelberg
 import os
 import random
 from pathlib import Path
@@ -51,7 +51,7 @@ def get_path_list(directory: str, file_extension: str) -> List[str]:
     #return random.sample(paths, 30)
     return paths
 
-base_url_choices = Literal["archive", "collection"]
+base_url_choices = Literal["archive", "collection"] #TODO: see top
 
 def get_image_base_urls(paths, mode: base_url_choices):
     """
@@ -70,49 +70,73 @@ def get_image_base_urls(paths, mode: base_url_choices):
         for file in tqdm(paths):
             with open(file, 'r', encoding='utf-8') as current:
                 tree = etree.parse(current)
-                image_base = "".join(tree.xpath("//xrx:param[@name='image-server-base-url']/text()", namespaces = namespaces))
-                file_locations[file] = image_base
+                image_server_base_url = "".join(tree.xpath("//xrx:param[@name='image-server-base-url']/text()", namespaces = namespaces))
+                image_base = "None" if (image_server_base_url  == "") else image_server_base_url
+                image_access = tree.xpath("xrx:param[@name='image-access']/text()", namespaces = namespaces)
+                restricted = True if image_access == ("free" or "Free") else False #have not seen capitalized F but just to make sure..
+                file_locations[file] = image_base 
     elif mode =="collection":
         pprint("Mode: collections")
         for file in tqdm(paths):
             with open(file, 'r', encoding='utf-8') as current:
                 tree = etree.parse(current)
                 image_server_address = "".join(tree.xpath("//cei:image_server_address/text()", namespaces = namespaces))
-                image_server_folder = "".join(tree.xpath("//cei:image_server_folder/text()", namespaces = namespaces))
-                image_base = image_server_address + image_server_folder
+                image_server_folder = "".join(tree.xpath("//cei:image_server_folder/text()", namespaces = namespaces))              
+                image_base = "None" if ((image_server_address or image_server_folder) == "") else f"http://{image_server_address}/{image_server_folder}"
                 file_locations[file] = image_base
+                restricted = False #default since it's unclear whether <cei:publicationStmt><cei:availability n="ENRICH" status="restricted"/></cei:publicationStmt> in fonds is somehow a case
+    # TODO: #weitere infos aus collections: <xrx:keyword>Retrodigitalisierte Urkundeneditionen</xrx:keyword> bzw. <cei:sourceDesc><cei:p>Export aus Google Daten</cei:p>
     else:
         raise ValueError("Invalid mode.")
-    return file_locations
-
-
-# def get_fond_image_base_urls(paths):
-#     """Returns base image paths.
-#     """
-#     pprint("Parsing curation image base paths.")
-    
-#     file_locations = {}
-#     namespaces = {"xrx": "http://www.monasterium.net/NS/xrx"}
-#     for file in tqdm(paths):
-#         with open(file, 'r', encoding='utf-8') as current:
-#             tree = etree.parse(current)
-#             image_base = "".join(tree.xpath("//xrx:param[@name='image-server-base-url']/text()", namespaces = namespaces))
-#             file_locations[file] = image_base
-#     return file_locations
-    
-
-#def get_collection_image_base_urls(paths):
-
-#CO.cei.xml
+    #pprint(file_locations)    
+    return file_locations, restricted
 
 
 def create_image_base_url_files(file_locations):
+    """
+    Creates .txt-files with the image base url at curation-level.
+    """
     pprint("Creating .txt files at curation-level.")
     for path, image_base in tqdm(file_locations.items()):
         file_path = Path(path)
         target_path = f"{file_path.parent}/{file_path.with_suffix('').stem}.image_base_url.txt"
-        with open(target_path, 'w', encoding="utf-8") as p:
-            p.write(image_base)
+        if image_base == "":
+            with open(target_path, 'w', encoding="utf-8") as p:
+                p.write("None")
+        else:
+            with open(target_path, 'w', encoding="utf-8") as p:
+                p.write(image_base)
+
+
+# def get_img_paths(paths):
+#     """
+#     Returns image paths from cei.xml-files.
+#     """
+#     pprint("Parsing .cei.xml for image paths.")
+#     for file in tqdm(paths):
+#         with open(file, 'r', encoding='utf-8') as current:
+#             tree = etree.parse(current)
+#             root = tree.getroot()
+#             original = tree = etree.parse(current)
+#                 image_server_address = "".join(tree.xpath("//cei:image_server_address/text()", namespaces = namespaces))
+#             # account for orig vs non
+
+#                     cei_graphic_ATTRIBUTE_url_orig.append(get_xpath_result(f"{mapping['@url']}"))
+#          '@url': '/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:witnessOrig/cei:figure/cei:graphic/@url',
+
+#         cei_graphic_ATTRIBUTE_url_copy.append(get_xpath_result(f"{mapping['cei:graphic/@url']}"))
+#          'cei:graphic/@url': '/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:witListPar/cei:witness/cei:figure/cei:graphic/@url',
+
+#             image_server_address = "".join(tree.xpath("//cei:image_server_address/text()", namespaces = namespaces))
+
+#     return file_locations
+
+#def create_image_files
+
+# for every charter
+# check their image urls
+# if they start with https, paste them directly to the folder the file is in
+# else: take their names and save them, go up one directory (curation-level), save the image base, and write image url to charter-level again
 
 
 if __name__ == "__main__":
@@ -130,11 +154,11 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 
 fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
-image_base_dict = get_image_base_urls(fond_paths, mode="archive")
+image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
 create_image_base_url_files(image_base_dict)
 
 collection_paths = get_path_list(args.target_dir, ".CO.cei.xml")
-image_base_dict = get_image_base_urls(collection_paths, mode="collection")
+image_base_dict, _ = get_image_base_urls(collection_paths, mode="collection")
 create_image_base_url_files(image_base_dict)
 
 
