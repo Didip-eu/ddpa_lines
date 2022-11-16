@@ -203,11 +203,13 @@ create_image_base_url_files(image_base_dict)
 print("\n")
 
 # build image urls from refs ✓
-## 
+## refs
 charter_paths = get_path_list(args.target_dir, ".CH.cei.xml")
 create_image_refs(charter_paths)
 print("\n")
 
+## urls
+#TODO
 #image_refs_list = get_path_list(args.target_dir,  ".image_url.txt")
 
 
