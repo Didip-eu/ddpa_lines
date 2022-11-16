@@ -25,38 +25,12 @@ import hashlib
 import glob
 import validators
 
+
+from ddp_util import decompose_chatomid, get_path_generator, get_path_list
+
 ### Type options
 base_url_choices = Literal["archive", "collection"] #TODO: see top
-###
 
-
-def get_path_generator(directory: str, file_extension: str) -> Generator:
-    """
-    Returns Generator of file paths in (sub)directories.
-    @param directory: directory of monasterium xml files as a string
-    @param file_extension: specifies file type, monasterium files would be .cei.xml
-    @return Generator with file paths
-    """
-    for entry in os.scandir(directory):
-        if entry.is_file() and entry.name.endswith(file_extension):
-            yield Path(entry.path)
-        elif entry.is_dir():
-            yield from get_path_generator(entry.path, file_extension)
-        else:
-            continue
-
-
-def get_path_list(directory: str, file_extension: str) -> List[str]: 
-    """
-    Returns List containing file paths.
-    @param directory: directory of monasterium xml files as a string
-    @param file_extension: specifies file type, monasterium files would be .cei.xml
-    @return List with file paths
-    """
-    pprint("Scanning directory for files.")
-    paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
-    #return random.sample(paths, 30)
-    return paths
 
 
 def get_image_base_urls(paths, mode: base_url_choices):
@@ -143,15 +117,13 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
                txt.write(j)
 
 
-
-
 # for every charter
-# check their image urls and whether they are valid; later add to filter for bad ones
-
-# use shutils to join the each file with the one of the parent
-
+# check their image urls and whether they are valid (with validator library!), later add to filter for bad ones
+# prolly use shutils to join the each file with the one of the parent
 # if they start with https, paste them directly to the folder the file is in
 # else: take their names and save them, go up one directory (curation-level), save the image base, and write image url to charter-level again
+
+#def validate_url(url):
 
 
          
@@ -187,16 +159,10 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
             #     else:
             #         print("not found?")
 
-
-
-
 #             file_with_extension = next(pathparent.glob(f"*{extension}"))  # returns the file with extension or None
 #             if file_with_extension:
 #                 print(Path(file_with_extension))
 #                 #with open(file_with_extension):
-
-
-
 
 #             path = Path(".")  # current directory
 #             extension = ".txt"
@@ -205,14 +171,7 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 #             if file_with_extension:
 # #                with open(file_with_extension):
 
-            
 
-#             print(original)
-#             print(copy)
-
-
-
-#def validate_url(url):
 
 
 if __name__ == "__main__":
@@ -228,21 +187,26 @@ if __name__ == "__main__":
 
 # params
 args, _ = fargv.fargv(p)
+print("\n")
+
 # get image-refs ✓
-# fonds 
+## fonds 
 fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
 image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
 create_image_base_url_files(image_base_dict)
+print("\n")
 
 ## collections
 collection_paths = get_path_list(args.target_dir, ".CO.cei.xml")
 image_base_dict, _ = get_image_base_urls(collection_paths, mode="collection")
 create_image_base_url_files(image_base_dict)
+print("\n")
 
 # build image urls from refs ✓
-# ## 
+## 
 charter_paths = get_path_list(args.target_dir, ".CH.cei.xml")
 create_image_refs(charter_paths)
+print("\n")
 
 #image_refs_list = get_path_list(args.target_dir,  ".image_url.txt")
 

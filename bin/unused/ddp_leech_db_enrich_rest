@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# no use atm
+
 """
 Leeches .xml-files in target file structure system to construct metadata files.
 """

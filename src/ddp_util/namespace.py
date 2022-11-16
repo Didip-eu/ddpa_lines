@@ -18,21 +18,23 @@ def chatomid_to_url(atomid):
         #print(f"Unusual structure found at '{atom_id}'")
 
 
-def decompose_chatomid(chatomid): # changes can be ditched
+def decompose_chatomid(chatomid):
     """Infers the atom ids of the supercuration (archive/COLLECTIONS) and curation (fond/collection) 
     from a charters atomid
     """
     parts = chatomid.split("/")
-    #assert parts[:2] == (["tag:www.monasterium.net,2011:", "charter"])
-    if len(parts) == 5: # archive
-        supercuration_id = f"{parts[0]}/archive/{parts[3]}"
-        curation_id = f"{parts[0]}/fond/{parts[3]}/{parts[4]}"
-    if len(parts) == 4: # collection
-        supercuration_id = f"{parts[0]}/archive/{collections_archive_name}"
-        curation_id = f"{parts[0]}/fond/{collections_archive_name}/{parts[3]}"
-    else:
-        raise ValueError
-    return parts, supercuration_id, curation_id, chatomid
+    try:
+        assert parts[:2] == (['tag:www.monasterium.net,2011:', 'charter'])
+    except AssertionError:
+        print("atom-id is not well-formed.")
+        raise
+    if len(parts) == 5:
+        supercuration_id = f"{parts[0]}/archive/{parts[2]}"
+        curation_id = f"{parts[0]}/fond/{parts[2]}/{parts[3]}"
+    elif len(parts) == 4:
+        supercuration_id = "COLLECTIONS"
+        curation_id = f"{parts[0]}/collection/{parts[2]}"
+    return parts, supercuration_id, curation_id
 
 
 def chatomid_to_pathtuple(chatomid):
@@ -60,10 +62,10 @@ def url_to_chatomid(url):
     else:
         raise ValueError
 
+#chatomid_to_fond_id(chatomid)?
 
 def url_to_path(url):
     raise NotImplementedError
-
 
 def path_to_atomid(path):
     return open(f"{path}/atomid.txt").read()
