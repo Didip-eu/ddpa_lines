@@ -64,3 +64,4 @@ def path_to_atomid(path):
 
 def path_to_url(path):
     return open(f"{path}/url.txt").read()
+
