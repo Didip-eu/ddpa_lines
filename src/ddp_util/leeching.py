@@ -59,8 +59,7 @@ def get_fonds_from_archive(archive_url):
     #print(f"a2f: {archive_url}")
     fond_list_html = str(urlopen(archive_url).read(), "utf8")
     soup = BeautifulSoup(fond_list_html, "html.parser")
-    fond_urls = [tag.attrs.get("href") for tag in soup.find_all(
-        "a") if tag.attrs.get("href", "").endswith("/fond")]
+    fond_urls = [tag.attrs.get("href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/fond")]
     fond_urls = [f"{url_base}/{fond_url}" for fond_url in fond_urls]
     return list(set(fond_urls))
 
@@ -192,7 +191,7 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid=""):
     image_urls+=[tag.attrs.get("title") for tag in soup.find_all("img") if tag.attrs.get("src") == tag.attrs.get("title") and tag.attrs.get("title").startswith("http://archives.hungaricana.hu")]
 
 
-    open(f"{charter_full_path}/url.txt", "w").write(url)
+    open(f"{charter_full_path}/url.txt", "w").write(charter_url)
     open(f"{charter_full_path}/original.html", "w").write(charter_html)
     open(f"{charter_full_path}/atom_id.txt", "w").write(charter_atomid)
 

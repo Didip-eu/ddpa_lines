@@ -1,3 +1,4 @@
+
 import bs4
 import lxml
 from lxml import etree
@@ -20,6 +21,9 @@ def parse_cei(charter_path):
         # cei_dateRange_ATTRIBUTE_to.append(get_xpath_result(f"{mapping['cei:dateRange']}/@to"))
         # cei_graphic_ATTRIBUTE_url_orig.append(get_xpath_result(f"{mapping['@url']}"))
         # cei_graphic_ATTRIBUTE_url_copy.append(get_xpath_result(f"{mapping['cei:graphic/@url']}"))
+
+
+
 
 def extract_abstracts(charter_path, mode="text"):
     assert mode in ("text",)

@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+
+"""
+Leeches .xml-files in target file structure system to construct metadata files.
+"""
+
+# TODO: discuss namespaces and whether there should be empty txt files for those fonds that have none (or have empty ones) (but their image urls in the cei files)
+
+# TODO: build image urls in enrich -> for those starting with http:// or https, take url directly; otherwise: build from parent curation base url.txt + url attribute 
+
+# TODO: account for http(s)
+# TODO: account for double http://http:// e.g. for ub.uni-heidelberg
+
+import os
+import random
+from pathlib import Path
+from pathlib import PurePosixPath
+from pprint import pprint
+import shutil
+from typing import Dict, Generator, List, Literal, get_args # where to put choices in binary file?
+from lxml import etree
+import fargv
+from tqdm import tqdm
+import hashlib
+import glob
+import validators
+
+
+from ddp_util import decompose_chatomid, get_path_generator, get_path_list
+
+### Type options
+base_url_choices = Literal["archive", "collection"] #TODO: see top
+
+
+
+def get_image_base_urls(paths, mode: base_url_choices):
+    """
+    Returns base image paths.
+    """
+    options = get_args(base_url_choices)
+    assert mode in options, f"'{mode}' is not in {options}"
+
+    pprint("Parsing curation image base paths.")
+
+    file_locations = {}
+    namespaces = {"xrx": "http://www.monasterium.net/NS/xrx", "atom": "http://www.w3.org/2005/Atom", "cei": "http://www.monasterium.net/NS/cei"}
+
+    if mode == "archive":
+        pprint("Mode: archives")        
+        for file in tqdm(paths):
+            with open(file, 'r', encoding='utf-8') as current:
+                tree = etree.parse(current)
+                image_server_base_url = "".join(tree.xpath("//xrx:param[@name='image-server-base-url']/text()", namespaces = namespaces))
+                image_base = "None" if (image_server_base_url  == "") else image_server_base_url
+                image_access = tree.xpath("xrx:param[@name='image-access']/text()", namespaces = namespaces)
+                restricted = True if image_access == ("free" or "Free") else False #have not seen capitalized F but just to make sure..
+                file_locations[file] = image_base 
+    elif mode =="collection":
+        pprint("Mode: collections")
+        for file in tqdm(paths):
+            with open(file, 'r', encoding='utf-8') as current:
+                tree = etree.parse(current)
+                image_server_address = "".join(tree.xpath("//cei:image_server_address/text()", namespaces = namespaces))
+                image_server_folder = "".join(tree.xpath("//cei:image_server_folder/text()", namespaces = namespaces))              
+                image_base = "None" if ((image_server_address or image_server_folder) == "") else f"http://{image_server_address}/{image_server_folder}"
+                file_locations[file] = image_base
+                restricted = False #default since it's unclear whether <cei:publicationStmt><cei:availability n="ENRICH" status="restricted"/></cei:publicationStmt> in fonds plays any role
+    # TODO: #also maybe relevant <xrx:keyword>Retrodigitalisierte Urkundeneditionen</xrx:keyword> bzw. <cei:sourceDesc><cei:p>Export aus Google Daten</cei:p>
+    else:
+        raise ValueError("Invalid mode.")
+    #pprint(file_locations)    
+    return file_locations, restricted
+
+
+def create_image_base_url_files(file_locations):
+    """
+    Creates .txt-files with the image base url at curation-level.
+    """
+    pprint("Creating .txt files at curation-level.")
+
+    for path, image_base in tqdm(file_locations.items()):
+        file_path = Path(path)
+        target_path = f"{file_path.parent}/image_base_url.txt"
+        #target_path = f"{file_path.parent}/{file_path.with_suffix('').stem}.image_base_url.txt"
+        if image_base != "":
+            with open(target_path, 'w', encoding="utf-8") as p:
+                p.write(image_base)
+        else:
+            continue
+
+
+def create_image_refs(paths): #here, refs is understood as a reference to an object, be it a valid URL or a file-name that is later resolved
+    pprint("Parsing charter files for image paths. Building image refs on charter level.")
+
+    namespaces = {"xrx": "http://www.monasterium.net/NS/xrx", "atom": "http://www.w3.org/2005/Atom", "cei": "http://www.monasterium.net/NS/cei"}
+
+    for file_path in tqdm(paths):
+        with open(file_path, 'r', encoding='utf-8') as current:
+            tree = etree.parse(current)
+            original = tree.xpath("//cei:witnessOrig/cei:figure/cei:graphic/@url", namespaces = namespaces)
+            copy = tree.xpath("//cei:witness/cei:figure/cei:graphic/@url", namespaces = namespaces)
+        
+        file_path = Path(file_path)
+        file_folder = file_path.parent
+        images = original + copy
+
+        if len(original) != 0:
+            image_status = "ORIG"
+        elif len(copy) != 0:
+            image_status = "COPY"
+        else:
+            image_status = "NONE" #is never invoked since empty list is not iterated
+        
+        for i, j in enumerate(images):
+            target_path = f"{file_folder}/{file_folder.stem}.{i}.{image_status}.image_ref.txt"
+            with open(f"{target_path}", "w", encoding="utf-8") as txt:
+               txt.write(j)
+
+
+# for every charter
+# check their image urls and whether they are valid (with validator library!), later add to filter for bad ones
+# prolly use shutils to join the each file with the one of the parent
+# if they start with https, paste them directly to the folder the file is in
+# else: take their names and save them, go up one directory (curation-level), save the image base, and write image url to charter-level again
+
+#def validate_url(url):
+
+
+         
+        # if 
+        # with open('/path/to/filename.txt', mode='wt', encoding='utf-8') as myfile:
+        #     myfile.write('\n'.join(lines))
+        # curation_path = Path(file_path).parents[1]
+        # extension = ".image_base_url.txt"
+        # txt_files = list(curation_path.glob(f"*{extension}"))
+
+        # if len(txt_files) == 1:
+        #     for i in txt_files:
+        #         print(i)
+        #         with open(i, mode="r", encoding="utf-8") as f:
+        #             image_base_url = f.read()
+        #             print(image_base_url)
+        # else:
+        #     print(file_path)
+        #     raise ValueError("Too many image base urls on curation-level.")
+
+
+
+
+        # #print(file_with_extension)
+        # # print(glob.glob(f'{parentpath}/*.{extension}'))
+        # for txt_file in parentpath.glob(f"*.{extension}"):
+        #     
+
+            # for img in original, copy:     
+            #     if file_with_extension:
+            #         with open(file_with_extension) as f:
+            #             print(f.readlines())
+            #     else:
+            #         print("not found?")
+
+#             file_with_extension = next(pathparent.glob(f"*{extension}"))  # returns the file with extension or None
+#             if file_with_extension:
+#                 print(Path(file_with_extension))
+#                 #with open(file_with_extension):
+
+#             path = Path(".")  # current directory
+#             extension = ".txt"
+
+#             file_with_extension = next(path.glob(f"*{extension}"))  # returns the file with extension or None
+#             if file_with_extension:
+# #                with open(file_with_extension):
+
+
+
+
+if __name__ == "__main__":
+    p = {
+        "root_dir": ".",
+        #"charter_dir": "{root_dir}/data/db_subsample",
+        "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public",
+        "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
+        "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
+        "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
+        "target_dir": "{root_dir}/data/tmp/data/leech_db"
+    }
+
+# params
+args, _ = fargv.fargv(p)
+print("\n")
+
+# get image-refs ✓
+## fonds 
+fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
+image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
+create_image_base_url_files(image_base_dict)
+print("\n")
+
+## collections
+collection_paths = get_path_list(args.target_dir, ".CO.cei.xml")
+image_base_dict, _ = get_image_base_urls(collection_paths, mode="collection")
+create_image_base_url_files(image_base_dict)
+print("\n")
+
+# build image urls from refs ✓
+## refs
+charter_paths = get_path_list(args.target_dir, ".CH.cei.xml")
+create_image_refs(charter_paths)
+print("\n")
+
+## urls
+#TODO
+#image_refs_list = get_path_list(args.target_dir,  ".image_url.txt")
+
+
+
+
