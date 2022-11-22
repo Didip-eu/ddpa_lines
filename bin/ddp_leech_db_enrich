@@ -23,8 +23,7 @@ import fargv
 from tqdm import tqdm
 import hashlib
 import glob
-import validators
-
+from urllib.parse import urlparse
 
 from ddp_util import decompose_chatomid, get_path_generator, get_path_list
 
@@ -117,13 +116,24 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
                txt.write(j)
 
 
-# for every charter
-# check their image urls and whether they are valid (with validator library!), later add to filter for bad ones
+
+#def validate_url(url):
+
+# def is_url(url):
+#   try:
+#     result = urlparse(url)
+#     return all([result.scheme, result.netloc])
+#   except ValueError:
+#     return False
+
+
+# for every charter (look for every file-ending)
+# check their image urls and whether they are valid, later add to filter for bad ones
 # prolly use shutils to join the each file with the one of the parent
 # if they start with https, paste them directly to the folder the file is in
 # else: take their names and save them, go up one directory (curation-level), save the image base, and write image url to charter-level again
 
-#def validate_url(url):
+
 
 
          

@@ -35,6 +35,6 @@ def get_path_list(directory: str, file_extension: str) -> List[str]:
     #return paths
 
 
-def to_md5(string, trunc_threshold=16): 
+def to_md5(string, trunc_threshold=0): 
     md5sum = hashlib.md5(string.encode('utf-8')).hexdigest()[trunc_threshold:]
     return md5sum
