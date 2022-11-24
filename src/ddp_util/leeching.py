@@ -316,7 +316,7 @@ def leech_csv(csv_path, name, root, url2path_idx={}, url2path_idx_path="", verbo
                 1:]), desc=f"Leeching {name}")
     for n, row in pbar:
         charter_url = row[2]
-        pbar.set_description(f"Leeching {charter_url} ")
+        pbar.set_description(f"Leeching #{n}:{charter_url} ")
         pbar.refresh()
         try:
             leech_charter(charter_url, root=f"{root}/{name}",
