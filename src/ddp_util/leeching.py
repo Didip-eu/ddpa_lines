@@ -47,7 +47,7 @@ archives_root = "https://www.monasterium.net/mom/fonds"
 
 
 def get_archive_urls(archive_webpage_url):
-    archive_list_html = str(urlopen(archive_webpage_url).read(), "utf8")
+    archive_list_html = str(urllib.request.urlopen(archive_webpage_url).read(), "utf8")
     soup = BeautifulSoup(archive_list_html, "html.parser")
     archive_urls = ["https://www.monasterium.net"+tag.attrs.get(
         "href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/archive")]
@@ -56,24 +56,30 @@ def get_archive_urls(archive_webpage_url):
 
 def get_fonds_from_archive(archive_url):
     assert archive_url.endswith("/archive")
+    url_base = archive_url[:-len("/archive")]
     #print(f"a2f: {archive_url}")
-    fond_list_html = str(urlopen(archive_url).read(), "utf8")
+    fond_list_html = str(urllib.request.urlopen(archive_url).read(), "utf8")
     soup = BeautifulSoup(fond_list_html, "html.parser")
     fond_urls = [tag.attrs.get("href") for tag in soup.find_all(
         "a") if tag.attrs.get("href", "").endswith("/fond")]
+    #print(fond_urls)
+    #print(archive_url)
+    #print(url_base)
     fond_urls = [f"{url_base}/{fond_url}" for fond_url in fond_urls]
-    return list(set(fond_urls))
+    print(fond_urls)
+    return sorted(list(set(fond_urls)))
 
 
 def get_charters_from_fond(fond_url):
     assert fond_url.endswith("/fond")
-    fond_list_html = str(urlopen(fond_url).read(), "utf8")
+    print(f"Getting Fond:{ fond_url}")
+    fond_list_html = str(urllib.request.urlopen(fond_url).read(), "utf8")
     soup = BeautifulSoup(fond_list_html, "html.parser")
     block_urls = [f"{fond_url}{tag.attrs.get('href')}" for tag in soup.find_all(
         "a") if tag.attrs.get("href", "").startswith("?block")]
     if len(block_urls) > 0:
         for block_url in block_urls:
-            charter_list_html = str(urlopen(fond_url).read(), "utf8")
+            charter_list_html = str(urllib.request.urlopen(fond_url).read(), "utf8")
             soup = BeautifulSoup(charter_list_html, "html.parser")
             charter_urls = [tag.attrs.get("href") for tag in soup.find_all(
                 "a") if tag.attrs.get("href", "").endswith("/charter")]
