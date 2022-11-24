@@ -10,28 +10,31 @@ trunc_md5 = 16
 def chatomid_to_url(atomid):
     parts = atomid.split("/")                                                                                                                                  
     if len(parts) == 5:
-        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/{parts[4]}/charter "
+        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/{parts[4]}/charter"
     elif len(parts) == 4:
-        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/charter "
+        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/charter"
     else:
         raise ValueError
         #print(f"Unusual structure found at '{atom_id}'")
 
 
 def decompose_chatomid(chatomid):
-    """Infers the atom ids of the archive and the fond from a charters atomid
+    """Infers the atom ids of the supercuration (archive/COLLECTIONS) and curation (fond/collection) 
+    from a charters atomid
     """
-    splitted = chatomid.split("/")
-    assert splitted[:2] == ("tag:www.monasterium.net,2011", "charter")
-    if len(splitted) == 5: # ARCHIVE FOND
-        fond_atomid = f"{splitted[0]}/fond/{splitted[3]}/{splitted[4]}"
-        archive_atomid = f"{splitted[0]}/archive/{splitted[3]}"
-    if len(splitted) == 4: # collection
-        fond_atomid = f"{splitted[0]}/fond/{collections_archive_name}/{splitted[3]}"
-        archive_atomid = f"{splitted[0]}/archive/{collections_archive_name}"
-    else:
-        raise ValueError
-    return archive_atomid, fond_atomid, chatomid
+    parts = chatomid.split("/")
+    try:
+        assert parts[:2] == (['tag:www.monasterium.net,2011:', 'charter'])
+    except AssertionError:
+        print("atom-id is not well-formed.")
+        raise
+    if len(parts) == 5:
+        supercuration_id = f"{parts[0]}/archive/{parts[2]}"
+        curation_id = f"{parts[0]}/fond/{parts[2]}/{parts[3]}"
+    elif len(parts) == 4:
+        supercuration_id = "COLLECTIONS"
+        curation_id = f"{parts[0]}/collection/{parts[2]}"
+    return parts, supercuration_id, curation_id
 
 
 def chatomid_to_pathtuple(chatomid):
@@ -51,12 +54,18 @@ def chatomid_to_path(chatomid, root=db_root):
 
 
 def url_to_chatomid(url):
-    raise NotImplementedError
+    parts = url.split("/")
+    if len(parts) == 8: #archive
+        return f"tag:www.monasterium.net,2011:/charter/{parts[-4]}/{parts[-3]}/{parts[-2]}"
+    elif len(parts) == 7: #collection
+        return f"tag:www.monasterium.net,2011:/charter/{parts[-3]}/{parts[-2]}"
+    else:
+        raise ValueError
 
+#chatomid_to_fond_id(chatomid)?
 
 def url_to_path(url):
     raise NotImplementedError
-
 
 def path_to_atomid(path):
     return open(f"{path}/atomid.txt").read()
