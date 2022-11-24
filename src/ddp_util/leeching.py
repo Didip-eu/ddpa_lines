@@ -116,7 +116,8 @@ def get_names_from_charter_html(html: str):
         # TODO (anguelos) name or whole atomid
         archive_name = archive_hrefs[0].replace(
             "/mom/", "").replace("/archive", "")
-    elif any(['Error' in h1 for h1 in list(BeautifulSoup(html).find_all("h1"))]):
+    elif len(BeautifulSoup(html).find_all('div', attrs = {'id':'error-content'}) ):
+        #<div id="error-content">
         # assuming this restricts a few charters
         raise ValueError
     else:
