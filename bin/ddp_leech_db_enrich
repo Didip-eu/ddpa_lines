@@ -136,11 +136,34 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 
 def create_image_urls(image_refs_list):
     for path in image_refs_list:
-        atom_hash = Path(path).name.split(".")[0] #or plain 2md5
+        #atom_hash = Path(path).name.split(".")[0] #or plain 2md5
+        with open(path, mode="r") as current:
+            image_ref = current.readline()
         
-        with open(f"{Path(path).parents[1]}/image_base_url.txt") as current:
-            testprint = current.readline()
-            print(testprint)
+        image_base_path = Path(f"{Path(path).parents[1]}/image_base_url.txt")
+        
+        if image_base_path.is_file():
+            with open(image_base_path, mode="r") as current:
+                image_base_url = current.readline()
+                if image_base_url == ("None" or "Invalid"):
+                    image_url = image_ref
+                else:
+                    image_url = f"{image_base_url}/{image_ref}"
+        else:
+            image_url = image_ref
+        print(image_url)
+
+#http://http://digi.ub.uni-heidelberg.de/diglitData/image/lehm101/4/http://digi.ub.uni-heidelberg.de/diglitData/image/lehm486/4/1r.jpg
+#error
+#http://www.gda.bayern.de/bestaende/44/1500/http://www.gda.bayern.de/bestaende/44/1500/1500_de06b3f1-e44d-44fc-b41e-2358d584aa7d_0001.jpg
+#probably due to restriction?
+
+# def create_image_urls_json(image_urls_list)
+            
+        
+                
+                
+            
 
 # problems with following charter: appears to have changed atomid
 # https://www.monasterium.net/mom/SSRQ_AR_AI_1_Nr_1/SSRQ_Appenzell_46/charter
@@ -265,8 +288,8 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 print("\n")
 
-# # get image-refs ✓
-# ## fonds 
+# get image-refs ✓
+## fonds 
 # fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
 # image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
 # create_image_base_url_files(image_base_dict)
