@@ -22,7 +22,7 @@ def get_path_generator(directory: str, file_extension: str) -> Generator:
             continue
 
 
-def get_path_list(directory: str, file_extension: str) -> List[str]:
+def get_path_list(directory: str, file_extension: str, sample=False) -> List[str]: #TODO: enable sampling mode; refactor maybe
     """
     Returns List containing file paths.
     @param directory: directory of monasterium xml files as a string
@@ -31,8 +31,10 @@ def get_path_list(directory: str, file_extension: str) -> List[str]:
     """
     pprint(f"Scanning {directory} for files.")
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
-    return random.sample(paths, 75)
-    #return paths
+    if sample:
+        return random.sample(paths, int(round(len(paths)/1000))) #5%
+    else:
+        return paths
 
 
 def to_md5(string, trunc_threshold=0): 

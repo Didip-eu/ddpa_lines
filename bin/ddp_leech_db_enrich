@@ -5,11 +5,16 @@ Leeches .xml-files in target file structure system to construct metadata files.
 """
 
 # TODO: discuss namespaces and whether there should be empty txt files for those fonds that have none (or have empty ones) (but their image urls in the cei files)
-
 # TODO: build image urls in enrich -> for those starting with http:// or https, take url directly; otherwise: build from parent curation base url.txt + url attribute 
 
-# TODO: account for http(s)
-# TODO: account for double http://http:// e.g. for ub.uni-heidelberg
+
+
+
+
+
+# merging two diplomatic units/images (e.g. when charter pictured in two different places)
+
+
 
 import os
 import random
@@ -27,14 +32,30 @@ from urllib.parse import urlparse
 
 from ddp_util import decompose_chatomid, get_path_generator, get_path_list
 
+
 ### Type options
 base_url_choices = Literal["archive", "collection"] #TODO: see top
 
 
+def filter_image_base_url(image_base):
+    exceptions = ["www.monasterium.net",
+    "www.monasterium.net/",
+    "www.monasterium.net/*",
+    "images.monasterium.net/*",
+    "http://www.monasterium.net/",
+    "http://www.monasterium.net",
+    "http://www.monasterium.net/*",
+    "http://images.monasterium.net/*",
+    "http://www.monasterium.net/Diplomatico_Viewerbild.jpg"]
+
+    if image_base in exceptions:
+        image_base = "Invalid"#TODO: generalize and extend this to empty strings, which are now handled in the get_image_base_urls function
+    return image_base
+    
 
 def get_image_base_urls(paths, mode: base_url_choices):
     """
-    Returns base image paths.
+    Returns (filtered) base image paths.
     """
     options = get_args(base_url_choices)
     assert mode in options, f"'{mode}' is not in {options}"
@@ -50,7 +71,7 @@ def get_image_base_urls(paths, mode: base_url_choices):
             with open(file, 'r', encoding='utf-8') as current:
                 tree = etree.parse(current)
                 image_server_base_url = "".join(tree.xpath("//xrx:param[@name='image-server-base-url']/text()", namespaces = namespaces))
-                image_base = "None" if (image_server_base_url  == "") else image_server_base_url
+                image_base = filter_image_base_url("None" if (image_server_base_url  == "") else image_server_base_url)
                 image_access = tree.xpath("xrx:param[@name='image-access']/text()", namespaces = namespaces)
                 restricted = True if image_access == ("free" or "Free") else False #have not seen capitalized F but just to make sure..
                 file_locations[file] = image_base 
@@ -61,7 +82,7 @@ def get_image_base_urls(paths, mode: base_url_choices):
                 tree = etree.parse(current)
                 image_server_address = "".join(tree.xpath("//cei:image_server_address/text()", namespaces = namespaces))
                 image_server_folder = "".join(tree.xpath("//cei:image_server_folder/text()", namespaces = namespaces))              
-                image_base = "None" if ((image_server_address or image_server_folder) == "") else f"http://{image_server_address}/{image_server_folder}"
+                image_base = filter_image_base_url("None" if ((image_server_address or image_server_folder) == "") else f"{image_server_address}/{image_server_folder}") #TODO: check for misconstruced ones by adding http://
                 file_locations[file] = image_base
                 restricted = False #default since it's unclear whether <cei:publicationStmt><cei:availability n="ENRICH" status="restricted"/></cei:publicationStmt> in fonds plays any role
     # TODO: #also maybe relevant <xrx:keyword>Retrodigitalisierte Urkundeneditionen</xrx:keyword> bzw. <cei:sourceDesc><cei:p>Export aus Google Daten</cei:p>
@@ -103,7 +124,7 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
         file_folder = file_path.parent
         images = original + copy
 
-        if len(original) != 0:
+        if len(original) != 0: #or bool "if not original: ~ empty string bool logic"
             image_status = "ORIG"
         elif len(copy) != 0:
             image_status = "COPY"
@@ -117,14 +138,37 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 
 
 
-#def validate_url(url):
+def create_image_urls(image_refs_list):
+    for path in image_refs_list:
+        with open(path, 'r', encoding='utf-8') as current:
+            atom_id = current.read()
+            print(atom_id)
 
-# def is_url(url):
-#   try:
-#     result = urlparse(url)
-#     return all([result.scheme, result.netloc])
-#   except ValueError:
-#     return False
+            #if http* or *www.
+        with open(f"path.parentdirectory)
+
+        
+
+#read atomid.txt
+# read atomid of charter to stringATOM
+# read it to stringY
+
+# look for parentdirectory imagebaseurl.txt
+
+# read it into stringX
+
+# concat x + y into stringPROD
+
+# write stringPROD to name ATOM
+
+
+#TODO:
+# dict: atomid of charter -> md5sum of image
+# dict: image url/image filename -> md5sum of image
+
+
+#TODO:
+# put md5sum into cei.xml
 
 
 # for every charter (look for every file-ending)
@@ -182,8 +226,6 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 # #                with open(file_with_extension):
 
 
-
-
 if __name__ == "__main__":
     p = {
         "root_dir": ".",
@@ -199,29 +241,28 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 print("\n")
 
-# get image-refs ✓
-## fonds 
-fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
-image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
-create_image_base_url_files(image_base_dict)
-print("\n")
+# # get image-refs ✓
+# ## fonds 
+# fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
+# image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
+# create_image_base_url_files(image_base_dict)
+# print("\n")
 
-## collections
-collection_paths = get_path_list(args.target_dir, ".CO.cei.xml")
-image_base_dict, _ = get_image_base_urls(collection_paths, mode="collection")
-create_image_base_url_files(image_base_dict)
-print("\n")
+# ## collections
+# collection_paths = get_path_list(args.target_dir, ".CO.cei.xml")
+# image_base_dict, _ = get_image_base_urls(collection_paths, mode="collection")
+# create_image_base_url_files(image_base_dict)
+# print("\n")
 
-# build image urls from refs ✓
-## refs
-charter_paths = get_path_list(args.target_dir, ".CH.cei.xml")
-create_image_refs(charter_paths)
-print("\n")
+# # build image urls from refs ✓
+# ## refs
+# charter_paths = get_path_list(args.target_dir, ".CH.cei.xml")
+# create_image_refs(charter_paths)
+# print("\n")
 
 ## urls
-#TODO
-#image_refs_list = get_path_list(args.target_dir,  ".image_url.txt")
-
+image_refs_list = get_path_list(args.target_dir,  ".image_ref.txt")
+create_image_urls(image_refs_list)
 
 
 

@@ -34,7 +34,6 @@ import hashlib
 from ddp_util import decompose_chatomid, get_path_generator, get_path_list, to_md5
 
 
-
 def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
     """
     Returns unique ids from xml-cei files.
@@ -48,12 +47,13 @@ def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
             tree = etree.parse(current)
             root = tree.getroot()
             file_locations[file] = root[0].text
+    #return sample()
     return file_locations
 
 
 def copy_charter_files(locations: Dict[str, str], target_directory: str): #see decompose_atomid in ddp_util namespace.py
     """
-    For Archive Material: Copies folder and their xml contents from input folder to target
+    For Archive Material: Copies folder and their xml contents from input folder to target; creates atom_id.txt
     Builds (sub)directory structure at target based on (length of) atomids.
     @param locations: Dict with path as key and atomd id as value
     @param target_directory: string specifying the target directory; where to create folders
@@ -66,13 +66,14 @@ def copy_charter_files(locations: Dict[str, str], target_directory: str): #see d
         if len(parts) == 4:
             target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" #change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
             os.makedirs(target_path, exist_ok=True)
-            shutil.copy(path, f"{target_path}/{charter_hash}.xml")
         elif len(parts) == 5:
             target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
             os.makedirs(target_path, exist_ok=True)
-            shutil.copy(path, f"{target_path}/{charter_hash}.CH.cei.xml")
         else:
             raise ValueError("Length of atomid is irregular.")
+        shutil.copy(path, f"{target_path}/{charter_hash}.CH.cei.xml")
+        with open(f"{target_path}/atom_id.txt", 'w', encoding="utf-8") as current: #refactor to own function-> bad?
+            current.write(atomid) 
 
 
 def copy_collection_files(locations: Dict[str, str], target_directory: str):
@@ -98,20 +99,20 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
     for path, atomid in tqdm(locations.items()):
         path_pref = f"{Path(path).parent}/{Path(path).with_suffix('').stem}.preferences.xml"     
         try:
-            assert Path(path_pref).is_file() #e.g. for AT-VLA/LandesregierungAmt/LandesregierungAmt.preferences.xml'
+            assert Path(path_pref).is_file() #e.g. looking at you, AT-VLA/LandesregierungAmt/LandesregierungAmt.preferences.xml'
         except AssertionError:
-            print(f"preferences.xml not found for {path}.") #TODO: real logging for this, and also logging for general execution of bin
+            print(f"preferences.xml not found for {path}.") #TODO: real logging for this, and also logging for general execution of bin, idx
             continue
-        
         parts = atomid.split("/") 
         curation_hash = to_md5(atomid, 16)
         target_path = f"{target_directory}/{parts[2]}/{curation_hash}"
         os.makedirs(target_path, exist_ok=True)
         #TODO: account for old.ead.xml ?
         #e.g. preferences.xml not found for data/db/mom-data/metadata.fond.public/DE-StAM/SchlossarchivPiesing/SchlossarchivPiesing.old.ead.xml.
-        #solution for now: ignore. later: keep file but disregard in transformation
+        #solution for now: ignore. later: keep file but disregard in transformation (?)
         shutil.copy(path, f"{target_path}/{curation_hash}.FO.ead.xml")
         shutil.copy(path_pref, f"{target_path}/{curation_hash}.FO.preferences.xml")
+
 
 if __name__ == "__main__":
     p = {
@@ -123,12 +124,15 @@ if __name__ == "__main__":
         "target_dir": "{root_dir}/data/tmp/data/leech_db"
     }
 
+
 # params
 args, _ = fargv.fargv(p)
 print("\n")
 
+#TODO: if I don't have a tmp folder in the target_dir, it does not work. why? fix!
+
 # charters ✓
-charter_paths = get_path_list(args.charter_dir, ".cei.xml")
+charter_paths = get_path_list(args.charter_dir, ".cei.xml", sample=True)
 atom_id_dict = get_atomid_dict(charter_paths)
 copy_charter_files(atom_id_dict, args.target_dir)
 print("\n")
