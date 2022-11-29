@@ -9,11 +9,7 @@ Leeches .xml-files in target file structure system to construct metadata files.
 
 
 
-
-
-
 # merging two diplomatic units/images (e.g. when charter pictured in two different places)
-
 
 
 import os
@@ -140,12 +136,40 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 
 def create_image_urls(image_refs_list):
     for path in image_refs_list:
-        with open(path, 'r', encoding='utf-8') as current:
-            atom_id = current.read()
-            print(atom_id)
+        atom_hash = Path(path).name.split(".")[0] #or plain 2md5
+        
+        with open(f"{Path(path).parents[1]}/image_base_url.txt") as current:
+            testprint = current.readline()
+            print(testprint)
 
-            #if http* or *www.
-        with open(f"path.parentdirectory)
+# problems with following charter: appears to have changed atomid
+# https://www.monasterium.net/mom/SSRQ_AR_AI_1_Nr_1/SSRQ_Appenzell_46/charter
+# landbuch.rechtsquellen.ch/teiviewer/exist/rest/db/ssrq/xquery/get-facsimile.xq?img=C_XI_01-076.jpg
+# ==
+# https://www.ssrq-sds-fds.ch/teiviewer/exist/rest/db/ssrq/xquery/get-facsimile.xq?img=C_XI_01-076.jpg
+
+# metadata.collection.public\SchneiderAppen
+# with atomid     <atom:id>tag:www.monasterium.net,2011:/collection/SchneiderAppen</atom:id>
+# ==
+# SSRQ_AR_AI_1_Nr_1 
+# as in
+# tag:www.monasterium.net,2011:/charter/SSRQ_AR_AI_1_Nr_1/SSRQ_Appenzell_46
+
+
+
+        #if parent image base url is None or invalid
+        #   just image_ref as image_url
+        #else
+        #   imagebase url + x + image url 
+
+
+        # with open(path, 'r', encoding='utf-8') as current:
+        #     atom_id = current.read()
+        #     print(atom_id)
+
+
+            #if http(s) or *www.
+        #with open(f"path.parentdirectory)
 
         
 
