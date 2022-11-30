@@ -63,6 +63,7 @@ def url_to_chatomid(url):
         raise ValueError
 
 #chatomid_to_fond_id(chatomid)?
+#chatomids_to_ (supercuration) url and vice versa? (requires consistent atomids)
 
 def url_to_path(url):
     raise NotImplementedError
