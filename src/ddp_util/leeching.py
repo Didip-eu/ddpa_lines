@@ -23,7 +23,7 @@ def clean_img_url(img_url):
     img_url = img_url.rstrip('%20') # because of this fucked up charter https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
     return img_url
 
-def get_extention(img_url):
+def get_extention(img_url): #change to extension sometime
     ext = img_url.split(".")[-1].lower()
     if ext in ["jpg", "png", "jpeg", "tif", "tiff"]:
         return ext

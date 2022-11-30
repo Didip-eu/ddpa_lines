@@ -15,13 +15,39 @@ from lxml import etree
 import fargv
 from tqdm import tqdm
 import hashlib
+from urllib import request
+from itertools import chain
+import random
 
 from ddp_util import get_path_list
 
 
-# def download_image(paths):
-#     for path in paths:
+def read_lines(files):
+    lines = []
+    for file in files:            
+        with open(file, mode="r") as current:
+            result = current.readlines()
+            lines.append(result)
+            print(result)
+            print(type(result))        
+    pprint(lines)
+    megalist = list(chain(*lines)) # dont know why but this does some wild stuff with some urls; think whitespace is at fault
+    pprint(megalist)
+    return megalist
 
+# from urllib.parse import urlparse
+
+# from ddp_util import to_md5
+
+#TODO: use store_charter parts of saving url; probably refactor
+
+# def download_images(url_list, target):
+#     for url in random.sample(url_list, 5):
+#         if not urlparse(url).scheme:
+#             url = 'http://' + url
+#         result = request.urlretrieve(url, f"{target}/{to_md5(url)}")
+#         print(result)
+#         print(type(result))
 
 
 if __name__ == "__main__":
@@ -40,6 +66,7 @@ args, _ = fargv.fargv(p)
 print("\n")
 
 # 
-image_url_list = get_path_list(args.target_dir,  ".image_urls.txt")
-
+image_url_txt_list = get_path_list(args.target_dir,  ".image_urls.txt")
+image_url_list = read_lines(image_url_txt_list)
+download_images(image_url_list, args.target_dir)
 

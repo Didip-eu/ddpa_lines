@@ -157,7 +157,6 @@ def create_image_urls(paths):
 # def create_image_urls_json:
 # for successful leeches -> image_urls.json ( {"hash.imageformat": "url", etc.})
 
-# quality of life scripts:              
 
 if __name__ == "__main__":
     p = {
