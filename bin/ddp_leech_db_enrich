@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Leeches .xml-files in target file structure system to construct metadata files.
+Leeches .xml-files in target file structure system with the main purpose of building image urls.
 """
 
 # TODO: discuss namespaces and whether there should be empty txt files for those fonds that have none (or have empty ones) (but their image urls in the cei files)
@@ -119,18 +119,15 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
             tree = etree.parse(current)
             original = tree.xpath("//cei:witnessOrig/cei:figure/cei:graphic/@url", namespaces = namespaces)
             copy = tree.xpath("//cei:witness/cei:figure/cei:graphic/@url", namespaces = namespaces)
-        
         file_path = Path(file_path)
         file_folder = file_path.parent
         images = original + copy
-
         if len(original) != 0: #or bool "if not original: ~ empty string bool logic"
             image_status = "ORIG"
         elif len(copy) != 0:
             image_status = "COPY"
         else:
             image_status = "NONE" #is never invoked since empty list is not iterated
-        
         for i, j in enumerate(images):
             target_path = f"{file_folder}/{file_folder.stem}.{i}.{image_status}.image_ref.txt"
             with open(f"{target_path}", "w", encoding="utf-8") as txt:
@@ -138,13 +135,11 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 
 
 def create_image_urls(paths):
-    for path in image_refs_list:
+    for path in paths:
         atom_hash = Path(path).name.split(".")[0] #or plain 2md5
         image_base_path = Path(f"{Path(path).parents[1]}/image_base_url.txt")
-
         with open(path, mode="r") as current:
             image_ref = current.readline()
-        
         if image_base_path.is_file():
             with open(image_base_path, mode="r") as current:
                 image_base_url = current.readline()
@@ -153,17 +148,16 @@ def create_image_urls(paths):
                 else:
                     image_url = f"{image_base_url}/{image_ref}"
         else:
-            image_url = image_ref
-        
+            image_url = image_ref        
         target_path = Path(f"{Path(path).parent}/{atom_hash}.image_urls.txt")
         with open(target_path, mode="a", encoding="utf-8") as current:
-            current.write(f'{image_url}\n')
+            current.write(f"{image_url}\n")
 
 
 # def create_image_urls_json:
 # for successful leeches -> image_urls.json ( {"hash.imageformat": "url", etc.})
-             
 
+# quality of life scripts:              
 
 if __name__ == "__main__":
     p = {

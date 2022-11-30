@@ -7,12 +7,12 @@ monasterium_url_root = "https://www.monasterium.net/mom/"
 collections_archive_name = "COLLECTIONS"
 trunc_md5 = 16
 
-def chatomid_to_url(atomid):
+def chatomid_to_url(atomid, root=monasterium_url_root):
     parts = atomid.split("/")                                                                                                                                  
     if len(parts) == 5:
-        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/{parts[4]}/charter"
+        return f"{root}{parts[2]}/{parts[3]}/{parts[4]}/charter"
     elif len(parts) == 4:
-        return f"{monasterium_url_root}{parts[2]}/{parts[3]}/charter"
+        return f"{root}{parts[2]}/{parts[3]}/charter"
     else:
         raise ValueError
         #print(f"Unusual structure found at '{atom_id}'")
