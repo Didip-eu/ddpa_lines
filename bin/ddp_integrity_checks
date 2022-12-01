@@ -11,8 +11,8 @@ import fargv
 
 from ddp_util import chatomid_to_url
 
-
-def json2list(json):
+#make sampling.ipynb output all atomids (possible issue with double parameter chatomid_to_url?); refactor here; 
+def nestedjson2list(json):  
     all_df_full = pd.read_json(json)
     all_atomids = all_df_full.explode("atom_id")["atom_id"].rename("atomid").to_list()
     return random.sample(all_atomids, 20)
