@@ -173,24 +173,24 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 print("\n")
 
-# get image-refs ✓
-## fonds 
-# fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
-# image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
-# create_image_base_url_files(image_base_dict)
-# print("\n")
+#get image-refs ✓
+# fonds 
+fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
+image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
+create_image_base_url_files(image_base_dict)
+print("\n")
 
-# ## collections
-# collection_paths = get_path_list(args.target_dir, ".CO.cei.xml")
-# image_base_dict, _ = get_image_base_urls(collection_paths, mode="collection")
-# create_image_base_url_files(image_base_dict)
-# print("\n")
+## collections
+collection_paths = get_path_list(args.target_dir, ".CO.cei.xml")
+image_base_dict, _ = get_image_base_urls(collection_paths, mode="collection")
+create_image_base_url_files(image_base_dict)
+print("\n")
 
-# # build image urls from refs ✓
-# ## refs
-# charter_paths = get_path_list(args.target_dir, ".CH.cei.xml")
-# create_image_refs(charter_paths)
-# print("\n")
+# build image urls from refs ✓
+## refs
+charter_paths = get_path_list(args.target_dir, ".CH.cei.xml")
+create_image_refs(charter_paths)
+print("\n")
 
 ## urls
 image_refs_list = get_path_list(args.target_dir,  ".image_ref.txt")

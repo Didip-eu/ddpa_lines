@@ -31,7 +31,11 @@ def read_lines(files):
     megalist = list(chain(*lines))
     return megalist
 
-#def store_image(image_url)
+#def store_image(image_url):
+    
+
+
+
 
 # from urllib.parse import urlparse
 

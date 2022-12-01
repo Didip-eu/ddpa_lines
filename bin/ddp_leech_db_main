@@ -47,7 +47,6 @@ def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
             tree = etree.parse(current)
             root = tree.getroot()
             file_locations[file] = root[0].text
-    #return sample()
     return file_locations
 
 
@@ -84,7 +83,7 @@ def copy_collection_files(locations: Dict[str, str], target_directory: str):
     for path, atomid in tqdm(locations.items()):       
         curation_hash = to_md5(atomid, 16)
         target_path = f"{target_directory}/COLLECTIONS/{curation_hash}"
-        os.makedirs(target_path, exist_ok=True)
+        Path(target_path).mkdir(parents=True, exist_ok=True)
         shutil.copy(path, f"{target_path}/{curation_hash}.CO.cei.xml")
 
 
@@ -93,7 +92,7 @@ def copy_archive_files(locations: Dict[str, str], target_directory: str):
     for path, atomid in tqdm(locations.items()):
         parts = atomid.split("/") 
         target_path = f"{target_directory}/{parts[2]}"
-        os.makedirs(target_path, exist_ok=True)
+        Path(target_path).mkdir(parents=True, exist_ok=True)
         shutil.copy(path, f"{target_path}/{parts[2]}.AR.ead.xml")
 
 
@@ -109,7 +108,7 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
         parts = atomid.split("/") 
         curation_hash = to_md5(atomid, 16)
         target_path = f"{target_directory}/{parts[2]}/{curation_hash}"
-        os.makedirs(target_path, exist_ok=True)
+        Path(target_path).mkdir(parents=True, exist_ok=True)
         #TODO: account for old.ead.xml ?
         #e.g. preferences.xml not found for data/db/mom-data/metadata.fond.public/DE-StAM/SchlossarchivPiesing/SchlossarchivPiesing.old.ead.xml.
         #solution for now: ignore. later: keep file but disregard in transformation (?)
@@ -124,7 +123,7 @@ if __name__ == "__main__":
         "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
         "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
-        "target_dir": "{root_dir}/data/tmp2/data/leech_db"
+        "target_dir": "{root_dir}/data/tmp/data/leech_db"
     }
 
 
@@ -140,20 +139,20 @@ atom_id_dict = get_atomid_dict(charter_paths)
 copy_charter_files(atom_id_dict, args.target_dir)
 print("\n")
 
-# # collections ✓
-# collection_paths = get_path_list(args.collection_dir, ".cei.xml")
-# atom_id_dict = get_atomid_dict(collection_paths)
-# copy_collection_files(atom_id_dict, args.target_dir)
-# print("\n")
+# collections ✓
+collection_paths = get_path_list(args.collection_dir, ".cei.xml")
+atom_id_dict = get_atomid_dict(collection_paths)
+copy_collection_files(atom_id_dict, args.target_dir)
+print("\n")
 
-# # archives ✓
-# archive_paths = get_path_list(args.archive_dir, ".eag.xml")
-# atom_id_dict = get_atomid_dict(archive_paths)
-# copy_archive_files(atom_id_dict, args.target_dir)
-# print("\n")
+# archives ✓
+archive_paths = get_path_list(args.archive_dir, ".eag.xml")
+atom_id_dict = get_atomid_dict(archive_paths)
+copy_archive_files(atom_id_dict, args.target_dir)
+print("\n")
 
-# # fonds ✓
-# fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
-# atom_id_dict = get_atomid_dict(fond_paths_ead)
-# copy_fond_files(atom_id_dict, args.target_dir)
-# print("\n")
+# fonds ✓
+fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
+atom_id_dict = get_atomid_dict(fond_paths_ead)
+copy_fond_files(atom_id_dict, args.target_dir)
+print("\n")
