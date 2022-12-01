@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 """
-Downloads and logs images for charters.
+Downloads images for charters. 
 """
+
+#TODO: implement logging
 
 import os
 import random
@@ -16,62 +18,55 @@ import fargv
 from tqdm import tqdm
 import hashlib
 from urllib import request
+from urllib.error import HTTPError
+from urllib.error import URLError
 from itertools import chain
 import random
+import requests
+from urllib.request import urlretrieve
 
 from ddp_util import get_path_list
+from ddp_util import to_md5
+from ddp_util import clean_img_url
+from ddp_util import get_extension
 
+def get_images(paths):
+    for path in paths[:100]:
+        print(path)
+        with open(path, mode="r") as current:
+            urls = current.read().splitlines()
+            target_path = Path(f"{Path(path).parent}")
+            for url in urls:
+                img_url = clean_img_url(url)
+                try:
+                    ext = get_extension(url) #TODO?: doesn't calling this function here and then requesting again below cause double trouble? refactor possible? (single request?)
+                except:
+                    ValueError("Exception for 403")
+                try:
+                    img_bytes = request.urlopen(img_url).read()
+                    md5_str = hashlib.md5(img_bytes).hexdigest()
+                    #md5_str = to_md5(img_bytes) ... causes 'bytes' object has no attribute 'encode', fix?
+                    with open(f"{target_path}/{md5_str}.{ext}", "wb") as tf:
+                        tf.write(img_bytes)
+                    print(f"charter {url} ... works ...: {img_url}")
 
-def read_lines(files):
-    lines = []
-    for file in files:            
-        with open(file, mode="r") as current:
-            result = current.readlines()
-            lines.append(result)    
-    megalist = list(chain(*lines))
-    return megalist
+                except HTTPError: 
+                    print(f"charter {url} Failed to download: {img_url}")
+                except URLError:
+                    print(f"charter {url} Failed to download: {img_url}")
+                except ValueError:
+                    print(f"charter {url} Failed to download: {img_url}")
 
-# def store_image(image_url, charter_full_path):
-#     for n, img_url in enumerate(image_urls):
-#         ext = get_extention(img_url)
-#         charter_full_path = 
-#         try:
-#             img_bytes = urllib.request.urlopen(img_url).read()
-#             md5_str = hashlib.md5(img_bytes).hexdigest()
-#             open(f"{charter_full_path}/{md5_str}.{ext}", "wb").write(img_bytes)
-#             relinked_images_html = relinked_images_html.replace(
-#                 img_url, f"{md5_str}.{ext}")
-#             imgname2imgurls[f"{md5_str}.{ext}"] = img_url
-#         except HTTPError:
-#             print(f"charter {url} Failed to download : {img_url}")
-#             failed.append(img_url)
+                     
+#some links to consider (can be accessed via http in browser but not via python)
 
-
-
-
-# from urllib.parse import urlparse
-
-# from ddp_util import to_md5
-
-#TODO: use store_charter parts of saving url; probably refactor
-
-# def download_images(url_list, target):
-#     for url in random.sample(url_list, 5):
-#         if not urlparse(url).scheme:
-#             url = 'http://' + url
-#         result = request.urlretrieve(url, f"{target}/{to_md5(url)}")
-#         print(result)
-#         print(type(result))
+#http://images.monasterium.net/img/AT-NOeLA/HA_Seefeld-HardeggerUrk/Hardegger-Urk_2054_r.jpg    worked?
+#http://images.monasterium.net/img/AT-NOeLA/HA_Seefeld-HardeggerUrk/NÍLA-HA-Seefeld_Hardegger-Urk_0258v.jpg     not?
 
 
 if __name__ == "__main__":
     p = {
         "root_dir": ".",
-        #"charter_dir": "{root_dir}/data/db_subsample",
-        "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public",
-        "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
-        "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
-        "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
         "target_dir": "{root_dir}/data/tmp/data/leech_db"
     }
 
@@ -79,8 +74,7 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 print("\n")
 
-# 
+# download
 image_url_txt_list = get_path_list(args.target_dir,  ".image_urls.txt")
-image_url_list = read_lines(image_url_txt_list)
-#download_images(image_url_list, args.target_dir)
+get_images(image_url_txt_list)
 

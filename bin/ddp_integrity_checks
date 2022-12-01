@@ -38,15 +38,18 @@ def make_checklist(ids: list) -> dict:
     print(len(checklist))
     return checklist
 
+
 def write_checklist(checklist: dict, path_to_file: str):
     print("exporting")
     with open(path_to_file, "a", encoding="utf-8") as fh:
         json.dump(checklist, fh, ensure_ascii=False, indent=4)
         print("done")
 
+
 def read_json(path_to_file: str) -> dict:
     with open(path_to_file, "r", encoding="utf-8") as fh:
         return json.load(fh)
+
 
 def take(n, iterable):
     "Return first n items of the iterable as a list"
@@ -60,7 +63,6 @@ def check_resolving(data: dict) -> dict:
         if value != "broken_id":
             r = requests.get("http://www." + value)
             print(r.status_code)
-
 
 
 if __name__ == "__main__":
@@ -80,6 +82,6 @@ args, _ = fargv.fargv(p)
 #
 # output = write_checklist(atomids_url, "f"{args.data}/checklist.json")
 
-charters = read_json("f{args.data}/checklist.json")
+charters = read_json("f{args.data}/checklist.json") #TODO: fix ddputil setup?
 
 fetch = check_resolving(charters)

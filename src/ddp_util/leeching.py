@@ -16,20 +16,25 @@ import magic
 import time
 import json
 from .namespace import chatomid_to_path
+from urllib.request import Request, urlopen
 
-def clean_img_url(img_url):
+
+def clean_img_url(img_url): #see https://www.w3schools.com/tags/ref_urlencode.ASP
     img_url = img_url.replace(" ", "%20") # not sure why
     img_url = img_url.rstrip('%0A') # because of this fucked up charter https://www.monasterium.net/mom/AT-StaLois/A/StaLois_I.A.254/charter
     img_url = img_url.rstrip('%20') # because of this fucked up charter https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
     return img_url
 
-def get_extention(img_url): #change to extension sometime
+def get_extension(img_url):
     ext = img_url.split(".")[-1].lower()
     if ext in ["jpg", "png", "jpeg", "tif", "tiff"]:
         return ext
     else:
-        try:
-            request = urllib.request.urlopen(img_url)
+        try: #https://stackoverflow.com/questions/16627227/problem-http-error-403-in-python-3-web-scraping  although I think Monasterium is not that smart
+            req = Request(url=img_url, headers={'User-Agent': 'Mozilla/5.0'}) 
+            request = urlopen(req)
+        # try:
+        #     request = urllib.request.urlopen(img_url)
         except urllib.error.HTTPError as e:
             raise ValueError(f"IMAGE URL {img_url} returned {e.code}")
         else:
@@ -226,7 +231,7 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid=""):
     for n, img_url in enumerate(image_urls):
         #img_url = img_url.replace(" ", "%20")
         img_url = clean_img_url(img_url)
-        ext = get_extention(img_url)
+        ext = get_extension(img_url) 
         #ext = img_url.split(".")[-1].lower()
         try:
             img_bytes = urllib.request.urlopen(img_url).read()
