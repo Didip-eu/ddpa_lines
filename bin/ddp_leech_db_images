@@ -31,8 +31,20 @@ def read_lines(files):
     megalist = list(chain(*lines))
     return megalist
 
-#def store_image(image_url):
-    
+# def store_image(image_url, charter_full_path):
+#     for n, img_url in enumerate(image_urls):
+#         ext = get_extention(img_url)
+#         charter_full_path = 
+#         try:
+#             img_bytes = urllib.request.urlopen(img_url).read()
+#             md5_str = hashlib.md5(img_bytes).hexdigest()
+#             open(f"{charter_full_path}/{md5_str}.{ext}", "wb").write(img_bytes)
+#             relinked_images_html = relinked_images_html.replace(
+#                 img_url, f"{md5_str}.{ext}")
+#             imgname2imgurls[f"{md5_str}.{ext}"] = img_url
+#         except HTTPError:
+#             print(f"charter {url} Failed to download : {img_url}")
+#             failed.append(img_url)
 
 
 
