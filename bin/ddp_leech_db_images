@@ -27,13 +27,11 @@ def read_lines(files):
     for file in files:            
         with open(file, mode="r") as current:
             result = current.readlines()
-            lines.append(result)
-            print(result)
-            print(type(result))        
-    pprint(lines)
-    megalist = list(chain(*lines)) # dont know why but this does some wild stuff with some urls; think whitespace is at fault
-    pprint(megalist)
+            lines.append(result)    
+    megalist = list(chain(*lines))
     return megalist
+
+#def store_image(image_url)
 
 # from urllib.parse import urlparse
 
@@ -68,5 +66,5 @@ print("\n")
 # 
 image_url_txt_list = get_path_list(args.target_dir,  ".image_urls.txt")
 image_url_list = read_lines(image_url_txt_list)
-download_images(image_url_list, args.target_dir)
+#download_images(image_url_list, args.target_dir)
 

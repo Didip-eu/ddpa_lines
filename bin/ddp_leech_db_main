@@ -65,12 +65,15 @@ def copy_charter_files(locations: Dict[str, str], target_directory: str): #see d
         charter_hash = to_md5(atomid, 16)
         if len(parts) == 4:
             target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" #change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
-            os.makedirs(target_path, exist_ok=True)
+            #os.makedirs(target_path, exist_ok=True)
+            #Path(target_path).mkdir(parents=True, exist_ok=True)
         elif len(parts) == 5:
             target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
-            os.makedirs(target_path, exist_ok=True)
+            #os.makedirs(target_path, exist_ok=True)
+            #Path(target_path).mkdir(parents=True, exist_ok=True)
         else:
             raise ValueError("Length of atomid is irregular.")
+        Path(target_path).mkdir(parents=True, exist_ok=True)
         shutil.copy(path, f"{target_path}/{charter_hash}.CH.cei.xml")
         with open(f"{target_path}/atom_id.txt", 'w', encoding="utf-8") as current: #refactor to own function-> bad?
             current.write(atomid) 
@@ -121,7 +124,7 @@ if __name__ == "__main__":
         "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
         "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
-        "target_dir": "{root_dir}/data/tmp/data/leech_db"
+        "target_dir": "{root_dir}/data/tmp2/data/leech_db"
     }
 
 
@@ -137,20 +140,20 @@ atom_id_dict = get_atomid_dict(charter_paths)
 copy_charter_files(atom_id_dict, args.target_dir)
 print("\n")
 
-# collections ✓
-collection_paths = get_path_list(args.collection_dir, ".cei.xml")
-atom_id_dict = get_atomid_dict(collection_paths)
-copy_collection_files(atom_id_dict, args.target_dir)
-print("\n")
+# # collections ✓
+# collection_paths = get_path_list(args.collection_dir, ".cei.xml")
+# atom_id_dict = get_atomid_dict(collection_paths)
+# copy_collection_files(atom_id_dict, args.target_dir)
+# print("\n")
 
-# archives ✓
-archive_paths = get_path_list(args.archive_dir, ".eag.xml")
-atom_id_dict = get_atomid_dict(archive_paths)
-copy_archive_files(atom_id_dict, args.target_dir)
-print("\n")
+# # archives ✓
+# archive_paths = get_path_list(args.archive_dir, ".eag.xml")
+# atom_id_dict = get_atomid_dict(archive_paths)
+# copy_archive_files(atom_id_dict, args.target_dir)
+# print("\n")
 
-# fonds ✓
-fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
-atom_id_dict = get_atomid_dict(fond_paths_ead)
-copy_fond_files(atom_id_dict, args.target_dir)
-print("\n")
+# # fonds ✓
+# fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
+# atom_id_dict = get_atomid_dict(fond_paths_ead)
+# copy_fond_files(atom_id_dict, args.target_dir)
+# print("\n")
