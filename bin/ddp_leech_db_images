@@ -25,13 +25,13 @@ import random
 import requests
 from urllib.request import urlretrieve
 
-from ddp_util import get_path_list
-from ddp_util import to_md5
-from ddp_util import clean_img_url
-from ddp_util import get_extension
+import logging
+
+from ddp_util import get_path_list, to_md5, clean_img_url, get_extension
+
 
 def get_images(paths):
-    for path in paths[:100]:
+    for path in paths[100:200]:
         print(path)
         with open(path, mode="r") as current:
             urls = current.read().splitlines()
@@ -40,22 +40,17 @@ def get_images(paths):
                 img_url = clean_img_url(url)
                 try:
                     ext = get_extension(url) #TODO?: doesn't calling this function here and then requesting again below cause double trouble? refactor possible? (single request?)
-                except:
-                    ValueError("Exception for 403")
+                except (HTTPError, URLError, ValueError):
+                    print("Exception in getting extension")
                 try:
                     img_bytes = request.urlopen(img_url).read()
                     md5_str = hashlib.md5(img_bytes).hexdigest()
                     #md5_str = to_md5(img_bytes) ... causes 'bytes' object has no attribute 'encode', fix?
                     with open(f"{target_path}/{md5_str}.{ext}", "wb") as tf:
                         tf.write(img_bytes)
-                    print(f"charter {url} ... works ...: {img_url}")
-
-                except HTTPError: 
-                    print(f"charter {url} Failed to download: {img_url}")
-                except URLError:
-                    print(f"charter {url} Failed to download: {img_url}")
-                except ValueError:
-                    print(f"charter {url} Failed to download: {img_url}")
+                    print(f"✓ charter {url} downloaded {img_url}")
+                except (HTTPError, URLError, ValueError):
+                    print(f"✗ charter {url} download failed: {img_url}")
 
                      
 #some links to consider (can be accessed via http in browser but not via python)

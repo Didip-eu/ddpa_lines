@@ -7,7 +7,6 @@ Leeches Monasterium's backend xml-database files to construct target file struct
 # TODO: add "url2path_idx_path":"{root_dir}/url2path_idx.pickle" + code; checking dependencies etc.
 
 # TODO: fix permissions or make choices available in fargv for different file writing permission modes (https://stackoverflow.com/questions/5231901/permission-problems-when-creating-a-dir-with-os-makedirs-in-python)
-# TODO: move some functions to ddp_util
 
 # TODO: discuss in group:
 # - if we include data types in function documentation, we should do it consistently, right? what is best practice?
@@ -16,8 +15,6 @@ Leeches Monasterium's backend xml-database files to construct target file struct
 # TODO: update docstrings + Types
 # TODO: refactor file move
 # TODO: add typed option to extend the range of leeching things (e.g., just atomids, images etc.)
-# TODO: fix makedirs bug when not creating target files for charters
-
 
 import os
 import random
@@ -25,6 +22,7 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from pprint import pprint
 import shutil
+import json
 from typing import Dict, Generator, List
 from lxml import etree
 import fargv
@@ -50,9 +48,9 @@ def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
     return file_locations
 
 
-def copy_charter_files(locations: Dict[str, str], target_directory: str): #see decompose_atomid in ddp_util namespace.py
+def copy_charter_files(locations: Dict[str, str], target_directory: str):
     """
-    For Archive Material: Copies folder and their xml contents from input folder to target; creates atom_id.txt
+    For Archive Material: Copies folder and their xml contents from input folder to target; creates atom_id.txt.
     Builds (sub)directory structure at target based on (length of) atomids.
     @param locations: Dict with path as key and atomd id as value
     @param target_directory: string specifying the target directory; where to create folders
@@ -60,28 +58,24 @@ def copy_charter_files(locations: Dict[str, str], target_directory: str): #see d
     pprint(f"Charters: building (hashed) target directories; copying files.")
     for path, atomid in tqdm(locations.items()):
         parts, supercuration_id, curation_id = decompose_chatomid(atomid)
-        curation_hash = to_md5(curation_id, 16) #hash also circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
-        charter_hash = to_md5(atomid, 16)
+        curation_hash = to_md5(curation_id) #hash also circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
+        charter_hash = to_md5(atomid)
         if len(parts) == 4:
-            target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" #change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
-            #os.makedirs(target_path, exist_ok=True)
-            #Path(target_path).mkdir(parents=True, exist_ok=True)
+            target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" #TODO: change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
         elif len(parts) == 5:
             target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
-            #os.makedirs(target_path, exist_ok=True)
-            #Path(target_path).mkdir(parents=True, exist_ok=True)
         else:
-            raise ValueError("Length of atomid is irregular.")
+            raise ValueError("Length of atomid is irregular.") 
         Path(target_path).mkdir(parents=True, exist_ok=True)
         shutil.copy(path, f"{target_path}/{charter_hash}.CH.cei.xml")
-        with open(f"{target_path}/atom_id.txt", 'w', encoding="utf-8") as current: #refactor to own function-> bad?
+        with open(f"{target_path}/atom_id.txt", 'w', encoding="utf-8") as current:
             current.write(atomid) 
 
 
 def copy_collection_files(locations: Dict[str, str], target_directory: str):
     pprint(f"Collections: building (hashed) target directories; copying files.")
     for path, atomid in tqdm(locations.items()):       
-        curation_hash = to_md5(atomid, 16)
+        curation_hash = to_md5(atomid)
         target_path = f"{target_directory}/COLLECTIONS/{curation_hash}"
         Path(target_path).mkdir(parents=True, exist_ok=True)
         shutil.copy(path, f"{target_path}/{curation_hash}.CO.cei.xml")
@@ -106,12 +100,11 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
             print(f"preferences.xml not found for {path}.") #TODO: real logging for this, and also logging for general execution of bin, idx
             continue
         parts = atomid.split("/") 
-        curation_hash = to_md5(atomid, 16)
+        curation_hash = to_md5(atomid)
         target_path = f"{target_directory}/{parts[2]}/{curation_hash}"
         Path(target_path).mkdir(parents=True, exist_ok=True)
-        #TODO: account for old.ead.xml ?
+        #TODO: maybe account for old.ead.xml; discuss this (transfer, but disregard moving to clean production fsdb?); now: ignore
         #e.g. preferences.xml not found for data/db/mom-data/metadata.fond.public/DE-StAM/SchlossarchivPiesing/SchlossarchivPiesing.old.ead.xml.
-        #solution for now: ignore. later: keep file but disregard in transformation (?)
         shutil.copy(path, f"{target_path}/{curation_hash}.FO.ead.xml")
         shutil.copy(path_pref, f"{target_path}/{curation_hash}.FO.preferences.xml")
 
@@ -131,28 +124,28 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 print("\n")
 
-#TODO: if I don't have a tmp folder in the target_dir, it does not work. why? fix!
-
 # charters ✓
-charter_paths = get_path_list(args.charter_dir, ".cei.xml", sample=True)
+#charter_paths = get_path_list(args.charter_dir, ".cei.xml", sample=True)
+charter_paths = get_path_list(args.charter_dir, ".cei.xml")
 atom_id_dict = get_atomid_dict(charter_paths)
-copy_charter_files(atom_id_dict, args.target_dir)
+#copy_charter_files(atom_id_dict, args.target_dir)
+json.dump(atom_id_dict, open( f"{args.target_dir}/chatomid_db_paths.json", 'w' )) #save dict
 print("\n")
 
-# collections ✓
-collection_paths = get_path_list(args.collection_dir, ".cei.xml")
-atom_id_dict = get_atomid_dict(collection_paths)
-copy_collection_files(atom_id_dict, args.target_dir)
-print("\n")
+# # collections ✓
+# collection_paths = get_path_list(args.collection_dir, ".cei.xml")
+# atom_id_dict = get_atomid_dict(collection_paths)
+# copy_collection_files(atom_id_dict, args.target_dir)
+# print("\n")
 
-# archives ✓
-archive_paths = get_path_list(args.archive_dir, ".eag.xml")
-atom_id_dict = get_atomid_dict(archive_paths)
-copy_archive_files(atom_id_dict, args.target_dir)
-print("\n")
+# # archives ✓
+# archive_paths = get_path_list(args.archive_dir, ".eag.xml")
+# atom_id_dict = get_atomid_dict(archive_paths)
+# copy_archive_files(atom_id_dict, args.target_dir)
+# print("\n")
 
-# fonds ✓
-fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
-atom_id_dict = get_atomid_dict(fond_paths_ead)
-copy_fond_files(atom_id_dict, args.target_dir)
-print("\n")
+# # fonds ✓
+# fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
+# atom_id_dict = get_atomid_dict(fond_paths_ead)
+# copy_fond_files(atom_id_dict, args.target_dir)
+# print("\n")
