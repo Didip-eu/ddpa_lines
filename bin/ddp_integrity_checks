@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""
+Used mainly for integrity tests of atomid->url
+"""
+import json
+import typing
+import requests
+from itertools import islice
+import pandas as pd
+import random
+from pprint import pprint
+
+import fargv
+
+from ddp_util import chatomid_to_url
+
+
+def json2list(json):
+    print("start reading input")
+    all_df_full = pd.read_json(json)
+    all_atomids = all_df_full.explode("atom_id")["atom_id"].rename("atomid").to_list()
+    print("done reading input")
+    # return random.sample(all_atomids, 1500)
+    return all_atomids
+
+
+def make_checklist(ids: list) -> dict:
+    print("start making checklist")
+    checklist = {}
+
+    for atomid in ids:
+        print(f"working on {atomid}")
+        try:
+            checklist[atomid] = chatomid_to_url(atomid, root=args.local_mom)
+        except ValueError:
+            checklist[atomid] = "broken_id"
+            print(f"{atomid} unusual structure")
+    print(len(checklist))
+    return checklist
+
+
+def write_checklist(checklist: dict, path_to_file: str):
+    print("exporting")
+    with open(path_to_file, "a", encoding="utf-8") as fh:
+        json.dump(checklist, fh, ensure_ascii=False, indent=4)
+        print("done")
+
+
+def read_json(path_to_file: str) -> dict:
+    with open(path_to_file, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def take(n, iterable):
+    "Return first n items of the iterable as a list"
+    return list(islice(iterable, n))
+
+
+def check_resolving(data: dict) -> dict:
+    test_items = take(50, data.values())
+    for value in test_items:
+        print(value)
+        if value != "broken_id":
+            r = requests.get("http://www." + value)
+            print(r.status_code)
+
+
+if __name__ == "__main__":
+    p = {
+        "root": ".",
+        "data": "./data/output/",
+        "local_mom": "localhost:8080/mom/"
+    }
+
+args, _ = fargv.fargv(p)
+
+# atomids = json2list(
+#     f"{args.data}/charters_full_2022-11-22-1044.json"))
+# #  urls = [chatomid_to_url(atomid, root=args.local_mom) for atomid in atomids]
+# #
+# atomids_url = make_checklist(atomids)
+#
+# output = write_checklist(atomids_url, "f"{args.data}/checklist.json")
+
+charters = read_json("f{args.data}/checklist.json") #TODO: fix ddputil setup?
+
+fetch = check_resolving(charters)
