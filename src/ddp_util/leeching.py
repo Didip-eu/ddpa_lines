@@ -23,13 +23,13 @@ def clean_img_url(img_url):
     img_url = img_url.rstrip('%20') # because of this fucked up charter https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
     return img_url
 
-def get_extention(img_url):
+def get_extention(img_url, timeout=10):
     ext = img_url.split(".")[-1].lower()
     if ext in ["jpg", "png", "jpeg", "tif", "tiff"]:
         return ext
     else:
         try:
-            request = urllib.request.urlopen(img_url)
+            request = urllib.request.urlopen(img_url, timeout=timeout)
         except urllib.error.HTTPError as e:
             raise ValueError(f"IMAGE URL {img_url} returned {e.code}")
         else:
@@ -46,19 +46,19 @@ def get_extention(img_url):
 archives_root = "https://www.monasterium.net/mom/fonds"
 
 
-def get_archive_urls(archive_webpage_url):
-    archive_list_html = str(urllib.request.urlopen(archive_webpage_url).read(), "utf8")
+def get_archive_urls(archive_webpage_url, timeout=10):
+    archive_list_html = str(urllib.request.urlopen(archive_webpage_url, timeout=timeout).read(), "utf8")
     soup = BeautifulSoup(archive_list_html, "html.parser")
     archive_urls = ["https://www.monasterium.net"+tag.attrs.get(
         "href") for tag in soup.find_all("a") if tag.attrs.get("href", "").endswith("/archive")]
     return archive_urls
 
 
-def get_fonds_from_archive(archive_url):
+def get_fonds_from_archive(archive_url, timeout=10):
     assert archive_url.endswith("/archive")
     url_base = archive_url[:-len("/archive")]
     #print(f"a2f: {archive_url}")
-    fond_list_html = str(urllib.request.urlopen(archive_url).read(), "utf8")
+    fond_list_html = str(urllib.request.urlopen(archive_url, timeout=timeout).read(), "utf8")
     soup = BeautifulSoup(fond_list_html, "html.parser")
     fond_urls = [tag.attrs.get("href") for tag in soup.find_all(
         "a") if tag.attrs.get("href", "").endswith("/fond")]
@@ -70,16 +70,16 @@ def get_fonds_from_archive(archive_url):
     return sorted(list(set(fond_urls)))
 
 
-def get_charters_from_fond(fond_url):
+def get_charters_from_fond(fond_url, timeout=10):
     assert fond_url.endswith("/fond")
     print(f"Getting Fond:{ fond_url}")
-    fond_list_html = str(urllib.request.urlopen(fond_url).read(), "utf8")
+    fond_list_html = str(urllib.request.urlopen(fond_url, timeout=timeout).read(), "utf8")
     soup = BeautifulSoup(fond_list_html, "html.parser")
     block_urls = [f"{fond_url}{tag.attrs.get('href')}" for tag in soup.find_all(
         "a") if tag.attrs.get("href", "").startswith("?block")]
     if len(block_urls) > 0:
         for block_url in block_urls:
-            charter_list_html = str(urllib.request.urlopen(fond_url).read(), "utf8")
+            charter_list_html = str(urllib.request.urlopen(fond_url, timeout=timeout).read(), "utf8")
             soup = BeautifulSoup(charter_list_html, "html.parser")
             charter_urls = [tag.attrs.get("href") for tag in soup.find_all(
                 "a") if tag.attrs.get("href", "").endswith("/charter")]
@@ -174,7 +174,7 @@ def get_charter_path_elements(archive_name, fond_name, charter_atomid, trunc_md5
     return archive_path, fond_path, charter_path
 
 
-def download_charter(charter_full_path, url=""):
+def download_charter(charter_full_path, url="", timeout=10):
     if url == "":
         assert Path(f"{charter_full_path}/url.txt").is_file()
         url = open(f"{charter_full_path}/url.txt").read()
@@ -182,11 +182,11 @@ def download_charter(charter_full_path, url=""):
         # if there is a URL in the folder and they gave us one, thay must agree
         assert not (Path(f"{charter_full_path}/url.txt").is_file()
                     ) or url == str(open(f"{charter_full_path}/url.txt").read(), "utf-8")
-    charter_html = str(urlopen(url).read(), "utf8")
-    store_charter(charter_html, charter_full_path, url=url)
+    charter_html = str(urllib.request.urlopen(url, timeout=timeout).read(), "utf8")
+    store_charter(charter_html, charter_full_path, url=url, timeout=timeout)
 
 
-def store_charter(charter_html, charter_full_path, url, charter_atomid=""):
+def store_charter(charter_html, charter_full_path, url, charter_atomid="", timeout=10):
     """Store the crawll outcome into an existing folder
     """
     assert Path(charter_full_path).is_dir()
@@ -214,7 +214,7 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid=""):
     try:
         assert len(cei_urls) == 1
         cei_absolute_url = f"http://monasterium.net{cei_urls[0]}"
-        xml_str = str(urllib.request.urlopen(cei_absolute_url).read(), "utf8")
+        xml_str = str(urllib.request.urlopen(cei_absolute_url, timeout=timeout).read(), "utf8")
         relinked_images_html = relinked_images_html.replace(
             cei_urls[0], f"cei.xml")
         open(f"{charter_full_path}/cei.xml", "w").write(xml_str)
@@ -229,7 +229,7 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid=""):
         ext = get_extention(img_url)
         #ext = img_url.split(".")[-1].lower()
         try:
-            img_bytes = urllib.request.urlopen(img_url).read()
+            img_bytes = urllib.request.urlopen(img_url, timeout=timeout).read()
             md5_str = hashlib.md5(img_bytes).hexdigest()
             open(f"{charter_full_path}/{md5_str}.{ext}", "wb").write(img_bytes)
             relinked_images_html = relinked_images_html.replace(
@@ -251,14 +251,14 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid=""):
              "w").write("\n".join([f"{time.time()}, {f} " for f in failed]))
 
 
-def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verbose=0):
+def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verbose=0, timeout=10):
     if charter_url in url2path_idx:
         if Path(f"{url2path_idx[charter_url]}/download_complete.marker").is_file():
             if verbose > 2:
                 print(
                     f"{url2path_idx[charter_url]} found! skipping", file=sys.stderr)
             return url2path_idx[charter_url]
-    charter_html = str(urllib.request.urlopen(charter_url).read(), "utf8")
+    charter_html = str(urllib.request.urlopen(charter_url, timeout=timeout).read(), "utf8")
     archive_name, fond_name, charter_atomid = get_names_from_charter_html(
         charter_html)
     archive_name, fond_name, charter_name = get_charter_path_elements(
@@ -268,7 +268,7 @@ def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verb
     Path(charter_full_path).mkdir(parents=True, exist_ok=True)
 
     store_charter(charter_html=charter_html, charter_full_path=charter_full_path,
-                  charter_atomid=charter_atomid, url=charter_url)
+                  charter_atomid=charter_atomid, url=charter_url, timeout=timeout)
 
     url2path_idx[charter_url] = charter_full_path
 
@@ -277,7 +277,7 @@ def leech_charter(charter_url, root, url2path_idx={}, url2path_idx_path="", verb
     return charter_full_path
 
 
-def leech_spreadsheet(sheet_key, gid, name, root, url2path_idx={}, url2path_idx_path="", verbose=0):
+def leech_spreadsheet(sheet_key, gid, name, root, url2path_idx={}, url2path_idx_path="", verbose=0, timeout=10):
     """Leeches a google speadsheet
     """
     # if Path(f"{root}/{name}/download_complete.marker").is_file():
@@ -286,7 +286,7 @@ def leech_spreadsheet(sheet_key, gid, name, root, url2path_idx={}, url2path_idx_
 
     sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_key}/export?format=csv&gid={gid}"
     failed = []
-    with urllib.request.urlopen(sheet_url) as conn:
+    with urllib.request.urlopen(sheet_url, timeout=timeout) as conn:
         csv_data = str(conn.read(), "utf8")
         pbar = tqdm(enumerate(list(csv.reader(StringIO(csv_data), delimiter=","))[
                     1:]), desc=f"Leeching {name}")
