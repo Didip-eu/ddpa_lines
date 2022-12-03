@@ -27,5 +27,5 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Topic :: Scientific/Engineering"],
-    install_requires=["tqdm", "bs4", "lxml", "python-magic", "fargv"],
+    install_requires=["tqdm", "bs4", "lxml", "python-magic", "fargv", "furl"],
 )

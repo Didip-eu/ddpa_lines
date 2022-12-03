@@ -1,1 +1,2 @@
-[timeout] (https://www.monasterium.net/mom/IlluminierteUrkunden/1118-99-99_Beauvais/charter) further debugging needed temp work around timeouts
+* [timeout] (https://www.monasterium.net/mom/IlluminierteUrkunden/1118-99-99_Beauvais/charter) further debugging needed temp work around timeouts
+* [illuminated charter](https://www.monasterium.net/mom/IlluminierteUrkunden/1210-99-99_Paris/charter) with [non-unicode image url]()

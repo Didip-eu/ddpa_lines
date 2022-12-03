@@ -15,6 +15,7 @@ import traceback
 import magic
 import time
 import json
+import furl # this is for the fucking non-unicode paths in the urls
 from .namespace import chatomid_to_path
 
 def clean_img_url(img_url):
@@ -229,7 +230,16 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid="", timeo
         ext = get_extention(img_url)
         #ext = img_url.split(".")[-1].lower()
         try:
-            img_bytes = urllib.request.urlopen(img_url, timeout=timeout).read()
+            #print("LINE 232", type(img_url.encode("utf-8", )))
+            #img_url = img_url.encode("utf-8",errors="ignore").decode() # because of non unicode urls in 
+            #print("234:",img_url)
+            #img_bytes = urllib.request.urlopen(img_url, timeout=timeout).read()
+            #try:
+
+            img_reader = urllib.request.urlopen(furl.furl(img_url).tostr(), timeout=timeout)
+            img_bytes = img_reader.read()
+            #except UnicodeEncodeError as e:
+            #    pass
             md5_str = hashlib.md5(img_bytes).hexdigest()
             open(f"{charter_full_path}/{md5_str}.{ext}", "wb").write(img_bytes)
             relinked_images_html = relinked_images_html.replace(
