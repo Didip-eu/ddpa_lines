@@ -109,7 +109,8 @@ def get_names_from_charter_html(html: str):
 
     #print("A:",[a.attrs["href"] for a in href_list if len(
     #    collection_re.findall(a.attrs.get("href", ""))) > 0])
-    if len(set(collection_hrefs)) == 1 and len(set(archive_hrefs)) == 0: # and len(set(fond_hrefs)) == 0: # this charters breaks the no_fond case https://www.monasterium.net/mom/IlluminierteUrkunden/1216-04-15_Michaelbeuern/charter
+    #if len(set(collection_hrefs)) == 1 and len(set(archive_hrefs)) == 0: # and len(set(fond_hrefs)) == 0: # this charters breaks the no_fond case https://www.monasterium.net/mom/IlluminierteUrkunden/1216-04-15_Michaelbeuern/charter
+    if len(set(collection_hrefs)) >= 1 and len(set(archive_hrefs)) == 0: # https://www.monasterium.net/mom/IlluminierteUrkunden/1257-01-99_Auxerre/charter has 2 collections
         # TODO (anguelos) name or whole atomid
         fond_name = collection_hrefs[0].replace(
             "/mom/", "").replace("/collection", "")
