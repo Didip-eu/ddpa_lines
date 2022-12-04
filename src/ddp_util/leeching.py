@@ -41,6 +41,7 @@ def get_extention(img_url, timeout=10):
             ext = all_magic_patterns[0][:-11].lower()
         if ext in ["jpg", "png", "jpeg", "tif", "tiff"]:
             return ext
+    print("UnknowExt:", ext)
     raise ValueError
 
 
@@ -92,7 +93,7 @@ def get_charters_from_fond(fond_url, timeout=10):
 
 
 def get_names_from_charter_html(html: str):
-    href_list = list(BeautifulSoup(html).find_all("a"))
+    href_list = list(BeautifulSoup(html, features="lxml").find_all("a"))
 
     archive_re = re.compile("mom/[0-9A-Za-z\-]+/archive")
     archive_hrefs = [a.attrs["href"] for a in href_list if len(
@@ -106,11 +107,14 @@ def get_names_from_charter_html(html: str):
     collection_hrefs = [a.attrs["href"] for a in href_list if len(
         collection_re.findall(a.attrs.get("href", ""))) > 0]
 
-    if len(set(collection_hrefs)) == 1 and len(set(archive_hrefs)) == 0 and len(set(fond_hrefs)) == 0:
+    #print("A:",[a.attrs["href"] for a in href_list if len(
+    #    collection_re.findall(a.attrs.get("href", ""))) > 0])
+    if len(set(collection_hrefs)) == 1 and len(set(archive_hrefs)) == 0: # and len(set(fond_hrefs)) == 0: # this charters breaks the no_fond case https://www.monasterium.net/mom/IlluminierteUrkunden/1216-04-15_Michaelbeuern/charter
         # TODO (anguelos) name or whole atomid
         fond_name = collection_hrefs[0].replace(
             "/mom/", "").replace("/collection", "")
         archive_name = "COLLECTIONS"
+        #print("B:",fond_name, archive_name)
     elif len(set(collection_hrefs)) == 0 and len(set(archive_hrefs)) == 1 and len(set(fond_hrefs)) == 1:
         # TODO (anguelos) name or whole atomid
         fond_name = fond_hrefs[0].split("/fond")[0].split("/")[-1]
