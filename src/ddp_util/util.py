@@ -32,7 +32,7 @@ def get_path_list(directory: str, file_extension: str, sample=False) -> List[str
     pprint(f"Scanning {directory} for files.")
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
     if sample:
-        return random.sample(paths, int(round(len(paths)/1000))) #5%
+        return random.sample(paths, int(round(len(paths)/10000))) #5%
     else:
         return paths
 

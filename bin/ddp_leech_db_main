@@ -2,19 +2,16 @@
 
 """
 Leeches Monasterium's backend xml-database files to construct target file structure system.
+Clean target_directory recommended.
 """
 
-# TODO: add "url2path_idx_path":"{root_dir}/url2path_idx.pickle" + code; checking dependencies etc.
 
 # TODO: fix permissions or make choices available in fargv for different file writing permission modes (https://stackoverflow.com/questions/5231901/permission-problems-when-creating-a-dir-with-os-makedirs-in-python)
+# optional TODO: refactor file move
+# optional TODO: add typed option to extend the range of leeching things (e.g., just atomids, images etc.)
+# optional TODO: add "url2path_idx_path":"{root_dir}/url2path_idx.pickle"
+# e.g.  ' https://www.monasterium.net/mom/AbbayeDeSaintBertin/0d2cc7d7-161f-425c-8878-1184145bd4b5/charter ': './tmp/data/leech/db/COLLECTIONS/AbbayeDeSaintBertin/f6cea380a393f06fa9fe517ff24877e1',
 
-# TODO: discuss in group:
-# - if we include data types in function documentation, we should do it consistently, right? what is best practice?
-# - convention for docstring writing, see https://www.datacamp.com/tutorial/docstrings-python; and include datatypes
-
-# TODO: update docstrings + Types
-# TODO: refactor file move
-# TODO: add typed option to extend the range of leeching things (e.g., just atomids, images etc.)
 
 import os
 import random
@@ -103,13 +100,14 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
         curation_hash = to_md5(atomid)
         target_path = f"{target_directory}/{parts[2]}/{curation_hash}"
         Path(target_path).mkdir(parents=True, exist_ok=True)
-        #TODO: maybe account for old.ead.xml; discuss this (transfer, but disregard moving to clean production fsdb?); now: ignore
+        #TODO: maybe account for old.ead.xml which is now ignored
         #e.g. preferences.xml not found for data/db/mom-data/metadata.fond.public/DE-StAM/SchlossarchivPiesing/SchlossarchivPiesing.old.ead.xml.
         shutil.copy(path, f"{target_path}/{curation_hash}.FO.ead.xml")
         shutil.copy(path_pref, f"{target_path}/{curation_hash}.FO.preferences.xml")
 
-# def save_pathdict(dictionary, target_directory, filename):
-    
+def save_pathdict(target_directory: str, filename: str, dictionary: Dict[str, str]): 
+    with open(f"{Path(target_directory)}/{filename}.json", mode="w") as current:
+        json.dump(dictionary, current)
 
 
 if __name__ == "__main__":
@@ -119,41 +117,35 @@ if __name__ == "__main__":
         "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
         "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
-        "target_dir": "{root_dir}/data/tmp/data/leech_db"
+        "target_dir": "{root_dir}/data/leech_db"
     }
-
 
     # params
     args, _ = fargv.fargv(p)
-    print("\n")
 
-    # charters ✓
-    #charter_paths = get_path_list(args.charter_dir, ".cei.xml", sample=True)
-    charter_paths = get_path_list(args.charter_dir, ".cei.xml")
-    atom_id_dict = get_atomid_dict(charter_paths)
-    #copy_charter_files(atom_id_dict, args.target_dir)
-
+    # directories
     Path(args.target_dir).mkdir(parents=True, exist_ok=True)
 
-    # with open(f"{args.target_dir}/chatomid_db_paths.json", mode="w") as current:
-    #     json.dump(atom_id_dict, current) #save dict
-    #     print("Generated atomid2path.json")
-    print("\n")
+    # charters ✓
+    charter_paths = get_path_list(args.charter_dir, ".cei.xml", sample=True)
+    atom_id_dict = get_atomid_dict(charter_paths)
+    copy_charter_files(atom_id_dict, args.target_dir)
+    save_pathdict(args.target_dir, "chatomid_2_path", atom_id_dict)
 
-    # # collections ✓
-    # collection_paths = get_path_list(args.collection_dir, ".cei.xml")
-    # atom_id_dict = get_atomid_dict(collection_paths)
-    # copy_collection_files(atom_id_dict, args.target_dir)
-    # print("\n")
+    # collections ✓
+    collection_paths = get_path_list(args.collection_dir, ".cei.xml")
+    atom_id_dict = get_atomid_dict(collection_paths)
+    copy_collection_files(atom_id_dict, args.target_dir)
+    save_pathdict(args.target_dir, "coatomid_2_path", atom_id_dict)
 
-    # # archives ✓
-    # archive_paths = get_path_list(args.archive_dir, ".eag.xml")
-    # atom_id_dict = get_atomid_dict(archive_paths)
-    # copy_archive_files(atom_id_dict, args.target_dir)
-    # print("\n")
+    # archives ✓
+    archive_paths = get_path_list(args.archive_dir, ".eag.xml")
+    atom_id_dict = get_atomid_dict(archive_paths)
+    copy_archive_files(atom_id_dict, args.target_dir)
+    save_pathdict(args.target_dir, "aratomid_2_path", atom_id_dict)
 
-    # # fonds ✓
-    # fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
-    # atom_id_dict = get_atomid_dict(fond_paths_ead)
-    # copy_fond_files(atom_id_dict, args.target_dir)
-    # print("\n")
+    # fonds ✓
+    fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
+    atom_id_dict = get_atomid_dict(fond_paths_ead)
+    copy_fond_files(atom_id_dict, args.target_dir)
+    save_pathdict(args.target_dir, "foatomid_2_path", atom_id_dict)

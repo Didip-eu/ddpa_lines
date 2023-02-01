@@ -31,7 +31,7 @@ from ddp_util import get_path_list, to_md5, clean_img_url, get_extension
 
 
 def get_images(paths):
-    for path in paths[100:200]:
+    for path in paths:
         print(path)
         with open(path, mode="r") as current:
             urls = current.read().splitlines()
@@ -62,7 +62,7 @@ def get_images(paths):
 if __name__ == "__main__":
     p = {
         "root_dir": ".",
-        "target_dir": "{root_dir}/data/tmp/data/leech_db"
+        "target_dir": "{root_dir}/data/leech_db"
     }
 
 # params

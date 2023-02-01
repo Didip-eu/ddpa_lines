@@ -166,7 +166,7 @@ if __name__ == "__main__":
         "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
         "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
-        "target_dir": "{root_dir}/data/tmp/data/leech_db"
+        "target_dir": "{root_dir}/data/leech_db"
     }
 
 # params
