@@ -24,7 +24,7 @@ def clean_img_url(img_url):
     img_url = img_url.rstrip('%20') # because of this fucked up charter https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
     return img_url
 
-def get_extention(img_url, timeout=10):
+def get_extension(img_url, timeout=10):
     ext = img_url.split(".")[-1].lower()
     if ext in ["jpg", "png", "jpeg", "tif", "tiff"]:
         return ext
@@ -232,7 +232,7 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid="", timeo
     for n, img_url in enumerate(image_urls):
         #img_url = img_url.replace(" ", "%20")
         img_url = clean_img_url(img_url)
-        ext = get_extention(img_url)
+        ext = get_extension(img_url)
         #ext = img_url.split(".")[-1].lower()
         try:
             #print("LINE 232", type(img_url.encode("utf-8", )))
