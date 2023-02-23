@@ -49,8 +49,10 @@ def get_images(paths):
                     with open(f"{target_path}/{md5_str}.{ext}", "wb") as tf:
                         tf.write(img_bytes)
                     print(f"✓ charter {url} downloaded {img_url}")
+                    print("\n")
                 except (HTTPError, URLError, ValueError):
-                    print(f"✗ charter {url} download failed: {img_url}")
+                    print(f"✗ charter {url} download FAILED: {img_url}")
+                    print("\n")
 
                      
 #some links to consider (can be accessed via http in browser but not via python)
@@ -58,6 +60,10 @@ def get_images(paths):
 #http://images.monasterium.net/img/AT-NOeLA/HA_Seefeld-HardeggerUrk/Hardegger-Urk_2054_r.jpg    worked?
 #http://images.monasterium.net/img/AT-NOeLA/HA_Seefeld-HardeggerUrk/NÍLA-HA-Seefeld_Hardegger-Urk_0258v.jpg     not?
 
+# Some charters just randomly fail to download, even via direct links
+# -> logging and errors
+
+# tag:www.monasterium.net,2011:/charter/DE-StAAm/Waldsassen/1103 --> moved (GDA Bayern)
 
 if __name__ == "__main__":
     p = {

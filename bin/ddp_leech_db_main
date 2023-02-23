@@ -126,26 +126,26 @@ if __name__ == "__main__":
     # directories
     Path(args.target_dir).mkdir(parents=True, exist_ok=True)
 
-    # charters ✓
-    charter_paths = get_path_list(args.charter_dir, ".cei.xml", sample=True)
+    # charters
+    charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=1)
     atom_id_dict = get_atomid_dict(charter_paths)
     copy_charter_files(atom_id_dict, args.target_dir)
-    save_pathdict(args.target_dir, "chatomid_2_path", atom_id_dict)
+    save_pathdict(args.target_dir, "charter_atomid_2_path", atom_id_dict)
 
-    # collections ✓
+    # collections
     collection_paths = get_path_list(args.collection_dir, ".cei.xml")
     atom_id_dict = get_atomid_dict(collection_paths)
     copy_collection_files(atom_id_dict, args.target_dir)
-    save_pathdict(args.target_dir, "coatomid_2_path", atom_id_dict)
+    save_pathdict(args.target_dir, "collection_atomid_2_path", atom_id_dict)
 
-    # archives ✓
+    # archives
     archive_paths = get_path_list(args.archive_dir, ".eag.xml")
     atom_id_dict = get_atomid_dict(archive_paths)
     copy_archive_files(atom_id_dict, args.target_dir)
-    save_pathdict(args.target_dir, "aratomid_2_path", atom_id_dict)
+    save_pathdict(args.target_dir, "archive_atomid_2_path", atom_id_dict)
 
-    # fonds ✓
+    # fonds
     fond_paths_ead = get_path_list(args.fond_dir, ".ead.xml")
     atom_id_dict = get_atomid_dict(fond_paths_ead)
     copy_fond_files(atom_id_dict, args.target_dir)
-    save_pathdict(args.target_dir, "foatomid_2_path", atom_id_dict)
+    save_pathdict(args.target_dir, "fond_atomid_2_path", atom_id_dict)
