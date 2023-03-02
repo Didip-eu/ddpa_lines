@@ -64,7 +64,7 @@ def copy_charter_files(locations: Dict[str, str], target_directory: str):
         else:
             raise ValueError("Length of atomid is irregular.") 
         Path(target_path).mkdir(parents=True, exist_ok=True)
-        shutil.copy(path, f"{target_path}/{charter_hash}.CH.cei.xml")
+        shutil.copy(path, f"{target_path}/.CH.cei.xml")
         with open(f"{target_path}/atom_id.txt", 'w', encoding="utf-8") as current:
             current.write(atomid) 
 
@@ -75,7 +75,7 @@ def copy_collection_files(locations: Dict[str, str], target_directory: str):
         curation_hash = to_md5(atomid)
         target_path = f"{target_directory}/COLLECTIONS/{curation_hash}"
         Path(target_path).mkdir(parents=True, exist_ok=True)
-        shutil.copy(path, f"{target_path}/{curation_hash}.CO.cei.xml")
+        shutil.copy(path, f"{target_path}/.CO.cei.xml")
 
 
 def copy_archive_files(locations: Dict[str, str], target_directory: str):
@@ -84,7 +84,7 @@ def copy_archive_files(locations: Dict[str, str], target_directory: str):
         parts = atomid.split("/") 
         target_path = f"{target_directory}/{parts[2]}"
         Path(target_path).mkdir(parents=True, exist_ok=True)
-        shutil.copy(path, f"{target_path}/{parts[2]}.AR.ead.xml")
+        shutil.copy(path, f"{target_path}/.AR.ead.xml")
 
 
 def copy_fond_files(locations: Dict[str, str], target_directory: str):
@@ -102,8 +102,8 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
         Path(target_path).mkdir(parents=True, exist_ok=True)
         #TODO: maybe account for old.ead.xml which is now ignored
         #e.g. preferences.xml not found for data/db/mom-data/metadata.fond.public/DE-StAM/SchlossarchivPiesing/SchlossarchivPiesing.old.ead.xml.
-        shutil.copy(path, f"{target_path}/{curation_hash}.FO.ead.xml")
-        shutil.copy(path_pref, f"{target_path}/{curation_hash}.FO.preferences.xml")
+        shutil.copy(path, f"{target_path}/.FO.ead.xml")
+        shutil.copy(path_pref, f"{target_path}/.FO.preferences.xml")
 
 
 def save_pathdict(target_directory: str, filename: str, dictionary: Dict[str, str]): 
