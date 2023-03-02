@@ -25,36 +25,41 @@ import random
 import requests
 from urllib.request import urlretrieve
 
+#import logging
+#from logging.config import fileConfig
+
 import logging
+import logging.config
 
 from ddp_util import get_path_list, to_md5, clean_img_url, get_extension
 
 
 def get_images(paths):
     for path in paths:
-        print(path)
         with open(path, mode="r") as current:
             urls = current.read().splitlines()
             target_path = Path(f"{Path(path).parent}")
             for url in urls:
                 img_url = clean_img_url(url)
                 try:
-                    ext = get_extension(url) #TODO?: doesn't calling this function here and then requesting again below cause double trouble? refactor possible? (single request?)
+                    ext = get_extension(img_url) #TODO?: doesn't calling this function here and then requesting again below cause double trouble? refactor possible? (single request?)
                 except (HTTPError, URLError, ValueError):
-                    print("Exception in getting extension")
+                    logger.warning(f"Exception in getting extension of cleaned {img_url}, i.e., uncleaned {url} in {path}")    
                 try:
                     img_bytes = request.urlopen(img_url).read()
                     md5_str = hashlib.md5(img_bytes).hexdigest()
                     #md5_str = to_md5(img_bytes) ... causes 'bytes' object has no attribute 'encode', fix?
                     with open(f"{target_path}/{md5_str}.{ext}", "wb") as tf:
                         tf.write(img_bytes)
-                    print(f"✓ charter {url} downloaded {img_url}")
-                    print("\n")
+                    logger.info(f"Charter reference {url} -> downloaded {img_url}")    
                 except (HTTPError, URLError, ValueError):
-                    print(f"✗ charter {url} download FAILED: {img_url}")
-                    print("\n")
+                    logger.warning(f"FAILED to download cleaned {img_url}, i.e., uncleaned {url} in {path}")    
 
                      
+
+# def create_image_urls_json:
+# for successful leeches -> image_urls.json ( {"hash.imageformat": "url", etc.})
+
 #some links to consider (can be accessed via http in browser but not via python)
 
 #http://images.monasterium.net/img/AT-NOeLA/HA_Seefeld-HardeggerUrk/Hardegger-Urk_2054_r.jpg    worked?
@@ -68,14 +73,20 @@ def get_images(paths):
 if __name__ == "__main__":
     p = {
         "root_dir": ".",
-        "target_dir": "{root_dir}/data/leech_db"
+        "target_dir": "{root_dir}/data/leech_db",
+        "logging_dir": "{root_dir}/logging"
     }
 
-# params
-args, _ = fargv.fargv(p)
-print("\n")
+    # params
+    args, _ = fargv.fargv(p)
 
-# download
-image_url_txt_list = get_path_list(args.target_dir,  ".image_urls.txt")
-get_images(image_url_txt_list)
+    #logging.basicConfig(level=logging.DEBUG)
+
+
+    logging.config.fileConfig(fname=f"{args.logging_dir}/logging.conf", disable_existing_loggers=False)
+    logger = logging.getLogger(__name__)
+
+    # download
+    image_url_txt_list = get_path_list(args.target_dir,  ".image_urls.txt")
+    get_images(image_url_txt_list)
 

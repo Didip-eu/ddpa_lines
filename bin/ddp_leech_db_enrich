@@ -135,6 +135,7 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 
 
 def create_image_urls(paths):
+                                            #TODO: logging
     for path in paths:
         atom_hash = Path(path).name.split(".")[0] #or plain 2md5
         image_base_path = Path(f"{Path(path).parents[1]}/image_base_url.txt")
@@ -154,8 +155,6 @@ def create_image_urls(paths):
             current.write(f"{image_url}\n")
 
 
-# def create_image_urls_json:
-# for successful leeches -> image_urls.json ( {"hash.imageformat": "url", etc.})
 
 
 if __name__ == "__main__":
