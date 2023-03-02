@@ -41,7 +41,7 @@ def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
         with open(file, 'r', encoding='utf-8') as current:
             tree = etree.parse(current)
             root = tree.getroot()
-            file_locations[file] = root[0].text
+            file_locations[root[0].text] = file
     return file_locations
 
 
@@ -53,7 +53,7 @@ def copy_charter_files(locations: Dict[str, str], target_directory: str):
     @param target_directory: string specifying the target directory; where to create folders
     """
     pprint(f"Charters: building (hashed) target directories; copying files.")
-    for path, atomid in tqdm(locations.items()):
+    for atomid, path in tqdm(locations.items()):
         parts, supercuration_id, curation_id = decompose_chatomid(atomid)
         curation_hash = to_md5(curation_id) #hash also circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
         charter_hash = to_md5(atomid)
@@ -71,7 +71,7 @@ def copy_charter_files(locations: Dict[str, str], target_directory: str):
 
 def copy_collection_files(locations: Dict[str, str], target_directory: str):
     pprint(f"Collections: building (hashed) target directories; copying files.")
-    for path, atomid in tqdm(locations.items()):       
+    for atomid, path in tqdm(locations.items()):       
         curation_hash = to_md5(atomid)
         target_path = f"{target_directory}/COLLECTIONS/{curation_hash}"
         Path(target_path).mkdir(parents=True, exist_ok=True)
@@ -80,7 +80,7 @@ def copy_collection_files(locations: Dict[str, str], target_directory: str):
 
 def copy_archive_files(locations: Dict[str, str], target_directory: str):
     pprint(f"Archives: building (hashed) target directories; copying files.")
-    for path, atomid in tqdm(locations.items()):
+    for atomid, path in tqdm(locations.items()):
         parts = atomid.split("/") 
         target_path = f"{target_directory}/{parts[2]}"
         Path(target_path).mkdir(parents=True, exist_ok=True)
@@ -89,7 +89,7 @@ def copy_archive_files(locations: Dict[str, str], target_directory: str):
 
 def copy_fond_files(locations: Dict[str, str], target_directory: str):
     pprint(f"Fonds: building (hashed) target directories; copying files.")
-    for path, atomid in tqdm(locations.items()):
+    for atomid, path in tqdm(locations.items()):
         path_pref = f"{Path(path).parent}/{Path(path).with_suffix('').stem}.preferences.xml"     
         try:
             assert Path(path_pref).is_file() #e.g. looking at you, AT-VLA/LandesregierungAmt/LandesregierungAmt.preferences.xml'
@@ -104,6 +104,7 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
         #e.g. preferences.xml not found for data/db/mom-data/metadata.fond.public/DE-StAM/SchlossarchivPiesing/SchlossarchivPiesing.old.ead.xml.
         shutil.copy(path, f"{target_path}/{curation_hash}.FO.ead.xml")
         shutil.copy(path_pref, f"{target_path}/{curation_hash}.FO.preferences.xml")
+
 
 def save_pathdict(target_directory: str, filename: str, dictionary: Dict[str, str]): 
     with open(f"{Path(target_directory)}/{filename}.json", mode="w") as current:
