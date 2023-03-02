@@ -22,7 +22,7 @@ def get_path_generator(directory: str, file_extension: str) -> Generator:
             continue
 
 
-def get_path_list(directory: str, file_extension: str, amount=100) -> List[str]: #TODO: enable improved sampling mode; refactor maybe
+def get_path_list(directory: str, file_extension: str, amount:float=100) -> List[str]:
     """
     Returns List containing file paths.
     @param directory: directory of monasterium xml files as a string

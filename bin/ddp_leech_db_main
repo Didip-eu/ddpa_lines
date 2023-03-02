@@ -128,7 +128,7 @@ if __name__ == "__main__":
     Path(args.target_dir).mkdir(parents=True, exist_ok=True)
 
     # charters
-    charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=1)
+    charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=0.3)
     atom_id_dict = get_atomid_dict(charter_paths)
     copy_charter_files(atom_id_dict, args.target_dir)
     save_pathdict(args.target_dir, "charter_atomid_2_path", atom_id_dict)
