@@ -1,9 +1,29 @@
-from typing import Dict, Generator, List
+from typing import Dict, Generator, List, Union, BinaryIO
 import os
 from pathlib import Path, PurePosixPath
 from pprint import pprint
 import hashlib
 import random
+
+
+def img2imgid(img:Union[BinaryIO, str, Path], return_bytes:bool=False):
+    """Provides the id of a document's image given the image
+
+    Args:
+        img (Union[BinaryIO, str, Path]): _description_
+        return_bytes (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        Tuple[str, bytes]: A tuple of the image id as string, and the bytes used to compute the id
+    """
+    if isinstance(img, str) and Path(img).is_file():
+        img_bytes = open(img, "rb").read()
+    elif isinstance(img, Path):
+        img_bytes = open(img, "rb").read()
+    else:  #  assuming BinaryIO. todo (anguelos test explicitly)
+        img_bytes = img.read()
+    md5_str = hashlib.md5(img_bytes).hexdigest()
+    return md5_str, img_bytes
 
 
 def get_path_generator(directory: str, file_extension: str) -> Generator:

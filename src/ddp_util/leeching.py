@@ -1,3 +1,6 @@
+from typing import Union, BinaryIO
+
+
 from cmath import atan
 from pathlib import Path
 import urllib
@@ -17,6 +20,8 @@ import time
 import json
 import furl # this is for the fucking non-unicode paths in the urls
 from .namespace import chatomid_to_path
+from .util import img2imgid
+
 
 def clean_img_url(img_url):
     img_url = img_url.replace(" ", "%20") # not sure why
@@ -151,7 +156,7 @@ def get_names_from_charter_html(html: str):
     return archive_name, fond_name, charter_atomid
 
 
-def get_charter_path_elements(archive_name, fond_name, charter_atomid, trunc_md5=0, verbose=0):
+def get_charter_path_elements(archive_name, fond_name, charter_atomid, trunc_md5=0, verbose=0):   #  TODO (anguelos)  migrate all md5 functionallity to namespace
     valid_names = re.compile(r'[A-Za-z0-9_\-]+')
     if valid_names.fullmatch(archive_name):
         archive_path = archive_name
@@ -161,22 +166,18 @@ def get_charter_path_elements(archive_name, fond_name, charter_atomid, trunc_md5
         if verbose > 2:
             print(
                 f"Replacing archive {archive_name} with {archive_path}", file=sys.stderr)
-    if valid_names.fullmatch(fond_name):
-        fond_path = fond_name
-    else:
-        fond_path = hashlib.md5(fond_name.encode(
-            'utf-8')).hexdigest()[trunc_md5:]
-        if verbose > 2:
-            print(
-                f"Replacing fond {fond_name} with {fond_path}", file=sys.stderr)
-    if valid_names.fullmatch(charter_atomid):
-        charter_path = charter_atomid
-    else:
-        charter_path = hashlib.md5(
-            charter_atomid.encode('utf-8')).hexdigest()[trunc_md5:]
-        if verbose > 2:
-            print(
-                f"Replacing charter {charter_atomid} with {charter_path}", file=sys.stderr)
+    #if valid_names.fullmatch(fond_name):
+    #    fond_path = fond_name
+    #else:
+    fond_path = hashlib.md5(fond_name.encode('utf-8')).hexdigest()[trunc_md5:]
+    #if verbose > 2:
+    #    print( f"Replacing fond {fond_name} with {fond_path}", file=sys.stderr)
+    #if valid_names.fullmatch(charter_atomid):
+    #    charter_path = charter_atomid
+    #else:
+    charter_path = hashlib.md5(charter_atomid.encode('utf-8')).hexdigest()[trunc_md5:]
+    #if verbose > 2:
+    #print(f"Replacing charter {charter_atomid} with {charter_path}", file=sys.stderr)
     return archive_path, fond_path, charter_path
 
 
@@ -242,10 +243,11 @@ def store_charter(charter_html, charter_full_path, url, charter_atomid="", timeo
             #try:
 
             img_reader = urllib.request.urlopen(furl.furl(img_url).tostr(), timeout=timeout)
-            img_bytes = img_reader.read()
+            md5_str, img_bytes = img2imgid(img_reader)  #  Todo (anguelos) test img2id
+            #img_bytes = img_reader.read()
             #except UnicodeEncodeError as e:
             #    pass
-            md5_str = hashlib.md5(img_bytes).hexdigest()
+            #md5_str = hashlib.md5(img_bytes).hexdigest()
             open(f"{charter_full_path}/{md5_str}.{ext}", "wb").write(img_bytes)
             relinked_images_html = relinked_images_html.replace(
                 img_url, f"{md5_str}.{ext}")
