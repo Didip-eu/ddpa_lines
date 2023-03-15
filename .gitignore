@@ -5,7 +5,13 @@ data/
 
 misc/1000_CVCharters/**/index.html
 misc/1000_CVCharters/**/original.html
-misc/1000_CVCharters/**//url.txt
+misc/1000_CVCharters/**/url.txt
+misc/1000_CVCharters/**/*.img.*
+misc/1000_CVCharters/**/cei.xml
+misc/1000_CVCharters/**/atom_id.txt
+misc/1000_CVCharters/**/download_complete.marker
+misc/1000_CVCharters/**/cei.xml.grep_graphic
+misc/1000_CVCharters/**/failed.txt
 
 # custom atzenhofer
 data
