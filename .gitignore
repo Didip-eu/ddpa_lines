@@ -2,6 +2,11 @@
 data/
 **/tmp/**
 
+
+misc/1000_CVCharters/**/index.html
+misc/1000_CVCharters/**/original.html
+misc/1000_CVCharters/**//url.txt
+
 # custom atzenhofer
 data
 models

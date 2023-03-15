@@ -1,1 +1,72 @@
-{"image_wh": [3086, 2380], "rect_LTRB": [[964, 68, 2122, 412], [616, 556, 1540, 2006], [1890, 534, 2792, 1970], [298, 454, 2826, 2300]], "rect_captions": ["", "", "", ""], "rect_classes": [2, 5, 5, 4], "class_names": ["No Class", "Ignore", "Img:CalibrationCard", "Img:Seal", "Img:WritableArea", "Wr:OldText", "Wr:OldNote", "Wr:NewText", "Wr:NewOther", "WrO:Ornament", "WrO:Fold"], "class_colors": ["#646B63", "#23282B", "#763C28", "#316650", "#00BB2D", "#287233", "#231A24", "#F5D033", "#063971", "#1E2460", "#641C34"], "user": ""}
+{
+  "image_wh": [
+    3086,
+    2380
+  ],
+  "rect_LTRB": [
+    [
+      964,
+      68,
+      2122,
+      412
+    ],
+    [
+      616,
+      556,
+      1540,
+      2006
+    ],
+    [
+      1890,
+      534,
+      2792,
+      1970
+    ],
+    [
+      298,
+      454,
+      2826,
+      2300
+    ]
+  ],
+  "rect_captions": [
+    "",
+    "",
+    "",
+    ""
+  ],
+  "rect_classes": [
+    2,
+    5,
+    5,
+    4
+  ],
+  "class_names": [
+    "No Class",
+    "Ignore",
+    "Img:CalibrationCard",
+    "Img:Seal",
+    "Img:WritableArea",
+    "Wr:OldText",
+    "Wr:OldNote",
+    "Wr:NewText",
+    "Wr:NewOther",
+    "WrO:Ornament",
+    "WrO:Fold"
+  ],
+  "class_colors": [
+    "#646B63",
+    "#23282B",
+    "#763C28",
+    "#316650",
+    "#00BB2D",
+    "#287233",
+    "#231A24",
+    "#F5D033",
+    "#063971",
+    "#1E2460",
+    "#641C34"
+  ],
+  "user": "",
+  "img_md5": "1786737d9dbbcd72cd1bbc1876b34412"
+}

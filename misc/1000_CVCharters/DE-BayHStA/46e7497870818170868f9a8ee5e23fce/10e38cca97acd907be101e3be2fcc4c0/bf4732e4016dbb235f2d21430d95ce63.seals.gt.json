@@ -1,1 +1,96 @@
-{"image_wh": [3000, 1936], "rect_LTRB": [[2456, 82, 2864, 1538], [950, 1246, 1590, 1848], [144, 516, 2226, 644], [144, 532, 274, 926], [136, 1172, 2248, 1288], [262, 612, 2162, 1182], [156, 514, 2278, 1268]], "rect_captions": ["", "", "", "", "", "", ""], "rect_classes": [2, 3, 9, 9, 10, 5, 4], "class_names": ["No Class", "Ignore", "Img:CalibrationCard", "Img:Seal", "Img:WritableArea", "Wr:OldText", "Wr:OldNote", "Wr:NewText", "Wr:NewOther", "WrO:Ornament", "WrO:Fold"], "class_colors": ["#646B63", "#23282B", "#763C28", "#316650", "#00BB2D", "#287233", "#231A24", "#F5D033", "#063971", "#1E2460", "#641C34"], "user": ""}
+{
+  "image_wh": [
+    3000,
+    1936
+  ],
+  "rect_LTRB": [
+    [
+      2456,
+      82,
+      2864,
+      1538
+    ],
+    [
+      950,
+      1246,
+      1590,
+      1848
+    ],
+    [
+      144,
+      516,
+      2226,
+      644
+    ],
+    [
+      144,
+      532,
+      274,
+      926
+    ],
+    [
+      136,
+      1172,
+      2248,
+      1288
+    ],
+    [
+      262,
+      612,
+      2162,
+      1182
+    ],
+    [
+      156,
+      514,
+      2278,
+      1268
+    ]
+  ],
+  "rect_captions": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "rect_classes": [
+    2,
+    3,
+    9,
+    9,
+    10,
+    5,
+    4
+  ],
+  "class_names": [
+    "No Class",
+    "Ignore",
+    "Img:CalibrationCard",
+    "Img:Seal",
+    "Img:WritableArea",
+    "Wr:OldText",
+    "Wr:OldNote",
+    "Wr:NewText",
+    "Wr:NewOther",
+    "WrO:Ornament",
+    "WrO:Fold"
+  ],
+  "class_colors": [
+    "#646B63",
+    "#23282B",
+    "#763C28",
+    "#316650",
+    "#00BB2D",
+    "#287233",
+    "#231A24",
+    "#F5D033",
+    "#063971",
+    "#1E2460",
+    "#641C34"
+  ],
+  "user": "",
+  "img_md5": "bf4732e4016dbb235f2d21430d95ce63"
+}

@@ -1,1 +1,76 @@
-{"image_wh": [1362, 2234], "rect_LTRB": [[98, 58, 1250, 404], [156, 546, 546, 730], [610, 610, 1228, 2018], [66, 446, 1270, 2168]], "rect_captions": ["", "", "", ""], "rect_classes": [2, 6, 5, 4], "class_names": ["No Class", "Textura", "Rotunda", "Gotico-Antiqua", "Schwabacher", "Fraktur", "Bastarda", "Antiqua", "Italic", "Hebrew", "Greek", "Manuscript", "Ignore"], "class_colors": ["#000000", "#2f4f4f", "#00A36C", "#00FF00", "#00008b", "#b03060", "#ff0000", "#ffff00", "#E49B0F", "#00ffff", "#ff00ff", "#4A0404", "#808080"], "user": ""}
+{
+  "image_wh": [
+    1362,
+    2234
+  ],
+  "rect_LTRB": [
+    [
+      98,
+      58,
+      1250,
+      404
+    ],
+    [
+      156,
+      546,
+      546,
+      730
+    ],
+    [
+      610,
+      610,
+      1228,
+      2018
+    ],
+    [
+      66,
+      446,
+      1270,
+      2168
+    ]
+  ],
+  "rect_captions": [
+    "",
+    "",
+    "",
+    ""
+  ],
+  "rect_classes": [
+    2,
+    6,
+    5,
+    4
+  ],
+  "class_names": [
+    "No Class",
+    "Textura",
+    "Rotunda",
+    "Gotico-Antiqua",
+    "Schwabacher",
+    "Fraktur",
+    "Bastarda",
+    "Antiqua",
+    "Italic",
+    "Hebrew",
+    "Greek",
+    "Manuscript",
+    "Ignore"
+  ],
+  "class_colors": [
+    "#000000",
+    "#2f4f4f",
+    "#00A36C",
+    "#00FF00",
+    "#00008b",
+    "#b03060",
+    "#ff0000",
+    "#ffff00",
+    "#E49B0F",
+    "#00ffff",
+    "#ff00ff",
+    "#4A0404",
+    "#808080"
+  ],
+  "user": "",
+  "img_md5": "a1f95aced4fd85995aeef9d398c97815"
+}
