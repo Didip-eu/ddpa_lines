@@ -28,7 +28,9 @@ import fargv
 from tqdm import tqdm
 import hashlib
 import glob
+
 from urllib.parse import urlparse
+
 
 from ddp_util import decompose_chatomid, get_path_generator, get_path_list
 
@@ -38,7 +40,8 @@ base_url_choices = Literal["archive", "collection"] #TODO: see top
 
 
 def filter_image_base_url(image_base):
-    exceptions = ["www.monasterium.net",
+    exceptions = [
+    "www.monasterium.net",
     "www.monasterium.net/",
     "www.monasterium.net/*",
     "images.monasterium.net/*",
@@ -46,7 +49,8 @@ def filter_image_base_url(image_base):
     "http://www.monasterium.net",
     "http://www.monasterium.net/*",
     "http://images.monasterium.net/*",
-    "http://www.monasterium.net/Diplomatico_Viewerbild.jpg"]
+    "http://www.monasterium.net/Diplomatico_Viewerbild.jpg"
+    ]
 
     if image_base in exceptions:
         image_base = "Invalid"#TODO: generalize and extend this to empty strings, which are now handled in the get_image_base_urls function
@@ -122,12 +126,12 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
         file_path = Path(file_path)
         file_folder = file_path.parent
         images = original + copy
-        if len(original) != 0: #or bool "if not original: ~ empty string bool logic"
+        if len(original) != 0: # Or bool "if not original: ~ empty string bool logic"
             image_status = "ORIG"
         elif len(copy) != 0:
             image_status = "COPY"
         else:
-            image_status = "NONE" #is never invoked since empty list is not iterated
+            image_status = "NONE" # Should never be invoked since empty list is not iterated
         for i, j in enumerate(images):
             target_path = f"{file_folder}/{file_folder.stem}.{i}.{image_status}.image_ref.txt"
             with open(f"{target_path}", "w", encoding="utf-8") as txt:
@@ -170,10 +174,10 @@ if __name__ == "__main__":
 
 # params
 args, _ = fargv.fargv(p)
-print("\n")
 
 #get image-refs ✓
 # fonds 
+
 fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
 image_base_dict, _ = get_image_base_urls(fond_paths, mode="archive")
 create_image_base_url_files(image_base_dict)

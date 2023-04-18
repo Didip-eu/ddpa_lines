@@ -8,6 +8,9 @@ from urllib.error import HTTPError
 from bs4 import BeautifulSoup
 import hashlib
 from urllib.parse import unquote
+
+from urllib.parse import quote
+
 from tqdm import tqdm
 import csv
 from io import StringIO
@@ -18,16 +21,20 @@ import traceback
 import magic
 import time
 import json
-import furl # this is for the fucking non-unicode paths in the urls
+import furl # for the non-unicode paths in the urls
 from .namespace import chatomid_to_path
 from .util import img2imgid
 
 
 def clean_img_url(img_url):
-    img_url = img_url.replace(" ", "%20") # not sure why
-    img_url = img_url.rstrip('%0A') # because of this fucked up charter https://www.monasterium.net/mom/AT-StaLois/A/StaLois_I.A.254/charter
-    img_url = img_url.rstrip('%20') # because of this fucked up charter https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
+    img_url = quote(img_url, safe=":/?#[]@!$&'()*+,;=") # Workaround to percent-encode non-ASCII characters
     return img_url
+
+# def clean_img_url(img_url):
+#     img_url = img_url.replace(" ", "%20") # not sure why
+#     img_url = img_url.rstrip('%0A') # because of this https://www.monasterium.net/mom/AT-StaLois/A/StaLois_I.A.254/charter
+#     img_url = img_url.rstrip('%20') # because of this https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
+#     return img_url
 
 def get_extension(img_url, timeout=10):
     ext = img_url.split(".")[-1].lower()
