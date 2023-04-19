@@ -44,35 +44,75 @@ def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
             file_locations[root[0].text] = file
     return file_locations
 
-def copy_charter_files(locations: Dict[str, str], target_directory: str):
-    """
-    For Archive Material: Copies folder and their xml contents from input folder to target.
-    Builds (sub)directory structure at target based on (length of) atomids.
-    Creates atom_id.txt and url.txt at charter level.
-    @param locations: Dict with path as key and atomd id as value
-    @param target_directory: string specifying the target directory; where to create folders
-    """
-    pprint(f"Charters: building (hashed) target directories; copying files.")
-    
+
+def get_charter_copy_map(locations: Dict[str, str], target_directory: str):
+    file_mappings = {}
     for atomid, path in locations.items():
         parts, supercuration_id, curation_id = decompose_chatomid(atomid)
         curation_hash = to_md5(curation_id) # hash circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
-        charter_hash = to_md5(atomid)
-        
+        charter_hash = to_md5(atomid)        
         if len(parts) == 4:
             target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" #TODO: change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
         elif len(parts) == 5:
             target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
         else:
-            raise ValueError("Length of atomid is irregular.") 
-        
-        Path(target_path).mkdir(parents=True, exist_ok=True)
-        shutil.copy(path, f"{target_path}/.CH.cei.xml")
+            raise ValueError("Length of atomid is irregular.")
+        file_mappings[atomid] = [path, target_path]
+    return file_mappings
 
+
+def save_file_mappings(target_directory: str, filename: str, dictionary): 
+    with open(f"{Path(target_directory)}/{filename}.json", mode="w") as current:
+        json.dump(dictionary, current)
+
+
+def copy_charter_files(file_mappings):
+    for atom_id, paths in file_mappings.items():
+        print(paths)
+        db_path = paths[0]
+        target_path = paths[1]
+        Path(target_path).mkdir(parents=True, exist_ok=True)
+        shutil.copy(db_path, f"{target_path}/.CH.cei.xml")
         with open(f"{target_path}/atom_id.txt", "w", encoding="utf-8") as current:
-            current.write(atomid) 
+            current.write(atom_id) 
         with open(f"{target_path}/url.txt", "w", encoding="utf-8") as current:
-            current.write(chatomid_to_url(atomid))
+            current.write(chatomid_to_url(atom_id))
+
+# TODO: think of better solution with regards to file endings (right now: the paths.json includes the full file path for the db, but only the charter folder path hfor the fsdb
+# -> is this enough?)
+
+
+
+
+# def copy_charter_files(locations: Dict[str, str], target_directory: str):
+#     """
+#     For Archive Material: Copies folder and their xml contents from input folder to target.
+#     Builds (sub)directory structure at target based on (length of) atomids.
+#     Creates atom_id.txt and url.txt at charter level.
+#     @param locations: Dict with path as key and atomd id as value
+#     @param target_directory: string specifying the target directory; where to create folders
+#     """
+#     pprint(f"Charters: building (hashed) target directories; copying files.")
+    
+#     for atomid, path in locations.items():
+#         parts, supercuration_id, curation_id = decompose_chatomid(atomid)
+#         curation_hash = to_md5(curation_id) # hash circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
+#         charter_hash = to_md5(atomid)
+        
+#         if len(parts) == 4:
+#             target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" #TODO: change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
+#         elif len(parts) == 5:
+#             target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
+#         else:
+#             raise ValueError("Length of atomid is irregular.") 
+        
+#         Path(target_path).mkdir(parents=True, exist_ok=True)
+#         shutil.copy(path, f"{target_path}/.CH.cei.xml")
+
+#         with open(f"{target_path}/atom_id.txt", "w", encoding="utf-8") as current:
+#             current.write(atomid) 
+#         with open(f"{target_path}/url.txt", "w", encoding="utf-8") as current:
+#             current.write(chatomid_to_url(atomid))
 
 
 def copy_collection_files(locations: Dict[str, str], target_directory: str):
@@ -111,10 +151,9 @@ def copy_fond_files(locations: Dict[str, str], target_directory: str):
         shutil.copy(path, f"{target_path}/.FO.ead.xml")
         shutil.copy(path_pref, f"{target_path}/.FO.preferences.xml")
 
-
-def save_pathdict(target_directory: str, filename: str, dictionary: Dict[str, str]): 
-    with open(f"{Path(target_directory)}/{filename}.json", mode="w") as current:
-        json.dump(dictionary, current)
+# def save__pathdict(target_directory: str, filename: str, db_path_dict: Dict[str, str]): 
+#     with open(f"{Path(target_directory)}/{filename}.json", mode="w") as current:
+#         json.dump(db_path_dict, current)
 
 
 if __name__ == "__main__":
@@ -136,8 +175,12 @@ if __name__ == "__main__":
     # charters
     charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=0.025)
     atom_id_dict = get_atomid_dict(charter_paths)
-    save_pathdict(args.target_dir, "charter_atomid_2_db_path", atom_id_dict)
-    copy_charter_files(atom_id_dict, args.target_dir)
+    charter_file_mappings = get_charter_copy_map(atom_id_dict, args.target_dir)
+    copy_charter_files(charter_file_mappings)
+    save_file_mappings(args.target_dir, "charter_atomid_2_paths", charter_file_mappings)
+
+
+    #copy_charter_files(atom_id_dict, args.target_dir)
     #save_pathdict(args.target_dir, "charter_atomid_2_fsdb_path", atom_id_dict)
 
     # collections
