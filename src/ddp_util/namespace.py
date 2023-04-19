@@ -14,8 +14,7 @@ def chatomid_to_url(atomid, root=monasterium_url_root):
     elif len(parts) == 4:
         return f"{root}{parts[2]}/{parts[3]}/charter"
     else:
-        raise ValueError
-        #print(f"Unusual structure found at '{atom_id}'")
+        raise ValueError("Invalid atom_id length.")
 
 
 def decompose_chatomid(chatomid):
@@ -26,8 +25,7 @@ def decompose_chatomid(chatomid):
     try:
         assert parts[:2] == (['tag:www.monasterium.net,2011:', 'charter'])
     except AssertionError:
-        print("atom-id is not well-formed.")
-        raise
+        raise ValueError("atom-id is not well-formed.")
     if len(parts) == 5:
         supercuration_id = f"{parts[0]}/archive/{parts[2]}"
         curation_id = f"{parts[0]}/fond/{parts[2]}/{parts[3]}"

@@ -79,7 +79,7 @@ def get_images(paths):
                     with open(f"{target_path}/{md5_str}.{ext}", "wb") as tf:
                         tf.write(img_bytes)
 
-                    # Update the JSON data and save it to the file
+                    # Update JSON data and save it to the file
                     json_data[f"{md5_str}.{ext}"] = img_url
                     with open(json_file, "w") as jf:
                         json.dump(json_data, jf, indent=2)
