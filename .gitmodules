@@ -4,3 +4,6 @@
 [submodule "misc/frat"]
 	path = misc/frat
 	url = git@github.com:anguelos/frat.git
+[submodule "misc/resolution_regressor"]
+	path = misc/resolution_regressor
+	url = git@github.com:anguelos/resolution_regressor.git
