@@ -51,10 +51,7 @@ def get_path_list(directory: str, file_extension: str, amount:float=100) -> List
     """
     pprint(f"Scanning {directory} for files.")
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
-    if amount != 100:
-        return random.sample(paths, int(round(len(paths)/100*amount)))
-    else:
-        return paths
+    return paths if amount == 100 else random.sample(paths, int(round(len(paths)/100*amount)))
 
 
 def to_md5(string, trunc_threshold=0): 
