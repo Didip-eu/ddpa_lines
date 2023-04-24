@@ -1,7 +1,6 @@
 from pathlib import Path
 import hashlib
-from typing import str
-
+import typing
 
 db_root = "./"
 monasterium_url_root = "https://www.monasterium.net/mom/" #maybe refactor to string not ending with slash, with explicit slash in functions

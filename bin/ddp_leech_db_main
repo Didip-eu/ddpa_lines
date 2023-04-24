@@ -28,7 +28,7 @@ import fargv
 from tqdm import tqdm
 import hashlib
 
-from ddp_util import decompose_chatomid, get_path_generator, get_path_list, to_md5, chatomid_to_url, url_to_chatomid
+from ddp_util import decompose_chatomid, get_path_generator, get_path_list, to_md5, chatomid_to_url, url_to_chatomid, co_atomid_to_url
 
 
 def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
@@ -128,7 +128,7 @@ def copy_collections_and_save_paths(file_mappings, atomids=None, amount=100):
             with open(f"{target_path}/atom_id.txt", "w", encoding="utf-8") as f:
                 f.write(atom_id) 
             with open(f"{target_path}/url.txt", "w", encoding="utf-8") as f:
-                f.write(chatomid_to_url(atom_id))
+                f.write(co_atomid_to_url(atom_id))
             file_paths[atom_id] = target_path
     return file_paths
 
