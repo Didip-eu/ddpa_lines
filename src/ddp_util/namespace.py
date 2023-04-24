@@ -1,18 +1,99 @@
 from pathlib import Path
 import hashlib
+from typing import str
 
 
 db_root = "./"
-monasterium_url_root = "https://www.monasterium.net/mom/"
+monasterium_url_root = "https://www.monasterium.net/mom/" #maybe refactor to string not ending with slash, with explicit slash in functions
 collections_archive_name = "COLLECTIONS"
 trunc_md5 = 16
 
-def chatomid_to_url(atomid, root=monasterium_url_root):
+
+
+def chatomid_to_url(atomid: str, root: str=monasterium_url_root) -> str:
+    """Transforms a charter's atom_id to its corresponding url based on Monasterium's pre-defined mapping.
+    e.g., from tag:www.monasterium.net,2011:/charter/AT-ADG/AGDK/43-16-1 to https://www.monasterium.net/mom/AT-ADG/AGDK/43-16-1/charter
+
+    Args:
+        atomid (str): A charter's atom_id.
+        root (str, optional): A charter's url base. Defaults to monasterium_url_root.
+
+    Raises:
+        ValueError: Invalid atom_id length.
+
+    Returns:
+        str: url
+    """
     parts = atomid.split("/")                                                                                                                                  
     if len(parts) == 5:
-        return f"{root}{parts[2]}/{parts[3]}/{parts[4]}/charter"
+        return f"{root}{parts[2]}/{parts[3]}/{parts[4]}/{parts[1]}"
     elif len(parts) == 4:
-        return f"{root}{parts[2]}/{parts[3]}/charter"
+        return f"{root}{parts[2]}/{parts[3]}/{parts[1]}"
+    else:
+        raise ValueError("Invalid atom_id length.")
+
+
+def co_atomid_to_url(atomid: str, root: str=monasterium_url_root) -> str:
+    """Transforms a collection's atom_id to its corresponding url based on Monasterium's pre-defined mapping.
+    e.g., from tag:www.monasterium.net,2011:/collection/AbteiEberbach to https://www.monasterium.net/mom/AbteiEberbach/collection
+
+    Args:
+        atomid (str): A collection's atom_id.
+        root (str, optional): A collection's url base. Defaults to 'monasterium_url_root'.
+
+    Raises:
+        ValueError: Invalid atom_id length.
+
+    Returns:
+        str: url
+    """
+    parts = atomid.split("/")
+    if len(parts) == 3:
+        return f"{root}{parts[2]}/{parts[1]}"
+    else:
+        raise ValueError("Invalid atom_id length.")
+
+
+def ar_atomid_to_url(atomid: str, root: str=monasterium_url_root) -> str:
+    """Transforms an archive's atom_id to its corresponding url based on Monasterium's pre-defined mapping.
+    e.g., from tag:www.monasterium.net,2011:/archive/AT-ADG to https://www.monasterium.net/mom/AT-ADG/archive
+
+    Args:
+        atomid (str): An archive's atom_id.
+        root (str, optional): An archive's url base. Defaults to 'monasterium_url_root'.
+
+    Raises:
+        ValueError: Invalid atom_id length.
+
+    Returns:
+        str: url
+    """
+    parts = atomid.split("/")
+    if len(parts) == 3:
+        return f"{root}{parts[2]}/{parts[1]}"
+    else:
+        raise ValueError("Invalid atom_id length.")
+
+
+def fo_atomid_to_url(atomid: str, root: str=monasterium_url_root) -> str:
+    """Transforms a fond's atom_id to its corresponding url based on Monasterium's pre-defined mapping.
+    e.g., from tag:www.monasterium.net,2011:/fond/AT-ADG/AGDK to https://www.monasterium.net/mom/AT-ADG/AGDK/fond
+
+    Args:
+        atomid (str): A fond's atom_id.
+        root (str, optional): A fond's url base. Defaults to 'monasterium_url_root'.
+
+    Raises:
+        ValueError: Invalid atom_id length.
+
+    Returns:
+        str: url
+    """
+    parts = atomid.split("/")                                                                                                                                  
+    if len(parts) == 5:
+        return f"{root}{parts[2]}/{parts[3]}/{parts[4]}/{parts[1]}"
+    elif len(parts) == 4:
+        return f"{root}{parts[2]}/{parts[3]}/{parts[1]}"
     else:
         raise ValueError("Invalid atom_id length.")
 
@@ -30,7 +111,7 @@ def decompose_chatomid(chatomid):
         supercuration_id = f"{parts[0]}/archive/{parts[2]}"
         curation_id = f"{parts[0]}/fond/{parts[2]}/{parts[3]}"
     elif len(parts) == 4:
-        supercuration_id = "COLLECTIONS"
+        supercuration_id = collections_archive_name
         curation_id = f"{parts[0]}/collection/{parts[2]}"
     return parts, supercuration_id, curation_id
 
