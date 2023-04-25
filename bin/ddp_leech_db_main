@@ -24,6 +24,9 @@ from lxml import etree
 import fargv
 from tqdm import tqdm
 import hashlib
+import logging
+import logging.config
+import yaml
 
 from ddp_util import decompose_chatomid, get_path_generator, get_path_list, to_md5, chatomid_to_url, url_to_chatomid, co_atomid_to_url, ar_atomid_to_url, fo_atomid_to_url
 
@@ -45,7 +48,6 @@ def get_atomid_dict(paths: List[str]) -> Dict[str, str]:
 
 
 def get_atomids_from_chatomids(chatomids):
-
     collections = []
     archives = []
     fonds = []
@@ -75,7 +77,9 @@ def get_charter_db_mapping(locations: Dict[str, str], target_directory: str):
         elif len(parts) == 5:
             target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
         else:
-            raise ValueError("Length of atomid is irregular.")
+            logger.exception(f"Length of atomid '{atomid}' at path '{path}' is irregular.")
+            #raise ValueError("Length of atomid is irregular.")
+            continue
         file_mappings[atomid] = [path, target_path]
     return file_mappings
   
@@ -179,6 +183,7 @@ def copy_fonds_and_save_paths(file_mappings, atomids=None, amount=100):
                 assert Path(path_pref).is_file() #e.g. looking at you, AT-VLA/LandesregierungAmt/LandesregierungAmt.preferences.xml'
                 shutil.copy(path_pref, f"{target_path}/.FO.preferences.xml")
             except AssertionError(f"preferences.xml not found for {path}"):
+                logger.exception(f"preferences.xml not found for {path}")
                 continue
             with open(f"{target_path}/FO.atom_id.txt", "w", encoding="utf-8") as f:
                 f.write(atom_id) 
@@ -187,9 +192,11 @@ def copy_fonds_and_save_paths(file_mappings, atomids=None, amount=100):
             file_paths[atom_id] = target_path
     return file_paths
 
+
 if __name__ == "__main__":
     p = {
         "root_dir": ".",
+        "logging_dir": "{root_dir}/logging",
         "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public",
         "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
@@ -201,13 +208,21 @@ if __name__ == "__main__":
     # params
     args, _ = fargv.fargv(p)
 
+    # logging
+    with open(f"{args.logging_dir}/config/logging.yaml", "r") as stream:
+            config = yaml.load(stream, Loader=yaml.FullLoader)
+
+    logging.config.dictConfig(config)
+    logger = logging.getLogger("ddp_leech_db_main")
+    logger.setLevel(logging.DEBUG)
+
     # directories
     Path(args.target_dir).mkdir(parents=True, exist_ok=True)
 
-    # files
-    with open(f"{args.root_dir}/misc/1000_CVCharters/1kcv_urls.csv") as file:
-        data = list(csv.reader(file, delimiter=","))
-        ch_atomid_list = [url_to_chatomid(i[-1]) for i in data]
+    #files
+    # with open(f"{args.root_dir}/misc/1000_CVCharters/1kcv_urls.csv") as file:
+    #     data = list(csv.reader(file, delimiter=","))
+    #     ch_atomid_list = [url_to_chatomid(i[-1]) for i in data]
 
     # charters
     charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=100)
@@ -225,7 +240,7 @@ if __name__ == "__main__":
     collection_file_mappings = get_collection_db_mapping(atom_id_dict, args.target_dir)
     save_file_mappings(args.target_dir, "collection_atomids_2_paths", collection_file_mappings)
     
-    co_file_paths = copy_collections_and_save_paths(collection_file_mappings, atomids=co_atomid_list)
+    co_file_paths = copy_collections_and_save_paths(collection_file_mappings)#, atomids=co_atomid_list)
     save_file_mappings(args.target_dir, "collection_atomids_2_fsdb", co_file_paths)
 
     # archives

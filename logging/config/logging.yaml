@@ -10,13 +10,24 @@ handlers:
     level: WARNING
     formatter: simple
     stream: ext://sys.stdout
+  file_ddp_leech_db_main:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: simple
+    filename: logging/logs/ddp_leech_db_main.log
   file_ddp_leech_db_images:
     class: logging.FileHandler
     level: DEBUG
     formatter: simple
     filename: logging/logs/ddp_leech_db_images.log
 
+
 loggers:
+
+  ddp_leech_db_main:
+    level: DEBUG
+    handlers: [console, file_ddp_leech_db_main]
+    propagate: no
   ddp_leech_db_images:
     level: DEBUG
     handlers: [console, file_ddp_leech_db_images]
