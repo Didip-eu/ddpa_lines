@@ -37,7 +37,7 @@ from ddp_util import get_path_list, to_md5, clean_img_url, get_extension
 def get_images(paths):
     for path in paths:
         target_path = Path(f"{Path(path).parent}")
-        json_file = f"{target_path}/image_url.json"
+        json_file = f"{target_path}/image_urls.json"
         
         # Load the existing JSON data or create an empty dictionary
         if Path(json_file).exists():
@@ -46,9 +46,9 @@ def get_images(paths):
         else:
             json_data = {}
 
-        with open(f"{Path(path).parent}/atom_id.txt", mode="r") as current:
+        with open(f"{Path(path).parent}/CH.atom_id.txt", mode="r") as current:
             ch_atom_id = current.readline()
-        with open(f"{Path(path).parent}/url.txt", mode="r") as current:
+        with open(f"{Path(path).parent}/CH.url.txt", mode="r") as current:
             ch_url = current.readline()
         with open(path, mode="r") as current:
             urls = current.read().splitlines()
@@ -86,7 +86,7 @@ def get_images(paths):
 
                     logger.info(f"Downloaded {img_url} into '{target_path}'.")
                 except (HTTPError, URLError, ValueError):
-                    logger.exception(f"Exception in downloading cleaned {img_url}, i.e., uncleaned {url} in {target_path}. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
+                    logger.exception(f"Exception in downloading cleaned {img_url}, i.e., uncleaned '{url}' in '{target_path}'. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
 
 
 if __name__ == "__main__":

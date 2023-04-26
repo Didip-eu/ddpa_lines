@@ -4,7 +4,6 @@
 Leeches .xml-files in target file structure system with the main purpose of building image urls.
 """
 
-# TODO: discuss namespaces and whether there should be empty txt files for those fonds that have none (or have empty ones) (but their image urls in the cei files)
 # TODO: build image urls in enrich -> for those starting with http:// or https, take url directly; otherwise: build from parent curation base url.txt + url attribute 
 
 # TODO: # def cei charter file -> cei.xml (without atomid?); create url.txt (charter url)
@@ -164,11 +163,6 @@ def create_image_urls(paths):
 if __name__ == "__main__":
     p = {
         "root_dir": ".",
-        #"charter_dir": "{root_dir}/data/db_subsample",
-        "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public",
-        "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
-        "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
-        "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
         "target_dir": "{root_dir}/data/leech_db"
     }
 

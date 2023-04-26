@@ -53,7 +53,12 @@ def get_atomids_from_chatomids(chatomids):
     fonds = []
 
     for chatomid in chatomids:
-        parts, supercuration_id, curation_id = decompose_chatomid(chatomid)
+        try:
+            parts, supercuration_id, curation_id = decompose_chatomid(chatomid)
+        except ValueError as e:
+            logger.exception(f"{__name__}: Error processing {chatomid}: {e}")            
+            continue
+        
         if len(parts) == 4:
             collections.append(curation_id)
         elif len(parts) == 5:
@@ -66,29 +71,30 @@ def get_atomids_from_chatomids(chatomids):
     return collection_atomids, archive_atomids, fond_atomids
 
 
-def get_charter_db_mapping(locations: Dict[str, str], target_directory: str):
-    file_mappings = {}
-    for atomid, path in locations.items():
-        parts, supercuration_id, curation_id = decompose_chatomid(atomid)
-        curation_hash = to_md5(curation_id) # hash circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
-        charter_hash = to_md5(atomid)        
-        if len(parts) == 4:
-            target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" #TODO: change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
-        elif len(parts) == 5:
-            target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
-        else:
-            logger.exception(f"Length of atomid '{atomid}' at path '{path}' is irregular.")
-            #raise ValueError("Length of atomid is irregular.")
-            continue
-        file_mappings[atomid] = [path, target_path]
-    return file_mappings
-  
-
 def save_file_mappings(target_directory: str, filename: str, dictionary): 
     if dictionary:
         with open(f"{Path(target_directory)}/{filename}.json", mode="w") as current:
             json.dump(dictionary, current)
 
+
+def get_charter_db_mapping(locations: Dict[str, str], target_directory: str):
+    file_mappings = {}
+    for atomid, path in locations.items():
+        try:
+            parts, supercuration_id, curation_id = decompose_chatomid(atomid)
+        except ValueError as e:
+            logger.exception(f"{__name__}: Error processing {atomid}: {e}")
+            continue
+        curation_hash = to_md5(curation_id) # hash circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
+        charter_hash = to_md5(atomid)
+        if len(parts) == 4:
+            #TODO: change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
+            target_path = f"{target_directory}/{supercuration_id}/{curation_hash}/{charter_hash}" 
+        elif len(parts) == 5:
+            target_path = f"{target_directory}/{parts[2]}/{curation_hash}/{charter_hash}"
+        file_mappings[atomid] = [path, target_path]
+    return file_mappings
+  
 
 def copy_charters_and_save_paths(file_mappings, atomids=None, amount=100):
     file_paths = {}
@@ -180,11 +186,11 @@ def copy_fonds_and_save_paths(file_mappings, atomids=None, amount=100):
             Path(target_path).mkdir(parents=True, exist_ok=True)
             shutil.copy(db_path, f"{target_path}/.FO.ead.xml")
             try:
-                assert Path(path_pref).is_file() #e.g. looking at you, AT-VLA/LandesregierungAmt/LandesregierungAmt.preferences.xml'
+                assert Path(path_pref).is_file()
+            except AssertionError as e:
+                logger.exception(f"preferences.xml not found for {db_path}: {e}")
+            else:
                 shutil.copy(path_pref, f"{target_path}/.FO.preferences.xml")
-            except AssertionError(f"preferences.xml not found for {path}"):
-                logger.exception(f"preferences.xml not found for {path}")
-                continue
             with open(f"{target_path}/FO.atom_id.txt", "w", encoding="utf-8") as f:
                 f.write(atom_id) 
             with open(f"{target_path}/FO.url.txt", "w", encoding="utf-8") as f:
@@ -198,6 +204,7 @@ if __name__ == "__main__":
         "root_dir": ".",
         "logging_dir": "{root_dir}/logging",
         "charter_dir": "{root_dir}/data/db/mom-data/metadata.charter.public",
+        #"charter_dir": "{root_dir}/data/xml-parse-test-subsets/small",
         "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
         "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
@@ -210,7 +217,7 @@ if __name__ == "__main__":
 
     # logging
     with open(f"{args.logging_dir}/config/logging.yaml", "r") as stream:
-            config = yaml.load(stream, Loader=yaml.FullLoader)
+        config = yaml.load(stream, Loader=yaml.FullLoader)
 
     logging.config.dictConfig(config)
     logger = logging.getLogger("ddp_leech_db_main")
@@ -219,19 +226,24 @@ if __name__ == "__main__":
     # directories
     Path(args.target_dir).mkdir(parents=True, exist_ok=True)
 
-    #files
+    # 1k cv charters
+    #TODO: rewrite so it more dynamically takes in a python list or any list? (and no code rewrite is necessary)
     # with open(f"{args.root_dir}/misc/1000_CVCharters/1kcv_urls.csv") as file:
     #     data = list(csv.reader(file, delimiter=","))
     #     ch_atomid_list = [url_to_chatomid(i[-1]) for i in data]
-
+    
     # charters
-    charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=100)
-    atom_id_dict = get_atomid_dict(charter_paths)
-    charter_file_mappings = get_charter_db_mapping(atom_id_dict, args.target_dir)
-    save_file_mappings(args.target_dir, "charter_atomids_2_paths", charter_file_mappings)
+    # charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=100)
+    # atom_id_dict = get_atomid_dict(charter_paths)
+    # charter_file_mappings = get_charter_db_mapping(atom_id_dict, args.target_dir)
+    # save_file_mappings(args.target_dir, "charter_atomids_2_paths", charter_file_mappings)
 
-    ch_file_paths = copy_charters_and_save_paths(charter_file_mappings, atomids=ch_atomid_list)
-    save_file_mappings(args.target_dir, "charter_atomids_2_fsdb", ch_file_paths)
+    # ch_file_paths = copy_charters_and_save_paths(charter_file_mappings, atomids=ch_atomid_list)
+    # save_file_mappings(args.target_dir, "charter_atomids_2_fsdb", ch_file_paths)
+
+    with open(f"{args.target_dir}/charter_atomids_2_fsdb.json") as jf:
+        ch_file_paths = json.load(jf)
+
     co_atomid_list, ar_atomid_list, fo_atomid_list = get_atomids_from_chatomids(list(ch_file_paths.keys()))
 
     # collections
@@ -240,7 +252,7 @@ if __name__ == "__main__":
     collection_file_mappings = get_collection_db_mapping(atom_id_dict, args.target_dir)
     save_file_mappings(args.target_dir, "collection_atomids_2_paths", collection_file_mappings)
     
-    co_file_paths = copy_collections_and_save_paths(collection_file_mappings)#, atomids=co_atomid_list)
+    co_file_paths = copy_collections_and_save_paths(collection_file_mappings, atomids=co_atomid_list)
     save_file_mappings(args.target_dir, "collection_atomids_2_fsdb", co_file_paths)
 
     # archives
@@ -260,3 +272,44 @@ if __name__ == "__main__":
 
     fo_file_paths = copy_fonds_and_save_paths(fond_file_mappings, atomids=fo_atomid_list)
     save_file_mappings(args.target_dir, "fond_atomids_2_fsdb", fo_file_paths)
+
+
+
+    # full
+    
+    # # charters
+    # charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=100)
+    # atom_id_dict = get_atomid_dict(charter_paths)
+    # charter_file_mappings = get_charter_db_mapping(atom_id_dict, args.target_dir)
+    # save_file_mappings(args.target_dir, "charter_atomids_2_paths", charter_file_mappings)
+
+    # ch_file_paths = copy_charters_and_save_paths(charter_file_mappings)
+    # save_file_mappings(args.target_dir, "charter_atomids_2_fsdb", ch_file_paths)
+    # co_atomid_list, ar_atomid_list, fo_atomid_list = get_atomids_from_chatomids(list(ch_file_paths.keys()))
+
+    # # collections
+    # collection_paths = get_path_list(args.collection_dir, ".cei.xml")
+    # atom_id_dict = get_atomid_dict(collection_paths)
+    # collection_file_mappings = get_collection_db_mapping(atom_id_dict, args.target_dir)
+    # save_file_mappings(args.target_dir, "collection_atomids_2_paths", collection_file_mappings)
+    
+    # co_file_paths = copy_collections_and_save_paths(collection_file_mappings, atomids=co_atomid_list)
+    # save_file_mappings(args.target_dir, "collection_atomids_2_fsdb", co_file_paths)
+
+    # # archives
+    # archive_paths = get_path_list(args.archive_dir, ".eag.xml")
+    # atom_id_dict = get_atomid_dict(archive_paths)
+    # archive_file_mappings = get_archive_db_mapping(atom_id_dict, args.target_dir)
+    # save_file_mappings(args.target_dir, "archive_atomids_2_paths", archive_file_mappings)
+    
+    # ar_file_paths = copy_archives_and_save_paths(archive_file_mappings, atomids=ar_atomid_list)
+    # save_file_mappings(args.target_dir, "archive_atomids_2_fsdb", ar_file_paths)
+
+    # # fonds
+    # fond_paths = get_path_list(args.fond_dir, "ead.xml")
+    # atom_id_dict = get_atomid_dict(fond_paths)
+    # fond_file_mappings = get_fond_db_mapping(atom_id_dict, args.target_dir)
+    # save_file_mappings(args.target_dir, "fond_atomids_2_paths", fond_file_mappings)
+
+    # fo_file_paths = copy_fonds_and_save_paths(fond_file_mappings, atomids=fo_atomid_list)
+    # save_file_mappings(args.target_dir, "fond_atomids_2_fsdb", fo_file_paths)
