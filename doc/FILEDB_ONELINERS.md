@@ -1,14 +1,3 @@
-
-# Count all images of given type (file-ending) recursively starting in the current
-```bash
-find . -type f -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.bmp" | wc -l
-```
-# Count all images of given type (file-ending) recursively at given level, with given maxdepth
-```bash
-find */*/*/ -maxdepth 1 -type f -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*
-.png" -o -iname "*.gif" -o -iname "*.bmp" | wc -l
-```
-
 # (WSL) Pipe all charters' atom_ids into into clipboard
 ```bash
 awk '{print $0}' */*/*/atom_id.txt | clip.exe
