@@ -31,14 +31,14 @@ import yaml
 import logging
 import logging.config
 
-from ddp_util import get_path_list, to_md5, clean_img_url, get_extension
+from ddp_util import get_path_list, to_md5, clean_img_url, clean_img_url_db, get_extension
 
 
 def get_images(paths):
     for path in paths:
         target_path = Path(f"{Path(path).parent}")
         json_file = f"{target_path}/image_urls.json"
-        
+
         # Load the existing JSON data or create an empty dictionary
         if Path(json_file).exists():
             with open(json_file, "r") as jf:
@@ -53,40 +53,70 @@ def get_images(paths):
         with open(path, mode="r") as current:
             urls = current.read().splitlines()
 
+            # Loop over the URLs
+
+            #TODO big: check downloads for skips (actual number right now too low)
+
+
             for url in urls:
-                img_url = clean_img_url(url)
-                """Some charters are still not captured, e.g., 'http://images.monasterium.net/pics/114/K.._MOM-Bilddateien._~Goettweigjpgweb._~Ausgewählte Stücke._~StAG__15150819.jpg' 
-                """
+                url_basic = url
+                url_cleaned = clean_img_url_db(url)
+                url_variants = [url_basic, url_cleaned]
 
-                if not img_url.startswith("http://") and not img_url.startswith("https://"):
-                    img_url = "http://" + img_url  # Add default 'http://' schema if missing
-                
-                try:
-                    ext = get_extension(img_url)
-                except (HTTPError, URLError, ValueError):
-                    logger.exception(f"Exception in getting extension of cleaned {img_url}, i.e., uncleaned {url} in {path}. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
-                    continue
+                # Initialize the flags
+                first_variant_successful = False
+                variant_tried = False
 
-                try:
-                    img_bytes = request.urlopen(img_url).read()
-                    md5_str = hashlib.md5(img_bytes).hexdigest()
+                # Loop over the URL variants
+                for i, v in enumerate(url_variants):
+                    if first_variant_successful:
+                        logger.info(f"Skipping second variant for {url_basic} since first variant was successful.")
+                        break
 
-                    # Check if the image has already been downloaded
-                    if f"{md5_str}.{ext}" in json_data:
-                        logger.info(f"Image {img_url} has already been downloaded.")
+                    variant_tried = True
+
+                    # Handle the URL variant
+                    if not v.startswith("http://") and not v.startswith("https://"):
+                        v = "http://" + v  # Add default 'http://' schema if missing                    
+                    try:
+                        ext = get_extension(v)
+                    except (HTTPError, URLError, ValueError):
+                        logger.exception(f"Exception in getting extension of '{v}' (variant {i}) in '{target_path}'. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
+                        continue
+                    try:
+                        img_bytes = request.urlopen(v).read()
+                    except: #(HTTPError, URLError, ValueError):
+                        logger.exception(f"Exception in requesting '{v}' (variant {i}) in '{target_path}'. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
+                        continue
+                    try:
+                        md5_str = hashlib.md5(img_bytes).hexdigest()
+
+                        # Check if the image has already been downloaded
+                        if f"{md5_str}.{ext}" in json_data:
+                            logger.info(f"Image {v} has already been downloaded.")
+                            continue
+
+                        with open(f"{target_path}/{md5_str}.{ext}", "wb") as tf:
+                            tf.write(img_bytes)
+
+                        # Update JSON data and save it to the file
+                        json_data[f"{md5_str}.{ext}"] = v
+                        with open(json_file, "w") as jf:
+                            json.dump(json_data, jf, indent=2)
+
+                        logger.info(f"Downloaded {v} into '{target_path}'.")
+                        first_variant_successful = True
+                    except (HTTPError, URLError, ValueError):
+                        logger.exception(f"Exception in downloading '{v}' (variant {i}) in '{target_path}'. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
                         continue
 
-                    with open(f"{target_path}/{md5_str}.{ext}", "wb") as tf:
-                        tf.write(img_bytes)
+                # Log a critical message if no variant was successful and the image was not already downloaded
+                if not first_variant_successful and variant_tried and f"{md5_str}.{ext}" not in json_data:
+                    logger.critical(f"No variant of {url_basic} was successful in '{target_path}'. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
 
-                    # Update JSON data and save it to the file
-                    json_data[f"{md5_str}.{ext}"] = img_url
-                    with open(json_file, "w") as jf:
-                        json.dump(json_data, jf, indent=2)
 
-                    logger.info(f"Downloaded {img_url} into '{target_path}'.")
-                except (HTTPError, URLError, ValueError):
-                    logger.exception(f"Exception in downloading cleaned {img_url}, i.e., uncleaned '{url}' in '{target_path}'. Charter atom_id: '{ch_atom_id}'. Charter url: '{ch_url}'.")
+
+
 
 
 if __name__ == "__main__":
