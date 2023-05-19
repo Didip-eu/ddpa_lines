@@ -26,15 +26,15 @@ from .namespace import chatomid_to_path
 from .util import img2imgid
 
 
-def clean_img_url(img_url):
-    img_url = quote(img_url, safe=":/?#[]@!$&'()*+,;=") # Workaround to percent-encode non-ASCII characters
+def clean_img_url_db(img_url):
+    img_url = quote(img_url, safe=':/?#[]@!$&\'()*+,;=') # Workaround to percent-encode non-ASCII characters
     return img_url
 
-# def clean_img_url(img_url):
-#     img_url = img_url.replace(" ", "%20") # not sure why
-#     img_url = img_url.rstrip('%0A') # because of this https://www.monasterium.net/mom/AT-StaLois/A/StaLois_I.A.254/charter
-#     img_url = img_url.rstrip('%20') # because of this https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
-#     return img_url
+def clean_img_url(img_url):
+    img_url = img_url.replace(" ", "%20") # not sure why
+    img_url = img_url.rstrip('%0A') # because of this https://www.monasterium.net/mom/AT-StaLois/A/StaLois_I.A.254/charter
+    img_url = img_url.rstrip('%20') # because of this https://www.monasterium.net/mom/IT-ASDRCB/Reggio/ASDRCB_PE_190/charter
+    return img_url
 
 def get_extension(img_url, timeout=10):
     ext = img_url.split(".")[-1].lower()
