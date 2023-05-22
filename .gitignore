@@ -15,6 +15,7 @@ misc/1000_CVCharters/**/failed.txt
 
 # custom atzenhofer
 data
+data_windows
 models
 didipcv.code-workspace
 misc/all_charters/
