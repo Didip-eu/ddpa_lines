@@ -7,3 +7,6 @@
 [submodule "misc/resolution_regressor"]
 	path = misc/resolution_regressor
 	url = git@github.com:anguelos/resolution_regressor.git
+[submodule "apps/ddpa_cei2json"]
+	path = apps/ddpa_cei2json
+	url = git@github.com:anguelos/ddpa_cei2json.git
