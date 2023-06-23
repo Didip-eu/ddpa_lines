@@ -1,7 +1,6 @@
 from typing import Dict, Generator, List, Union, BinaryIO
 import os
 from pathlib import Path, PurePosixPath
-from pprint import pprint
 import hashlib
 import random
 
@@ -49,7 +48,6 @@ def get_path_list(directory: str, file_extension: str, amount:float=100) -> List
     @param file_extension: specifies file type, monasterium files would be .cei.xml
     @return List with file paths
     """
-    pprint(f"Scanning {directory} for files.")
     paths = [f"{PurePosixPath(path)}" for path in get_path_generator(directory, file_extension)]
     return paths if amount == 100 else random.sample(paths, int(round(len(paths)/100*amount)))
 
