@@ -5,22 +5,26 @@ formatters:
     format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 handlers:
+
   console:
     class: logging.StreamHandler
     level: WARNING
     formatter: simple
     stream: ext://sys.stdout
+
   file_ddp_leech_db_main:
     class: logging.FileHandler
     level: DEBUG
     formatter: simple
     filename: logging/logs/ddp_leech_db_main.log
+    delay: True
+
   file_ddp_leech_db_images:
     class: logging.FileHandler
     level: DEBUG
     formatter: simple
     filename: logging/logs/ddp_leech_db_images.log
-
+    delay: True
 
 loggers:
 
@@ -28,6 +32,7 @@ loggers:
     level: DEBUG
     handlers: [console, file_ddp_leech_db_main]
     propagate: no
+
   ddp_leech_db_images:
     level: DEBUG
     handlers: [console, file_ddp_leech_db_images]

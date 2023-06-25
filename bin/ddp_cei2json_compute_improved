@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+
+"""
+work in progress
+
+This joins some functionalities as used in
+https://github.com/flamminger/2tei-validation/blob/main/src/describe_xml.py
+https://github.com/anguelos/didipcv/blob/main/notebooks/XML2PD/XML2PD.ipynb
+https://github.com/anguelos/didipcv/blob/main/notebooks/playground/playground.ipynb heading #Mapping
+
+The code should later be divided better, and parts of it should go into an actual cei.py in the ddp_util module.
+
+"""
+
+import fargv
+import bs4
+import re
+import json
+import tqdm
+from lxml import etree
+from ddp_util import get_path_list
+import re
+import os
+
+
+
+def filter_xpath(xpath):
+    """Filters an xpath by occurrence of an item order specification.
+    """
+    return re.sub(r"\[\d+\]", "", xpath)
+
+
+def extract_xpaths_from_file(file_path, truncation):
+    try:
+        tree = etree.parse(file_path)
+        elements = tree.xpath("//*")
+        xpaths = set()
+
+        for element in elements:
+            xpath = tree.getpath(element)
+            if "*" not in xpath:
+                xpaths.add(filter_xpath(xpath)) if truncation == True else xpaths.add(xpath)
+
+            attributes = element.attrib
+            for attr, value in attributes.items():
+                attr_xpath = f"{xpath}/@{attr}"
+                if "*" not in attr_xpath:
+                    xpaths.add(filter_xpath(attr_xpath)) if truncation == True else xpaths.add(xpath)
+
+        return list(xpaths)
+
+    except etree.XMLSyntaxError:
+        #print(f"Error parsing XML file: {file_path}")
+        return []
+
+    
+def extract_xpaths_from_directory(directory, truncation=True):
+    xpaths = set()
+    file_paths = []
+    for root, _, files in os.walk(directory):
+        for file_name in files:
+            if file_name.endswith("cei.xml"):
+                file_path = os.path.join(root, file_name)
+                file_paths.append(file_path)
+    
+    for file_path in file_paths:
+        xpaths.update(extract_xpaths_from_file(file_path, truncation=truncation))
+
+    return list(xpaths)
+
+
+def generate_xpath_mapping(xpath_list):
+    pass
+    
+
+p = {
+    "root_dir": ".",
+    "helpers_dir": "{root_dir}/misc/helpers",
+    "fsdb_dir": "{root_dir}/data/leech_db",
+    "cei_filename": "cei.xml",
+    "output_filename":"charter.cei2json.json"
+    }
+
+
+def parse_cei(cei_path):
+    dates = []
+
+    return {"dates":sorted(dates)}
+
+
+if __name__ == "__main__":
+    args, _ = fargv.fargv(p)
+    paths = get_path_list(args.charter_dir, args.cei_filename)
+    
+    print(len(paths))
+    
+"""     for charter_path in tqdm.tqdm(paths):
+        data = parse_cei(f"{charter_path}/{args.cei_filename}")
+        json.dump(data, open(f"{charter_path}/{args.output_filename}","w")) """
