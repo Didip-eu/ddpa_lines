@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
-
 """
-work in progress
+work in progress, together with compute_improved
+
+TODO: Do reality check on scope of actual elements; later vs. schema
 
 This joins some functionalities as used in
 https://github.com/flamminger/2tei-validation/blob/main/src/describe_xml.py
@@ -21,6 +21,7 @@ from lxml import etree
 from ddp_util import get_path_list
 import re
 import os
+import pprint
 
 
 
@@ -54,28 +55,39 @@ def extract_xpaths_from_file(file_path, truncation):
         return []
 
     
-def extract_xpaths_from_directory(directory, truncation=True):
+def extract_xpaths_from_file_paths(file_paths, truncation=True):
     xpaths = set()
-    file_paths = []
-    for root, _, files in os.walk(directory):
-        for file_name in files:
-            if file_name.endswith("cei.xml"):
-                file_path = os.path.join(root, file_name)
-                file_paths.append(file_path)
-    
     for file_path in file_paths:
         xpaths.update(extract_xpaths_from_file(file_path, truncation=truncation))
 
     return list(xpaths)
 
 
-def generate_xpath_mapping(xpath_list):
-    pass
+def create_xpath_dictionary(xpath_list, output_file):
+    xpath_dict = {}
+    sorted_xpaths = sorted(xpath_list, key=len)
+
+    for xpath in sorted_xpaths:
+        split = xpath.lstrip("/").split("/")
+        key = split[-1]
+        if key in xpath_dict:
+            xpath_dict[f"{split[-2]}/{key}"] = xpath
+        else:
+            xpath_dict[key] = xpath
     
+    output_dir = os.path.dirname(output_file)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+            
+    with open(output_file, "w") as json_file:
+        json.dump(xpath_dict, json_file, indent=4)
+    
+    return xpath_dict
+
 
 p = {
     "root_dir": ".",
-    "helpers_dir": "{root_dir}/misc/helpers",
+    "helpers_dir": "{root_dir}/data/helpers",
     "fsdb_dir": "{root_dir}/data/leech_db",
     "cei_filename": "cei.xml",
     "output_filename":"charter.cei2json.json"
@@ -90,9 +102,9 @@ def parse_cei(cei_path):
 
 if __name__ == "__main__":
     args, _ = fargv.fargv(p)
-    paths = get_path_list(args.charter_dir, args.cei_filename)
-    
-    print(len(paths))
+    paths = get_path_list(args.fsdb_dir, args.cei_filename)
+    xpaths = extract_xpaths_from_file_paths(paths)
+    xpath_dict = create_xpath_dictionary(xpaths, f"{args.helpers_dir}/mapping.json")    
     
 """     for charter_path in tqdm.tqdm(paths):
         data = parse_cei(f"{charter_path}/{args.cei_filename}")
