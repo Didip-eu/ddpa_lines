@@ -7,3 +7,5 @@ from .namespace import *
 
 #utils
 from .util import *
+
+from .dates import infer_date
