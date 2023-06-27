@@ -10,3 +10,15 @@
 [submodule "apps/ddpa_cei2json"]
 	path = apps/ddpa_cei2json
 	url = git@github.com:anguelos/ddpa_cei2json.git
+[submodule "ddpa_resolution"]
+	path = apps/resolution_regressor
+	url = git@github.com:anguelos/resolution_regressor.git
+[submodule "apps/ddpa_resolution"]
+	path = apps/ddpa_resolution
+	url = git@github.com:anguelos/resolution_regressor.git
+[submodule "apps/ddpa_seals"]
+	path = apps/ddpa_seals
+	url = git@github.com:anguelos/yolov5.git
+[submodule "apps/ddpa_dating_images"]
+	path = apps/ddpa_dating_images
+	url = git@github.com:anguelos/time_regressor.git
