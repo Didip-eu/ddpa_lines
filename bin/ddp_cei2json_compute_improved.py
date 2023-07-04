@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """ TODO (optional): Map attributes to elements with second mapping instead of long xpaths; test speeds - expectation: should be faster
+    TODO: cei.xml vs CH.cei.xml?
+    TODO: realize additional selectors, possibly with gui or other flexible mapping generator
 """
 
 import json
@@ -30,6 +32,8 @@ xpath_expressions = {
     "cei_dateRange": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:dateRange/text()",
     "cei_dateRange_ATTRIBUTE_from": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:dateRange/@from",
     "cei_dateRange_ATTRIBUTE_to": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:dateRange/@to"
+    #"all_cei_date": "//cei:date/text()",
+    #"all_cei_date_full": "//cei:date/descendant-or-self::node()/text()"
     }
 
 def parse_cei_dates(cei_path):
