@@ -6,6 +6,7 @@ from flask import Flask, jsonify, render_template, send_file
 import fargv
 from pathlib import Path
 import time
+import sys
 
 p = {
     "root":"./misc/1000_CVCharters/",
@@ -13,10 +14,13 @@ p = {
     "port":5000,
     "debug":True
 }
-args, _ = fargv.fargv(p)
+
+args, _ = fargv.fargv(p, argv=[v for v in sys.argv])  # RESPAWNING the job break fargv otherwise
+
 
 def parse_all(db_root, archive_idx, fond_idx, charter_idx, img_idx):
     img_paths = [str(p) for p in Path(db_root).glob(f'*/*/*/*.img.*')]
+
     img_idx = {p.split("/")[-1].split(".")[0]:p for p in img_paths}
     charter_paths = [str(p) for p in Path(db_root).glob(f'*/*/*')]
     charter_idx = {p.split("/")[-1]:p for p in charter_paths}
@@ -84,7 +88,7 @@ class FSDB:
         pass
 
 
-app = Flask(__name__,  template_folder=args.templates)
+app = Flask(__name__,  template_folder=p["templates"])
 app.root_path = os. getcwd()
 
 
@@ -139,13 +143,11 @@ def render_archive(md5):
     archive = Archive(archive_idx[md5])
     return render_template(f'archive.html', obj=archive)
 
-if __name__ == '__main__':
-    print(args.templates)
-    args, _ = fargv.fargv(p)
+if __name__ == '__main__':    
     start_time = time.time()
     img_idx, charter_idx, fond_idx, archive_idx, all_idx = parse_all(args.root, None, None, None, None)
     momurl2charteridx = parse_urls(charter_idx=charter_idx)
     load_time = time.time() - start_time
     print([f"http://127.0.0.1:5000/charter/{md5}" for md5 in list(charter_idx.keys())[:10]])
-    print(momurl2charteridx)
+    #print(momurl2charteridx)
     app.run(debug=args.debug, port=args.port)
