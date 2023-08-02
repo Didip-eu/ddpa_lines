@@ -28,6 +28,9 @@ WORK_SRC_DIR="/tmp"
 (cd "${WORK_SRC_DIR}/didipcv"; git submodule foreach --recursive git reset --hard) # Chat GPT told me this might be needed
 (cd "${WORK_SRC_DIR}/didipcv"; git submodule update --init --recursive)
 ```
+The last line should be there instead of pull.
+To be tested more throughly but a git pull globally should also followed by a git submodule update
+
 
 
 
