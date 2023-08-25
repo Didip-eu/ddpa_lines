@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-<<<<<<< HEAD
 """Used to extract dates from CEI files.
 Ideally this script is used to create a json file with all the dates from the CEI files and their desired outputs for dates. 
 TODO (optional): Map attributes to elements with second mapping instead of long xpaths; test speeds - expectation: should be faster
 This program is used to create a dataset of dates from the CEI files and the cropped images of the charters.
-=======
-""" TODO (optional): Map attributes to elements with second mapping instead of long xpaths; test speeds - expectation: should be faster
-    TODO: cei.xml vs CH.cei.xml?
-    TODO: realize additional selectors, possibly with gui or other flexible mapping generator
->>>>>>> 75ede8cc98f614097e6bf9ca20a9172ee2b9c174
 """
 
 import json
@@ -32,6 +26,7 @@ p = {
 
 namespaces = {"atom": "http://www.w3.org/2005/Atom",
               "cei": "http://www.monasterium.net/NS/cei"}
+              
 xpath_expressions = {
     "cei_date": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:date/text()",
     "cei_date_ATTRIBUTE_value": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:date/@value",
@@ -40,14 +35,8 @@ xpath_expressions = {
     "cei_dateRange": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:dateRange/text()",
     "cei_dateRange_ATTRIBUTE_from": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:dateRange/@from",
     "cei_dateRange_ATTRIBUTE_to": "/atom:entry/atom:content/cei:text/cei:body/cei:chDesc/cei:issued/cei:dateRange/@to"
-<<<<<<< HEAD
 }
 
-=======
-    #"all_cei_date": "//cei:date/text()",
-    #"all_cei_date_full": "//cei:date/descendant-or-self::node()/text()"
-    }
->>>>>>> 75ede8cc98f614097e6bf9ca20a9172ee2b9c174
 
 def parse_cei_dates(cei_path):
     with open(cei_path, "rb") as f:
