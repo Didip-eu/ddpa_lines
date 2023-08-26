@@ -207,7 +207,7 @@ if __name__ == "__main__":
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
         "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
         "target_dir": "{root_dir}/data/leech_db",
-        "amount": 100,
+        "amount": 100.0,
     }
 
     # params
