@@ -6,7 +6,6 @@ Clean target_directory recommended.
 """
 
 # TODO: fix permissions or make choices available in fargv for different file writing permission modes (https://stackoverflow.com/questions/5231901/permission-problems-when-creating-a-dir-with-os-makedirs-in-python)
-# optional TODO: add typed option to extend the range of leeching things (e.g., just atomids, images etc.)
 # optional TODO: add "url2path_idx_path":"{root_dir}/url2path_idx.pickle"
 # e.g.  ' https://www.monasterium.net/mom/AbbayeDeSaintBertin/0d2cc7d7-161f-425c-8878-1184145bd4b5/charter ': './tmp/data/leech/db/COLLECTIONS/AbbayeDeSaintBertin/f6cea380a393f06fa9fe517ff24877e1',
 
@@ -85,7 +84,7 @@ def get_charter_db_mapping(locations: Dict[str, str], target_directory: str):
         except ValueError as e:
             logger.exception(f"{__name__}: Error processing {atomid}: {e}")
             continue
-        curation_hash = to_md5(curation_id) # hash circumvents output bugs from misconstrued curation names (e.g., double periods; looking at you, CH-StaASG)
+        curation_hash = to_md5(curation_id)
         charter_hash = to_md5(atomid)
         if len(parts) == 4:
             #TODO: change paradigma so it is not confusing; the term _id for supercuration_id is bad here since there is no natural id
@@ -207,7 +206,8 @@ if __name__ == "__main__":
         "collection_dir": "{root_dir}/data/db/mom-data/metadata.collection.public",
         "archive_dir": "{root_dir}/data/db/mom-data/metadata.archive.public",
         "fond_dir": "{root_dir}/data/db/mom-data/metadata.fond.public",
-        "target_dir": "{root_dir}/data/leech_db"
+        "target_dir": "{root_dir}/data/leech_db",
+        "amount": 100,
     }
 
     # params
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     Path(args.target_dir).mkdir(parents=True, exist_ok=True)
 
     # charters
-    charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=100)
+    charter_paths = get_path_list(args.charter_dir, ".cei.xml", amount=args.amount)
     atom_id_dict = get_atomid_dict(charter_paths)
     charter_file_mappings = get_charter_db_mapping(atom_id_dict, args.target_dir)
     save_file_mappings(args.target_dir, "charter_atomids_2_paths", charter_file_mappings)

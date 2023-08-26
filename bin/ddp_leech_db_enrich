@@ -4,17 +4,6 @@
 Leeches .xml-files in target file structure system with the main purpose of building image urls.
 """
 
-# TODO: build image urls in enrich -> for those starting with http:// or https, take url directly; otherwise: build from parent curation base url.txt + url attribute 
-
-# TODO: # def cei charter file -> cei.xml (without atomid?); create url.txt (charter url)
-# TODO:
-    # dict: atomid of charter -> md5sum of image
-    # dict: image url/image filename -> md5sum of image
-
-
-# TODO: discuss merging two diplomatic units/images (e.g. when charter pictured in two different places)
-
-
 import os
 import random
 from pathlib import Path
@@ -35,7 +24,7 @@ from ddp_util import decompose_chatomid, get_path_generator, get_path_list
 
 
 ### Type options
-base_url_choices = Literal["archive", "collection"] #TODO: see top
+base_url_choices = Literal["archive", "collection"] # TODO: see top
 
 
 def filter_image_base_url(image_base):
@@ -52,7 +41,7 @@ def filter_image_base_url(image_base):
     ]
 
     if image_base in exceptions:
-        image_base = "Invalid"#TODO: generalize and extend this to empty strings, which are now handled in the get_image_base_urls function
+        image_base = "Invalid" #TODO: generalize and extend this to empty strings, which are now handled in the get_image_base_urls function
     return image_base
     
 
@@ -134,7 +123,6 @@ def create_image_refs(paths): #here, refs is understood as a reference to an obj
 
 def create_image_urls(paths):
     for path in paths:
-
         atom_hash = Path(path).name.split(".")[0] #or plain 2md5
         image_base_url_path = Path(f"{Path(path).parents[1]}/image_base_url.txt")
         with open(path, mode="r") as current:
@@ -168,8 +156,7 @@ if __name__ == "__main__":
 args, _ = fargv.fargv(p)
 
 #get image-refs ✓
-# fonds 
-
+## fonds 
 fond_paths = get_path_list(args.target_dir, ".FO.preferences.xml")
 image_base_dict = get_image_base_urls(fond_paths, mode="archive")
 create_image_base_url_files(image_base_dict)
