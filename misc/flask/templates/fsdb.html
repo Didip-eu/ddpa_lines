@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FSDB Rendering</title>
+  </head>
+  <body>
+    <h1>FSDB:</h1>
+    <p>Path: {{ obj.path }}</p>
+    <h2>Archives:</h2>
+    <ul>
+      {% for archive in obj.archives %}
+      <li><a href="/archive/{{archive}}">{{archive}}</a></li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Charter Rendering</title>
+  </head>
+  <body>
+    <h1>Charter:</h1>
+    <p>Path: {{obj.path}}</p>
+    <p>Fond: <a href="/fond/{{obj.fond}}">{{obj.fond}}</a></p>
+    <p>Archive: <a href="/archive/{{obj.archive}}">{{obj.archive}}</a></p>
+    <h2>Images:</h2>
+    <ul>
+      {% for image in obj.imgs %}
+      <li><a href="/image/{{image}}"><img src="/image/{{image}}" width="1000"></a></li>
+      {% endfor %}
+    </ul>
+    <p>MD5: {{ obj.md5 }}</p>
+    <p>Atom_id: {{ obj.atom_id }}</p>
+    <p>CEI:<a href="/get_cei/{{obj.md5}}">download</a></p>
+    <table>
+      <tr>
+        <td><a href="/">FSDB</a></td>
+        <td><a href="/info">info</a></td>
+      </tr>
+    </table>
+  </body>
+</html>

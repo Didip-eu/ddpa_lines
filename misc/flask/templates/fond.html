@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fond Rendering</title>
+  </head>
+  <body>
+    <h1>Fond:</h1>
+    <p>Archive: {{ obj.archive }}</p>
+    <h2>Charters:</h2>
+    <ul>
+      {% for charter in obj.charters %}
+      <li><a href="/charter/{{charter}}">{{charter}}</a></li>
+      {% endfor %}
+    </ul>
+    <p>MD5: {{ obj.md5 }}</p>
+    <p><a href="/">FSDB</a></p>
+  </body>
+</html>
