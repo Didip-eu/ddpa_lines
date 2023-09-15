@@ -19,6 +19,7 @@ data_windows
 models
 didipcv.code-workspace
 misc/all_charters/
+.vscode
 
 # Spider downloaded data
 misc/1000_Charters/url2path_idx.pickle
