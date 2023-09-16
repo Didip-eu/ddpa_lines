@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+
+import os
+import fargv
+
+def delete_files_by_prefix(directory, prefix):
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            if filename.startswith(prefix) or filename.startswith("." + prefix):
+                file_path = os.path.join(root, filename)
+                os.remove(file_path)
+
+def rename_files(directory, old_name, new_name):
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            if filename == old_name:
+                old_path = os.path.join(root, filename)
+                new_path = os.path.join(root, new_name)
+                os.rename(old_path, new_path)
+
+def delete_files_by_suffix(directory, suffix):
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            if filename.endswith(suffix):
+                file_path = os.path.join(root, filename)
+                os.remove(file_path)
+
+if __name__ == "__main__":
+    parameters = {
+        "root_dir": ".",
+        "target_dir": "{root_dir}/data/leech_db",
+    }
+
+    args, _ = fargv.fargv(parameters)
+
+    prefixes_to_delete = ["FO.", "AR.", "CO.", ".FO", ".AR", ".CO", "image_base_url.txt"]
+    for prefix in prefixes_to_delete:
+        delete_files_by_prefix(args.target_dir, prefix)
+
+    suffixes_to_delete = ["image_urls.txt", "image_refs.txt", "atomids_2_fsdb.json", "atomids_2_paths.json"]
+    for suffix in suffixes_to_delete:
+        delete_files_by_suffix(args.target_dir, suffix)
+
+    rename_files(args.target_dir, "CH.atom_id.txt", "atom_id.txt")
+    rename_files(args.target_dir, "CH.url.txt", "url.txt")
+    rename_files(args.target_dir, ".CH.cei.xml", "cei.xml")
