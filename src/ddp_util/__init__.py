@@ -9,3 +9,5 @@ from .namespace import *
 from .util import *
 
 from .dates import infer_date
+
+from . import iiif
