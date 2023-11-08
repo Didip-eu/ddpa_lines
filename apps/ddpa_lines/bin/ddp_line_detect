@@ -10,15 +10,24 @@ Note: f.i.;, the 'seals' apps has been called as follow:
     PYTHONPATH="${HOME}/htr/didipcv/src/:${DIDIP_ROOT}/apps/ddpa_seals" "${DIDIP_ROOT}/apps/ddpa_seals/bin/ddp_seals_detect" -img_paths "${FSDB_ROOT}"/*/*/*/*.img.* -weights ~/tmp/ddp_yolov5.pt -save_crops 1 -preview 0 -crop_classes='["Wr:OldText"]' 
 i
 Input:
-    "${FSDB_ROOT}"/*/*/d9ae9ea49832ed79a2238c2d87cd0765/*seals.crops/*WritableArea.jpg
+    "${FSDB_ROOT}"/*/*/d9ae9ea49832ed79a2238c2d87cd0765/*seals.crops/*OldText*.jpg
 
 Output:
     PageXML file
     
 Example call:
+
+
     curl -o ~/tmp/blla.mlmodel https://github.com/mittagessen/kraken/blob/main/kraken/blla.mlmodel
     export DIDIP_ROOT=. FSDB_ROOT=~/tmp/1000CV
-    PYTHONPATH="${HOME}/htr/didipcv/src/:${DIDIP_ROOT}/apps/ddpa_lines" ${DIDIP_ROOT}/apps/ddpa_lines/bin/ddp_line_detect -img_paths "${FSDB_ROOT}"/*/*/d9ae9ea49832ed79a2238c2d87cd0765/*seals.crops/*OldText.jpg
+    PYTHONPATH="${HOME}/htr/didipcv/src/:${DIDIP_ROOT}/apps/ddpa_lines" ${DIDIP_ROOT}/apps/ddpa_lines/bin/ddp_line_detect -img_paths "${FSDB_ROOT}"/*/*/d9ae9ea49832ed79a2238c2d87cd0765/*seals.crops/*OldText*.jpg
+
+
+TODO:
+
+- 'save' option should be save_preview, for clarity
+- add polygons to preview
+- save line polygons? No: the output of the program should be an XML file
 
 """
 
@@ -26,7 +35,7 @@ Example call:
 p = {
         "appname": "lines",
         "model_path": "/home/nicolas/tmp/blla.mlmodel",
-        "img_paths": set(["/home/nicolas/tmp/1000_CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.seals.crops/Img_WritableArea.jpg"]),
+        "img_paths": set(["/home/nicolas/tmp/1000_CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.seals.crops/OldText.jpg"]),
         "preview": False,
         "preview_delay": 0,
         "dry_run": False,
@@ -62,59 +71,45 @@ if __name__ == "__main__":
 
     for path in list( args.img_paths ):
         print( path )
-        img = Image.open( path )
+        with Image.open( path ) as img:
 
-        stem = Path( path ).stem
-        # output folder name stem is the Id part of the input image folder
-        new_img_dir_stem = re.sub(r'\..+', '',  Path( path ).parent.name )
-        page_xml_dir = Path( path ).parents[1].joinpath( f'{new_img_dir_stem}.{args.appname}.lines' )
-        page_xml_path = page_xml_dir.joinpath( f'{stem}.xml' )
+            stem = Path( path ).stem
+            # output folder name stem is the Id part of the input image folder
+            new_img_dir_stem = re.sub(r'\..+', '',  Path( path ).parent.name )
+            page_xml_dir = Path( path ).parents[1].joinpath( f'{new_img_dir_stem}.{args.appname}.lines' )
+            page_xml_path = page_xml_dir.joinpath( f'{stem}.xml' )
 
-        print("Saving into ", page_xml_path )
+            print("Saving into ", page_xml_path )
 
+            if args.dry_run:
+                continue
 
-        if args.dry_run:
-            continue
+            page_xml_dir.mkdir( exist_ok=True )
+            baseline_seg = blla.segment( img, model = model )
 
+            print(baseline_seg)
 
-        
+            if args.preview or args.save:
 
-        page_xml_dir.mkdir( exist_ok=True )
-        baseline_seg = blla.segment( img, model = model )
+                img0 = img.copy()
+                draw = ImageDraw.Draw( img0 )
 
-        print(baseline_seg)
+                for line in baseline_seg['lines']:
+                    baseline = line['baseline']
+                    draw.line( [ tuple(xy) for xy in baseline ], width=4, fill='red' )
 
+                if args.preview:
+                    img0.show()
 
-        if args.preview or args.save:
-            cv2.namedWindow("Lines")
-            cv2.resizeWindow("Lines", 1700, 800)
-            
-            img0 = img.copy()
-            draw = ImageDraw.Draw( img0 )
+                if args.save:
+                    annotated_img_path = page_xml_dir.joinpath(f'{stem}_preview.png')
+                    print("Saving annotated page image in", annotated_img_path)
+                    img0.save(annotated_img_path, "PNG" )
 
-            for line in baseline_seg['lines']:
-                baseline = line['baseline']
-                draw.line( [ tuple(xy) for xy in baseline ], width=4, fill='red' )
-                
-            if args.preview:
-                cv2.imshow("Lines", np.asarray(img0)) #, cv2.resize( img0, (1600, 850)))
-                cv2.resizeWindow("Lines", 1700, 900)
-                cv2.moveWindow("Lines", 50, 50)
-                cv2.waitKey( args.preview_delay )
+            page = serialization.serialize_segmentation(
+                    baseline_seg, image_name=img.filename,
+                    image_size=img.size, template='pagexml')
 
-            if args.save:
-                annotated_img_path = page_xml_dir.joinpath(f'{stem}_preview.png')
-                print("Saving annotated page image in", annotated_img_path)
-                cv2.imwrite( annotated_img_path, np.asarray(img0) )
+            with open( page_xml_path, 'w' ) as fp:
+                fp.write( page )
 
-
-
-        page = serialization.serialize_segmentation(
-                baseline_seg, image_name=img.filename,
-                image_size=img.size, template='pagexml')
-
-        with open( page_xml_path, 'w' ) as fp:
-            fp.write( page )
-
-    if args.preview:
-        cv2.destroyAllWindows()
