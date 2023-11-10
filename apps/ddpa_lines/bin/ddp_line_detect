@@ -39,7 +39,8 @@ p = {
         "preview": False,
         "preview_delay": 0,
         "dry_run": False,
-        "save": False,
+        "save_preview": False,
+        "show_detected": False,
 }
 
 import fargv
@@ -48,14 +49,13 @@ from kraken import serialization
 from kraken.lib import vgsl
 from PIL import Image, ImageDraw
 from pathlib import Path
-import cv2
 import numpy as np
 
 import re
+import cv2
 
 
 input_img_suffix_re = re.compile(r'\..+')
-
 
 
 def main(opt):
@@ -71,25 +71,38 @@ if __name__ == "__main__":
 
     for path in list( args.img_paths ):
         print( path )
+
+        stem = Path( path ).stem
+        # output folder name stem is the Id part of the input image folder
+        new_img_dir_stem = re.sub(r'\..+', '',  Path( path ).parent.name )
+        page_xml_dir = Path( path ).parents[1].joinpath( f'{new_img_dir_stem}.{args.appname}.lines' )
+        page_xml_path = page_xml_dir.joinpath( f'{stem}.xml' )
+        annotated_img_path = page_xml_dir.joinpath(f'{stem}_preview.png')
+
+        # no segmentation: check for any baseline preview resulting from an segmentation run
+        if args.show_detected:
+            if annotated_img_path.exists():
+                img_name = str( annotated_img_path )
+                cv2.namedWindow( img_name, cv2.WINDOW_AUTOSIZE )
+                img = cv2.imread( img_name )
+                cv2.imshow( img_name, img )
+                cv2.waitKey( args.preview_delay )
+                cv2.destroyWindow( img_name )
+            continue
+
         with Image.open( path ) as img:
-
-            stem = Path( path ).stem
-            # output folder name stem is the Id part of the input image folder
-            new_img_dir_stem = re.sub(r'\..+', '',  Path( path ).parent.name )
-            page_xml_dir = Path( path ).parents[1].joinpath( f'{new_img_dir_stem}.{args.appname}.lines' )
-            page_xml_path = page_xml_dir.joinpath( f'{stem}.xml' )
-
             print("Saving into ", page_xml_path )
 
             if args.dry_run:
                 continue
 
             page_xml_dir.mkdir( exist_ok=True )
+
             baseline_seg = blla.segment( img, model = model )
 
             print(baseline_seg)
 
-            if args.preview or args.save:
+            if args.preview or args.save_preview:
 
                 img0 = img.copy()
                 draw = ImageDraw.Draw( img0 )
@@ -99,10 +112,13 @@ if __name__ == "__main__":
                     draw.line( [ tuple(xy) for xy in baseline ], width=4, fill='red' )
 
                 if args.preview:
-                    img0.show()
+                    cv2.namedWindow( path )
+                    cv2.resizeWindow( path, 1000, 800)
+                    cv2.imgshow( path, np.asarray( img0 ))
+                    cv2.waitKey( args.preview_delay )
+                    cv2.destroyWindow( path )
 
                 if args.save:
-                    annotated_img_path = page_xml_dir.joinpath(f'{stem}_preview.png')
                     print("Saving annotated page image in", annotated_img_path)
                     img0.save(annotated_img_path, "PNG" )
 

@@ -3,7 +3,11 @@
 	-> how many such files?
 	-> 
 
-On small regions, detection is bad on inexistent. E.g. /home/nicolas/tmp/1000CV/AT-HHStA/2e90828436be83592f47900c994efced/872edc472a74ef261543112a5bb63fa6/401c70e647d34f090a0d4ee6bb5636b3.lines.lines/1.Wr_OldText_preview.png
+On small regions, detection is bad on inexistent. E.g. 
+
++ /home/nicolas/tmp/1000CV/AT-HHStA/2e90828436be83592f47900c994efced/872edc472a74ef261543112a5bb63fa6/401c70e647d34f090a0d4ee6bb5636b3.lines.lines/1.Wr_OldText_preview.png
++ /home/nicolas/tmp/1000CV/AT-HHStA/2e90828436be83592f47900c994efced/fc810126690b504a0894cbbac5c00ce1/65769383bea8db15648758239751a50a.lines.lines/7.Wr_OldText_preview.png
++ ...
 
 Harder to explain: missed lines on /home/nicolas/tmp/1000CV/AT-HHStA/2e90828436be83592f47900c994efced/eae6df6a5647337c2e0bf488c2ee8776/bf170cc3dab0262adb268b76e9c301ee.lines.lines/0.Wr_OldText_preview.png
 
