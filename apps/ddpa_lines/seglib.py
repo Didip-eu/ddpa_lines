@@ -35,61 +35,25 @@ def line_segment(img: Image.Image, model_path: str):
     return dict_to_polygons( blla.segment( img, model=vgsl.TorchVGSLModel.load_model( model_path )), img )
 
 
-# get IoU table given 2 polyg. images + binary mask + (optional: numb)
-
 # loading data and calling thisn one
 
-def get_confusion_matrix( img: Image.Image, segmentation_dict_gt, segmentation_dict_pred ) -> np.ndarray:
-    """
-    (OBSOLETE) Compute a confusion matrix for segmentation output.
 
-    Args:
-        img (Image.Image): input image.
-        segmentation_dict_gt (dict): the GT dictionary describing the lines (see above)
-        segmentation_dict_pred (dict): the inferred dictionary describing the lines, as given by the Kraken library call
-
-    Output:
-        np.ndarray: a matrix containing I/U scores for all pairs (GT polygon pi, predicted polygon pj)
-
-    """
-    lbl_count_gt, polygon_img_gt = dict_to_polygons( segmentation_dict_gt, img)
-    lbl_count_pred, polygon_img_pred = dict_to_polygons( segmentation_dict_pred, img)
-
-    # binarization matrix
-    bin_mask = cv2.threshold( cv2.cvtColor( np.array(img), cv2.COLOR_BGR2GRAY ), 0, 255, cv2.THRESH_OTSU )/255
-
-    # How many pixels in each polygon?
-    count_gt = collections.Counter( polygon_img_gt * bin_mask )
-    count_pred = collections.Counter( polygon_img_pred * bin_mask )
-
-    lbl_max = max(  lbl_count_gt, lbl_count_pred )
-    intersection_matrix = collections.Counter( (polygon_img_gt*bin_mask + (lbl_max+1)*polygon_img_pred*bin_mask).flatten().list() )
-
-    confusion_matrix = np.array((lbl_gt_count, lbl_pred_count))
-
-    for lbl_gt, lbl_pred in itertools.product( range(lbl_count_gt+1), range(lbl_count_pred+1 )):
-        intersection = intersection_matrix[ polygon_img_gt*bin_mask + (lbl_max+1)*polygon_img_pred*bin_mask ]
-        union = count_gt[ label_gt ] + count_pred[ label_pred ] - intersection
-        confusion_matrix[lbl_gt-1, lbl_pred-1]=intersection/union
-
-    return confusion_matrix
-
-
-def get_mask( img: np.ndarray ) -> np.ndarray:
+def get_mask( img: Image.Image ) -> torch.Tensor:
     """
     Compute a binary mask from an image.
 
     Args:
-        img (np.ndarray): input image 
+        img (torch.Tensor): input image 
     """
+    img = np.array( img )
     if img.shape[2]>1:
         img = cv2.cvtColor( img, cv2.COLOR_BGR2GRAY )
 
-    return cv2.threshold( img, 0, 255, cv2.THRESH_OTSU )[1] / 255
+    return torch.from_numpy( cv2.threshold( img, 0, 255, cv2.THRESH_OTSU )[1] / 255 )
 
 
 
-def get_confusion_matrix_from_arrays( polygon_img_gt: np.ndarray, polygon_img_pred: np.ndarray, mask: np.ndarray, label_counts: Tuple[int,int] ) -> np.ndarray:
+def get_confusion_matrix_from_arrays( polygon_img_gt: torch.Tensor, polygon_img_pred: torch.Tensor, mask: torch.Tensor, label_counts: Tuple[int,int] ) -> torch.Tensor:
     """
     Compute a confusion matrix for segmentation output.
 
@@ -106,15 +70,14 @@ def get_confusion_matrix_from_arrays( polygon_img_gt: np.ndarray, polygon_img_pr
 
     # 4-channel image to flat 32-bit image
     print('polygon_img_gt.shape = {}, polygon_img_pred.shape = {}'.format( polygon_img_gt.shape, polygon_img_pred.shape ))
-    polygon_img_gt=rgba_uint8_to_int32( polygon_img_gt )
-    polygon_img_pred=rgba_uint8_to_int32( polygon_img_pred )
+    polygon_img_gt=rgba_uint8_to_int32( polygon_img_gt.numpy() )
+    polygon_img_pred=rgba_uint8_to_int32( polygon_img_pred.numpy() )
     print('Collating bytes: polygon_img_gt.shape = {}, polygon_img_pred.shape = {}'.format( polygon_img_gt.shape, polygon_img_pred.shape ))
 
     # introducing tensor type here because it is hashable and can be passed to Counter,
     # but ultimately the rest of the code should use tensors too
     polygon_img_gt = torch.from_numpy( polygon_img_gt )
     polygon_img_pred = torch.from_numpy( polygon_img_pred )
-    mask = torch.from_numpy( mask )
 
     # How many pixels in each polygon?
     # Technical debt here: Counter cannot work on Numpy arrays, hence the messy writing
@@ -124,7 +87,7 @@ def get_confusion_matrix_from_arrays( polygon_img_gt: np.ndarray, polygon_img_pr
     lbl_max = max( label_counts )
     intersection_matrix = collections.Counter( list((polygon_img_gt*mask + (lbl_max+1)*polygon_img_pred*mask).flatten()) )
 
-    confusion_matrix = np.zeros((lbl_max, lbl_max))
+    confusion_matrix = torch.zeros((lbl_max, lbl_max))
 
     for lbl_gt, lbl_pred in itertools.product( range(lbl_max+1), range(lbl_max+1 )):
         intersection = intersection_matrix[ polygon_img_gt*mask + (lbl_max+1)*polygon_img_pred*mask ]
@@ -134,7 +97,7 @@ def get_confusion_matrix_from_arrays( polygon_img_gt: np.ndarray, polygon_img_pr
     return confusion_matrix
 
 
-def evaluate( cm: np.ndarray ) -> np.ndarray:
+def evaluate( cm: np.ndarray ) -> float:
 
     label_count = cm.shape[0]
     # correctly A-predictions over sum of all A predictions (=row sum)
@@ -151,7 +114,7 @@ def evaluate( cm: np.ndarray ) -> np.ndarray:
 def dummy():
     return True
 
-def dict_to_polygons( segmentation_dict: dict, img: Image.Image ) -> Tuple[int, np.ndarray]:
+def dict_to_polygons( segmentation_dict: dict, img: Image.Image ) -> Tuple[int, torch.Tensor]:
     """
         Args:
             segmentation_dict (dict): kraken's segmentation output, i.e. a dicitonary of the form::
@@ -166,7 +129,7 @@ def dict_to_polygons( segmentation_dict: dict, img: Image.Image ) -> Tuple[int, 
             img (Image.Image): the input image
 
         Output:
-            tuple: a pair with the maximum value of the line labels and the polygons rendered as a 4-channel image.
+            tuple: a pair with the maximum value of the line labels and the polygons rendered as a 4-channel image (a tensor).
 
             TODO: add shape into variable names and meaning of points
 
@@ -189,7 +152,7 @@ def dict_to_polygons( segmentation_dict: dict, img: Image.Image ) -> Tuple[int, 
     polygon_img = array_to_rgba_uint8( polygon_img )
 
     # max label + polygons as an image
-    return (len(polygon_boundaries)+1, polygon_img)
+    return (len(polygon_boundaries)+1, torch.from_numpy( polygon_img ))
 
 
 def array_to_rgba_uint8( arr: np.ndarray ) -> np.ndarray:

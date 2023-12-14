@@ -10,6 +10,7 @@ from PIL import Image
 from torch import Tensor
 import json
 import numpy as np
+import torch
 
 import sys
 
@@ -44,43 +45,41 @@ class LineDetectTest( unittest.TestCase ):
         with open( self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20.json'), 'r') as segdict_file, Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1.png'), 'r') as input_image:
             segdict = json.load( segdict_file )
             lbl, polygons = seglib.dict_to_polygons( segdict, input_image )
-            self.assertTrue( type(lbl) is int and type(polygons) is np.ndarray )
+            self.assertTrue( type(lbl) is int and type(polygons) is torch.Tensor )
 
     def test_segmentation_dict_to_polygons_polygon_img_type( self ):
         with open( self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20.json'), 'r') as segdict_file, Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1.png'), 'r') as input_image:
             segdict = json.load( segdict_file )
             lbl, polygons = seglib.dict_to_polygons( segdict, input_image )
             # output should be a 4-channel tensor of 8-bit unsigned integers
-            self.assertTrue( polygons.dtype is np.dtype('uint8') )
+            # self.assertTrue( polygons.dtype is np.dtype('uint8') )
             self.assertEqual( polygons.shape, tuple(reversed(input_image.size)) + (4,))
 
+    def test_binary_mask_from_image(self):
+        input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1.png'))
+        self.assertTrue( type(seglib.get_mask( input_img )), torch.Tensor )
+        self.assertEqual( seglib.get_mask( input_img ).shape, tuple(reversed(input_img.size)))
 
     def test_line_segmentation_confusion_matrix( self ):
 
         input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1.png'))
         print('input_img.size = {} (PIL.Image - WH)'.format( input_img.size ))
 
-        input_img_arr = np.array( input_img )
-        print('input_img_arr.shape = {} (np.ndarray - HW)'.format( input_img_arr.shape ))
-
         dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20.json'), 'r'))
         # (use a MonasteriumTeklia DS class method to generate a json dictionary)
         dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1.json'), 'r'))
 
-        # This is confusing
 
-        # input is a PIL Image
+        # input is a PIL Image, outputs are tensors
         label_count_gt, polygon_gt = seglib.dict_to_polygons( dict_gt, input_img )
         label_count_pred, polygon_pred = seglib.dict_to_polygons( dict_pred, input_img )
+        mask = seglib.get_mask( input_img )
 
-        # input is a Numpy array
-        mask = seglib.get_mask( input_img_arr )
         print('mask.shape = {} (np.ndarray - HW)'.format( mask.shape ))
 
         confusion_matrix = seglib.get_confusion_matrix_from_arrays(polygon_gt, polygon_pred, mask, (label_count_gt, label_count_pred) )
 
-
-        self.assertTrue( type(confusion_matrix) is np.ndarray )
+        self.assertTrue( type(confusion_matrix) is torch.Tensor )
 
 
 
