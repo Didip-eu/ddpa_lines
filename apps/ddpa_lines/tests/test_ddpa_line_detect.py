@@ -53,11 +53,11 @@ class LineDetectTest( unittest.TestCase ):
             lbl, polygons = seglib.dict_to_polygons( segdict, input_image )
             # output should be a 4-channel tensor of 8-bit unsigned integers
             # self.assertTrue( polygons.dtype is np.dtype('uint8') )
-            self.assertEqual( polygons.shape, tuple(reversed(input_image.size)) + (4,))
+            self.assertEqual( polygons.shape, (4,) + tuple(reversed(input_image.size)) )
 
     def test_binary_mask_from_image(self):
         input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1.png'))
-        self.assertTrue( type(seglib.get_mask( input_img )), torch.Tensor )
+        self.assertTrue( type(seglib.get_mask( input_img )), torch.BoolTensor )
         self.assertEqual( seglib.get_mask( input_img ).shape, tuple(reversed(input_img.size)))
 
     def test_line_segmentation_confusion_matrix( self ):
@@ -81,6 +81,8 @@ class LineDetectTest( unittest.TestCase ):
 
         self.assertTrue( type(confusion_matrix) is torch.Tensor )
 
+    def Dtest_visualize( self ):
+        polygon_display = seglib.polygon_display( input_img, polygon_gt, polygon_pred )
 
 
 if __name__ == "__main__":

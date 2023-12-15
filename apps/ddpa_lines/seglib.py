@@ -38,18 +38,20 @@ def line_segment(img: Image.Image, model_path: str):
 # loading data and calling thisn one
 
 
-def get_mask( img: Image.Image ) -> torch.Tensor:
+def get_mask( img_wh: Image.Image ) -> torch.Tensor:
     """
     Compute a binary mask from an image.
 
     Args:
         img (torch.Tensor): input image 
     """
-    img = np.array( img )
-    if img.shape[2]>1:
-        img = cv2.cvtColor( img, cv2.COLOR_BGR2GRAY )
+    img_hw = np.array( img_wh )
+    if img_hw.shape[2]>1:
+        img_hw = cv2.cvtColor( img_hw, cv2.COLOR_BGR2GRAY )
 
-    return torch.from_numpy( cv2.threshold( img, 0, 255, cv2.THRESH_OTSU )[1] / 255 )
+    img_bin_hw = torch.from_numpy( cv2.threshold( img_hw, 0, 255, cv2.THRESH_OTSU )[1] / 255 )
+
+    return img_bin_hw 
 
 
 
@@ -70,14 +72,14 @@ def get_confusion_matrix_from_arrays( polygon_img_gt: torch.Tensor, polygon_img_
 
     # 4-channel image to flat 32-bit image
     print('polygon_img_gt.shape = {}, polygon_img_pred.shape = {}'.format( polygon_img_gt.shape, polygon_img_pred.shape ))
-    polygon_img_gt=rgba_uint8_to_int32( polygon_img_gt.numpy() )
-    polygon_img_pred=rgba_uint8_to_int32( polygon_img_pred.numpy() )
+    polygon_img_gt=rgba_uint8_to_int32( polygon_img_gt )
+    polygon_img_pred=rgba_uint8_to_int32( polygon_img_pred )
     print('Collating bytes: polygon_img_gt.shape = {}, polygon_img_pred.shape = {}'.format( polygon_img_gt.shape, polygon_img_pred.shape ))
 
     # introducing tensor type here because it is hashable and can be passed to Counter,
     # but ultimately the rest of the code should use tensors too
-    polygon_img_gt = torch.from_numpy( polygon_img_gt )
-    polygon_img_pred = torch.from_numpy( polygon_img_pred )
+    polygon_img_gt = polygon_img_gt
+    polygon_img_pred = polygon_img_pred
 
     # How many pixels in each polygon?
     # Technical debt here: Counter cannot work on Numpy arrays, hence the messy writing
@@ -149,15 +151,17 @@ def dict_to_polygons( segmentation_dict: dict, img: Image.Image ) -> Tuple[int, 
         cv2.fillPoly( polygon_img, np.array( [polyg] ), lbl+1)
 
     # 8-bit/pixel, 4 channels (note: order is little-endian)
-    polygon_img = array_to_rgba_uint8( polygon_img )
+    polygon_img = array_to_rgba_uint8( torch.from_numpy( polygon_img ))
 
     # max label + polygons as an image
-    return (len(polygon_boundaries)+1, torch.from_numpy( polygon_img ))
+    return (len(polygon_boundaries)+1,  polygon_img )
 
 
-def array_to_rgba_uint8( arr: np.ndarray ) -> np.ndarray:
-    return arr.astype( np.uint32 ).view( np.uint8 ).reshape( arr.shape + (4,) )
+def array_to_rgba_uint8( img_hw: torch.Tensor ) -> torch.Tensor:
+    img_chw = img_hw.view( torch.uint8 ).reshape( img_hw.shape + (4,) ).permute(2,0,1)
+    return img_chw
 
 
-def rgba_uint8_to_int32( arr: np.ndarray ) -> np.ndarray:
-    return arr.view( np.int32 ).reshape( arr.shape[:-1] )
+def rgba_uint8_to_int32( img_chw: torch.Tensor ) -> torch.Tensor:
+    img_hw = img_chw.permute(1,2,0).view( torch.int32 ).reshape( img_chw.shape[1:] )
+    return img_hw
