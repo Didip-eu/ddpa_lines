@@ -21,9 +21,6 @@ import numpy.ma as ma
 import skimage as ski
 from matplotlib import pyplot as plt
 
-device = torch.device("cuda:0")
-#torch.set_default_tensor_type(device)
-
 
 RED = (255,0,0)
 GREEN = (0,255,0)
@@ -118,6 +115,16 @@ def get_confusion_matrix_from_polygon_maps(polygon_img_gt: torch.Tensor, polygon
 
     return torch.from_numpy( confusion_matrix )
 
+def get_confusion_matrix_from_polygon_maps_2(polygon_img_gt: torch.Tensor, polygon_img_pred: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+
+    # convert to flat 32-bit image
+    polygon_img_gt, polygon_img_pred = [ rgba_uint8_to_hw_tensor( polygon_img ) * mask for polygon_img in (polygon_img_gt, polygon_img_pred) ]
+    pixel_counts = union_intersection_count_two_maps_2( polygon_img_gt, polygon_img_pred )
+
+    confusion_matrix = np.ma.fix_invalid( pixel_counts[:,:,0]/pixel_counts[:,:,1] )
+
+    return torch.from_numpy( confusion_matrix )
+
 def union_intersection_count_two_maps( map_hw_1: torch.Tensor, map_hw_2: torch.Tensor) -> torch.Tensor:
     """
     Provided two label maps that each encode (potentially overlapping) polygons, compute
@@ -154,7 +161,6 @@ def retrieve_polygon_mask_from_map( label_map_hw: torch.Tensor, label: int, bina
     Args:
         label_mask_hw (torch.Tensor): a flat map with labeled polygons, with potential overlaps.
         label (int): the label to be selected.
-        binary_mask_hw (torch.Tensor): an optional binary mask, for selection of FG pixel only.
 
     Output:
         torch.Tensor: a flat, single-label map for the polygon of choice.
@@ -237,7 +243,7 @@ def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tuple[in
 
     # create 2D matrix of 32-bit integers 
     # (fillPoly() only accepts signed integers - risk of overflow is non-existent)
-    label_map = np.zeros( img.size[::-1], dtype='uintc' )
+    label_map = np.zeros( img.size[::-1], dtype='int32' )
 
     # rendering polygons 
     label = 0
@@ -256,7 +262,6 @@ def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tuple[in
     #plt.show()
 
     # max label + polygons as an image
-    print("Max value in the map =", np.max( label_map ))
     return ( label, polygon_img )
 
 def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int):
@@ -276,7 +281,7 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
 
     # only then add label to all pixels matching the polygon
     #print('label_map.dtype={}, polygon_mask.dtype={}, (polygon_mask*label).dtype={}'.format(label_map.dtype, polygon_mask.dtype, (polygon_mask*label).dtype))
-    label_map += polygon_mask.astype('uintc') * label
+    label_map += polygon_mask.astype('int32') * label
 
 
 def array_to_rgba_uint8( img_hw: np.ndarray ) -> torch.Tensor:
@@ -315,6 +320,73 @@ def recover_labels_from_map_value( px: int) -> list:
     labels.append( vl )
     return labels[::-1]
 
+def map_to_depth(map_hw: torch.Tensor) -> torch.Tensor:
+    """
+    Compute depth of the pixels in the input map, i.e. how many
+    polygons intersect on this pixel.
+    0-valued pixels have depth 1
+
+    Args:
+        map_hw (torch.Tensor): the input flat map.
+    Output:
+        torch.Tensor: a tensor of integers, where each integer represents the
+                      number of intersecting polygons for the same position
+                      in the input map.
+    """
+    layer_1 = map_hw & (map_hw < (1<<__LABEL_SIZE__))
+    layer_2 = ((map_hw >= (1<<__LABEL_SIZE__)) & (map_hw < (1<<(__LABEL_SIZE__ * 2))))*2
+    layer_3 = (map_hw >= (1<<(__LABEL_SIZE__ * 2)))*3
+
+    depth_map = layer_1 + layer_2 + layer_3
+    depth_map[ depth_map==0 ]=1
+
+    return depth_map
+
+def union_intersection_count_two_maps_2( map_hw_1: torch.Tensor, map_hw_2: torch.Tensor) -> torch.Tensor:
+    """
+    Provided two label maps that each encode (potentially overlapping) polygons, compute
+    intersection and union counts for each possible pair of labels (i,j) with i ∈  map1
+    and j ∈ map2.
+    Shared pixels in each map (i.e. overlapping polygons) have their weight decreased according
+    to the number of polygons they vote for. 
+
+    Args:
+        map_hw_1 (torch.Tensor): a flat map with labeled polygons, with potential overlaps.
+        map_hw_2 (torch.Tensor): a flat map with labeled polygons, with potential overlaps.
+
+    Output:
+        torch.Tensor: a 2 channel tensor, where each cell [i,j] stores respectively intersection and union counts
+                      for a pair of labels [i,j].
+    """
+    label_limit = 2**__LABEL_SIZE__-1
+    max_label = torch.max( torch.max( map_hw_1[ map_hw_1<=label_limit ] ), torch.max( map_hw_2[ map_hw_2<=label_limit ]  )).item()
+    # 2 channels for the intersection and union counts, respectively
+    pixel_count_tensor_hwc = torch.zeros(( max_label, max_label, 2))
+
+    for lbl1, lbl2 in itertools.product( range(1,max_label+1), range(1,max_label+1)):
+        # The intersection pixel of every label 1 of depth m with label 2 of depth n has weight 1/max(m, n)
+        # 1. Compute intersection boolean matrix, depth1 and depth2
+        # 2. Compute max_depth=max(depth1, depth2); note: for simple pixel, max_depth=1
+        # 3. divide every intersection pixel (1) by max_depth
+        # 4. Count = (label 1 ∩ label 2)
+
+        label_1_matrix, label_2_matrix = [ retrieve_polygon_mask_from_map( m, l ).type(torch.float) for (m,l) in ((map_hw_1, lbl1), (map_hw_2, lbl2)) ]
+        intersection_mask = label_1_matrix * label_2_matrix
+        depth_1, depth_2 = map_to_depth( map_hw_1), map_to_depth( map_hw_2 )
+        max_depth = torch.max( depth_1, depth_2 )
+        intersection_card = torch.sum( intersection_mask / max_depth )
+
+        label_1_card, label_2_card = torch.sum(label_1_matrix / depth_1), torch.sum(label_2_matrix / depth_2)
+
+        # union = |label 1| + |label 2| - (label 1 ∩ label 2)
+        union_card = label_1_card + label_2_card - intersection_card
+
+        pixel_count_tensor_hwc[lbl1-1, lbl2-1]=torch.tensor([ intersection_card, union_card ])
+
+    #print(pixel_count_tensor)
+    return pixel_count_tensor_hwc
+
+
 def test_map_value_for_label( px: int, label: int) -> bool:
     """
     Test whether a given label is encoded into a map pixel.
@@ -322,7 +394,7 @@ def test_map_value_for_label( px: int, label: int) -> bool:
     Args:
         vl (int): a map pixel, whose value is a number in base __LABEL_SIZE__ (with digits being 
                   labels).
-        label (int): the label to checked for.
+        label (int): the label to check for.
 
     Output:
         bool: True if the label is part of the code; False otherwise.
