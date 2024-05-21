@@ -274,6 +274,8 @@ class LineDetectTest( unittest.TestCase ):
                                   [0,0,0x304,0x304,0x304,4],
                                   [0,0,4,4,4,0],
                                   [0,0,4,4,0,0]], dtype='int32')))
+
+
     def test_polygon_mask_to_polygon_map_32b_store_large_values(self):
         """
         Storing 3 polygons with large labels (ex. 255) yields correct map (no overflow)
@@ -323,7 +325,7 @@ class LineDetectTest( unittest.TestCase ):
                                    [False, False,  True,  True,  True, False],
                                    [False, False, False, False, False, False],
                                    [False, False, False, False, False, False]])
-    
+
         self.assertTrue( torch.equal( seglib.retrieve_polygon_mask_from_map(label_map, 3), expected))
         # second call ensures that the map is not modified by the retrieval operation
         self.assertTrue( torch.equal( seglib.retrieve_polygon_mask_from_map(label_map, 3), expected))
@@ -351,14 +353,14 @@ class LineDetectTest( unittest.TestCase ):
         """
         with open( self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r') as segdict_file, Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r') as input_image:
             segdict = json.load( segdict_file )
-            lbl, polygons = seglib.dict_to_polygon_map( segdict, input_image )
-            self.assertTrue( lbl==4 and type(polygons) is torch.Tensor )
+            polygons = seglib.dict_to_polygon_map( segdict, input_image )
+            self.assertTrue( type(polygons) is torch.Tensor and torch.max(polygons)==4)
 
 
     def test_segmentation_dict_to_polygon_map_polygon_img_type( self ):
         with open( self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r') as segdict_file, Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r') as input_image:
             segdict = json.load( segdict_file )
-            lbl, polygons = seglib.dict_to_polygon_map( segdict, input_image )
+            polygons = seglib.dict_to_polygon_map( segdict, input_image )
             self.assertEqual( polygons.shape, (4,)+input_image.size[::-1])
 
     def test_union_intersection_count_two_maps( self ):
@@ -397,22 +399,22 @@ class LineDetectTest( unittest.TestCase ):
         u31, u32, u33, u34 = c3l+c1r-i31, c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34
         u41, u42, u43, u44 = c4l+c1r-i41, c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44
 
-        expected =    torch.tensor([[[ i11, u11],  # 1,1 
-                           [ i12, u12],  # 1,2 
-                           [ i13, u13],  # 1,3 
-                           [ i14, u14]], # 1,4 
-                          [[ i21, u21],  # 2,1 
-                           [ i22, u22],  # 2,2 
-                           [ i23, u23],  # 2,3 
-                           [ i24, u24]], # 2,4 
-                          [[ i31, u31],  # 3,1 
-                           [ i32, u32],  # ...
-                           [ i33, u33],
-                           [ i34, u34]], # 3,4
-                          [[ i41, u41],  # 4,1
-                           [ i42, u42],  # ...
-                           [ i43, u43],
-                           [ i44, u44]]]) # 4,4
+        expected =    torch.tensor([[[ i11, u11],  # 1,1
+                                     [ i12, u12],  # 1,2
+                                     [ i13, u13],  # 1,3
+                                     [ i14, u14]], # 1,4
+                                    [[ i21, u21],  # 2,1
+                                     [ i22, u22],  # 2,2
+                                     [ i23, u23],  # 2,3
+                                     [ i24, u24]], # 2,4
+                                    [[ i31, u31],  # 3,1
+                                     [ i32, u32],  # ...
+                                     [ i33, u33],
+                                     [ i34, u34]], # 3,4
+                                    [[ i41, u41],  # 4,1
+                                     [ i42, u42],  # ...
+                                     [ i43, u43],
+                                     [ i44, u44]]]) # 4,4
 
         # Note: we're comparing float value here
         self.assertTrue( torch.all(torch.isclose( pixel_count, expected )))
@@ -472,9 +474,7 @@ class LineDetectTest( unittest.TestCase ):
                               [0, 0, 0, 0, 0, 0],
                               [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
-        mask = torch.full( map1.shape[1:], 1, dtype=torch.bool ) 
-
-        confusion_matrix = seglib.get_confusion_matrix_from_polygon_maps(map1,map2, mask)
+        confusion_matrix = seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
 
         self.assertEqual( confusion_matrix.dtype, torch.float32 )
         self.assertFalse( torch.all( confusion_matrix == 0 ))
@@ -486,6 +486,139 @@ class LineDetectTest( unittest.TestCase ):
                   [0., 0.03076624851153388, 0.538457988138370, 0.2641481665968551],
                   [0., 0.049503068322907566, 0.33898081010444103, 0.7096764828273641]], dtype=torch.float32), 1e-4)))
 
+    def test_line_segmentation_confusion_matrix_wrong_gt_type( self ):
+        """
+        On an actual, only a few sanity checks for testing
+        """
+        map1 = torch.tensor([[2,2,2,0,0,0],
+                             [2,2,2,0,0,0],
+                             [2,2,0x20304,0x304,4,0],
+                             [0,0,0x304,0x304,0x304,4],
+                             [0,0,4,4,4,0],
+                             [0,0,4,0x402,0,0]], dtype=torch.int)
+
+        map2 = torch.tensor([[[0, 2, 2, 0, 0, 0],
+                              [2, 2, 4, 2, 2, 0],
+                              [2, 2, 4, 4, 4, 0],
+                              [0, 3, 4, 4, 4, 4],
+                              [0, 0, 3, 4, 4, 0],
+                              [0, 0, 4, 4, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 3, 3, 0, 0],
+                              [0, 0, 3, 3, 3, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 2, 0, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 2, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
+
+        with self.assertRaises( TypeError ):
+            seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
+
+    def test_line_segmentation_confusion_matrix_wrong_pred_type( self ):
+        """
+        On an actual, only a few sanity checks for testing
+        """
+
+        map1 = torch.tensor([[[0, 2, 2, 0, 0, 0],
+                              [2, 2, 4, 2, 2, 0],
+                              [2, 2, 4, 4, 4, 0],
+                              [0, 3, 4, 4, 4, 4],
+                              [0, 0, 3, 4, 4, 0],
+                              [0, 0, 4, 4, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 3, 3, 0, 0],
+                              [0, 0, 3, 3, 3, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 2, 0, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 2, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
+
+        map2 = torch.tensor([[2,2,2,0,0,0],
+                             [2,2,2,0,0,0],
+                             [2,2,0x20304,0x304,4,0],
+                             [0,0,0x304,0x304,0x304,4],
+                             [0,0,4,4,4,0],
+                             [0,0,4,0x402,0,0]], dtype=torch.int)
+
+        with self.assertRaises( TypeError ):
+            seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
+
+
+    def test_line_segmentation_confusion_matrix_different_map_shapes( self ):
+        """
+        On an actual, only a few sanity checks for testing
+        """
+        map1 = torch.tensor([[[2, 2, 2, 0, 0, 0],
+                              [2, 2, 2, 0, 0, 0],
+                              [2, 2, 4, 4, 4, 0],
+                              [0, 0, 4, 4, 4, 4],
+                              [0, 0, 4, 2, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 3, 3, 0, 0],
+                              [0, 0, 3, 3, 3, 0],
+                              [0, 0, 0, 4, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 2, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
+
+        map2 = torch.tensor([[[0, 2, 2, 0, 0, 0],
+                              [2, 2, 4, 2, 2, 0],
+                              [2, 2, 4, 4, 4, 0],
+                              [0, 3, 4, 4, 4, 4],
+                              [0, 0, 3, 4, 4, 0],
+                              [0, 0, 4, 4, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 3, 3, 0, 0],
+                              [0, 0, 3, 3, 3, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 2, 0, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 2, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]],
+                             [[0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
+
+        with self.assertRaises( TypeError ):
+            seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
+
     def test_line_segmentation_confusion_matrix_realistic( self ):
         """
         On an actual image, only a few sanity checks for testing
@@ -494,12 +627,30 @@ class LineDetectTest( unittest.TestCase ):
         dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
         dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
 
-        label_count_gt, polygon_gt = seglib.dict_to_polygon_map( dict_gt, input_img )
-        label_count_pred, polygon_pred = seglib.dict_to_polygon_map( dict_pred, input_img )
-        mask = seglib.get_mask( input_img )
+        polygon_gt = seglib.dict_to_polygon_map( dict_gt, input_img )
+        polygon_pred = seglib.dict_to_polygon_map( dict_pred, input_img )
+        binary_mask = seglib.get_mask( input_img )
 
-        confusion_matrix = seglib.get_confusion_matrix_from_polygon_maps(polygon_gt, polygon_pred, mask)
+        confusion_matrix = seglib.get_confusion_matrix_from_polygon_maps(polygon_gt, polygon_pred, binary_mask)
         #torch.save( confusion_matrix, self.data_path.joinpath('confusion_matrix.pt') )
+
+        self.assertEqual( confusion_matrix.dtype, torch.float32 )
+        self.assertFalse( torch.all( confusion_matrix == 0 ))
+        self.assertTrue(
+        confusion_matrix[0,0]>confusion_matrix[0,1] and
+        confusion_matrix[1,1]>confusion_matrix[1,0] and confusion_matrix[1,2] and
+        confusion_matrix[2,2]>confusion_matrix[2,1] and confusion_matrix[2,3] and
+        confusion_matrix[3,3]>confusion_matrix[3,2] )
+
+    def test_line_segmentation_confusion_matrix_from_img_json( self ):
+        """
+        On an actual image, only a few sanity checks for testing
+        """
+        input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+        dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
+        dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
+
+        confusion_matrix = seglib.get_confusion_matrix_from_img_json(input_img, dict_gt, dict_pred)
 
         self.assertEqual( confusion_matrix.dtype, torch.float32 )
         self.assertFalse( torch.all( confusion_matrix == 0 ))

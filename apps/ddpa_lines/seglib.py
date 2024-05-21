@@ -21,12 +21,6 @@ import numpy.ma as ma
 import skimage as ski
 from matplotlib import pyplot as plt
 
-
-RED = (255,0,0)
-GREEN = (0,255,0)
-YELLOW = (0,255,255)
-BLUE = (0,0,255)
-
 __LABEL_SIZE__=8
 
 def line_segment(img: Image.Image, model_path: str):
@@ -45,58 +39,7 @@ def line_segment(img: Image.Image, model_path: str):
     return dict_to_polygon_map( blla.segment( img, model=vgsl.TorchVGSLModel.load_model( model_path )), img )
 
 
-def get_mask( img_whc: Image.Image, thresholding_alg: Callable=ski.filters.threshold_otsu ) -> torch.Tensor:
-    """
-    Compute a binary mask from an image, using the given thresholding algorithm: FG=1s, BG=0s
-
-    Args:
-        img (PIL image): input image
-    Output:
-        torch.Tensor: a binary map with FG pixels=1 and BG=0.
-    """
-    img_hwc= np.array( img_whc )
-    threshold = thresholding_alg( ski.color.rgb2gray( img_hwc) if img_hwc.shape[2]>1 else img_hwc )*255
-    img_bin_hw = torch.tensor( (img_hwc < threshold)[:,:,0], dtype=torch.bool )
-
-    return img_bin_hw
-
-
-def get_confusion_matrix_from_polygon_maps(polygon_img_gt: torch.Tensor, polygon_img_pred: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-
-    # convert to flat 32-bit image
-    polygon_img_gt, polygon_img_pred = [ rgba_uint8_to_hw_tensor( polygon_img ) * mask for polygon_img in (polygon_img_gt, polygon_img_pred) ]
-    pixel_counts = union_intersection_count_two_maps( polygon_img_gt, polygon_img_pred )
-
-    confusion_matrix = np.ma.MaskedArray( pixel_counts[:,:,0]/pixel_counts[:,:,1], fill_value=0.0 )
-
-    return torch.from_numpy( np.ma.fix_invalid(confusion_matrix) )
-
-def retrieve_polygon_mask_from_map( label_map_hw: torch.Tensor, label: int, binary_mask_hw: torch.Tensor=None) -> torch.Tensor:
-    """
-    From a label map (that may have compound pixels representing polygon intersections),
-    compute a binary mask that covers _all_ pixels for the label, whether they belong to an
-    intersection or not.
-
-    Args:
-        label_mask_hw (torch.Tensor): a flat map with labeled polygons, with potential overlaps.
-        label (int): the label to be selected.
-
-    Output:
-        torch.Tensor: a flat, single-label map for the polygon of choice.
-    """
-    label_map_np = label_map_hw.numpy()
-    label_bitmask = 2**__LABEL_SIZE__-1
-    polygon_mask_hw = np.zeros( label_map_np.shape, dtype='bool')
-    # maximum number of intersecting labels for a single pixel
-    # (determine how many times we r-shift the values)
-    DEPTH = 3
-    for d in range(DEPTH):
-        polygon_mask_hw += ((label_map_np >> (__LABEL_SIZE__ * d)) & label_bitmask) == label
-
-    return torch.tensor( polygon_mask_hw )
-
-
-def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tuple[int, torch.Tensor]:
+def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> torch.Tensor:
     """
     Store line polygons into a tensor, as pixel maps.
 
@@ -113,20 +56,18 @@ def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tuple[in
         img (Image.Image): the input image
 
     Output:
-            tuple: a pair with the maximum value of the line labels and the polygons rendered as a 4-channel image (a tensor).
+        torch.Tensor: the polygons rendered as a 4-channel image (a tensor).
     """
     polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
 
-    # create 2D matrix of 32-bit integers 
+    # create 2D matrix of 32-bit integers
     # (fillPoly() only accepts signed integers - risk of overflow is non-existent)
     label_map = np.zeros( img.size[::-1], dtype='int32' )
 
-    # rendering polygons 
-    label = 0
+    # rendering polygons
     for lbl, polyg in enumerate( polygon_boundaries ):
-        label = lbl+1
         polyg_mask = ski.draw.polygon2mask( img.size[::-1], polyg )
-        apply_polygon_mask_to_map( label_map, polyg_mask, label )
+        apply_polygon_mask_to_map( label_map, polyg_mask, lbl+1 )
 
     #ski.io.imshow( polygon_img.transpose() )
 
@@ -135,7 +76,7 @@ def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tuple[in
     #ski.io.imshow( polygon_img.permute(1,2,0).numpy() )
 
     # max label + polygons as an image
-    return ( label, polygon_img )
+    return polygon_img
 
 def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int):
     """
@@ -187,27 +128,105 @@ def rgba_uint8_to_hw_tensor( img_chw: torch.Tensor ) -> torch.Tensor:
     return img_hw
 
 
-def map_to_depth(map_hw: torch.Tensor) -> torch.Tensor:
+
+def get_confusion_matrix_from_img_json(img: Image.Image, segmentation_dict_gt: dict, segmentation_dict_pred: dict, binary_mask: torch.Tensor=None):
     """
-    Compute depth of the pixels in the input map, i.e. how many polygons intersect on this pixel.
-    Note: 0-valued pixels have depth 1.
+    Compute a confusion matrix from an image and two dictionaries describing the segmentation's output (line polygons).
 
     Args:
-        map_hw (torch.Tensor): the input flat map (32-bit integers).
+        img (Image.Image): the input page, needed for the size information and the binarization mask.
+        segmentation_dict_pred (dict): a dictionary, typically constructed from a JSON file.
+        segmentation_dict_gt (dict): a dictionary, typically constructed from a JSON file.
+    Output:
+        torch.Tensor: a 2D array, representing I/U values for each possible pair of polygons.
+    """
+    #polygon_img_gt: torch.Tensor, polygon_img_pred: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    polygon_chw_gt, polygon_chw_pred = [ dict_to_polygon_map( d,img ) for d in (segmentation_dict_gt, segmentation_dict_pred) ]
+
+    binary_mask = get_mask( img )
+
+    return get_confusion_matrix_from_polygon_maps( polygon_chw_gt, polygon_chw_pred, binary_mask )
+
+
+
+def get_confusion_matrix_from_polygon_maps(polygon_chw_gt: torch.Tensor, polygon_chw_pred: torch.Tensor, binary_hw_mask: torch.Tensor=None) -> torch.Tensor:
+    """
+    Compute a confusion matrix from two tensors that each encode (potentially overlapping) polygons
+    and a binarized map.
+
+    Args:
+        polygon_chw_gt (torch.Tensor): a 4-channel image, where each position may store up to 4 overlapping labels
+                        i              (one for each channel)
+        polygon_chw_pred (torch.Tensor): a 4-channel image, where each position may store up to 4 overlapping labels
+                                         (one for each channel)
+        binary_hw_mask (torch.Tensor): a boolean mask that selects the input image's FG pixel
 
     Output:
-        torch.Tensor: a tensor of integers, where each value represents the
-                      number of intersecting polygons for the same position
-                      in the input map.
+        torch.Tensor: I/U values for each possible pair of labels (i,j) with i ∈  map1 and j ∈ map2. Shared pixels
+                      in each map (i.e. overlapping polygons) have their weight decreased according to the number
+                      of polygons they vote for.
     """
-    layer_1 = map_hw & (map_hw < (1<<__LABEL_SIZE__))
-    layer_2 = ((map_hw >= (1<<__LABEL_SIZE__)) & (map_hw < (1<<(__LABEL_SIZE__ * 2))))*2
-    layer_3 = (map_hw >= (1<<(__LABEL_SIZE__ * 2)))*3
 
-    depth_map = layer_1 + layer_2 + layer_3
-    depth_map[ depth_map==0 ]=1
+    if binary_hw_mask is None:
+        binary_hw_mask = torch.full( polygon_chw_gt.shape[1:], 1, dtype=torch.bool )
+    if binary_hw_mask.shape != polygon_chw_gt.shape[1:]:
+        raise TypeError("Wrong type: binary mask should have shape {}".format(polygon_chw_gt.shape[1:]))
 
-    return depth_map
+    if len(polygon_chw_gt.shape) != 3 or polygon_chw_gt.shape[0] != 4 or polygon_chw_gt.dtype is not torch.uint8:
+        raise TypeError("Wrong type: polygon GT map should be a 4-channel tensor of unsigned 8-bit integers.")
+    if len(polygon_chw_pred.shape) != 3 or polygon_chw_pred.shape[0] != 4 or polygon_chw_pred.dtype is not torch.uint8:
+        raise TypeError("Wrong type: polygon predicted map should be a 4-channel tensor of unsigned 8-bit integers.")
+    if polygon_chw_gt.shape != polygon_chw_pred.shape:
+        raise TypeError("Wrong type: both maps should have the same shape (got {} and {}).".format( polygon_chw_gt.shape, polygon_chw_pred.shape ))
+
+    # convert to flat 32-bit image
+    polygon_chw_gt, polygon_chw_pred = [ rgba_uint8_to_hw_tensor( polygon_img ) * binary_hw_mask for polygon_img in (polygon_chw_gt, polygon_chw_pred) ]
+    pixel_counts = union_intersection_count_two_maps( polygon_chw_gt, polygon_chw_pred )
+
+    confusion_matrix = np.ma.MaskedArray( pixel_counts[:,:,0]/pixel_counts[:,:,1], fill_value=0.0 )
+
+    return torch.from_numpy( np.ma.fix_invalid(confusion_matrix) )
+
+def get_mask( img_whc: Image.Image, thresholding_alg: Callable=ski.filters.threshold_otsu ) -> torch.Tensor:
+    """
+    Compute a binary mask from an image, using the given thresholding algorithm: FG=1s, BG=0s
+
+    Args:
+        img (PIL image): input image
+    Output:
+        torch.Tensor: a binary map with FG pixels=1 and BG=0.
+    """
+    img_hwc= np.array( img_whc )
+    threshold = thresholding_alg( ski.color.rgb2gray( img_hwc) if img_hwc.shape[2]>1 else img_hwc )*255
+    img_bin_hw = torch.tensor( (img_hwc < threshold)[:,:,0], dtype=torch.bool )
+
+    return img_bin_hw
+
+def retrieve_polygon_mask_from_map( label_map_hw: torch.Tensor, label: int, binary_mask_hw: torch.Tensor=None) -> torch.Tensor:
+    """
+    From a label map (that may have compound pixels representing polygon intersections),
+    compute a binary mask that covers _all_ pixels for the label, whether they belong to an
+    intersection or not.
+
+    Args:
+        label_mask_hw (torch.Tensor): a flat map with labeled polygons, with potential overlaps.
+        label (int): the label to be selected.
+
+    Output:
+        torch.Tensor: a flat, single-label map for the polygon of choice.
+    """
+    if len(label_map_hw.shape) > 2:
+        raise TypeError("Wrong type: label map should be a flat map (shape={} instead).".format( label_map_hw.shape ))
+    label_map_np = label_map_hw.numpy()
+    label_bitmask = 2**__LABEL_SIZE__-1
+    polygon_mask_hw = np.zeros( label_map_np.shape, dtype='bool')
+    # maximum number of intersecting labels for a single pixel
+    # (determine how many times we r-shift the values)
+    DEPTH = 3
+    for d in range(DEPTH):
+        polygon_mask_hw += ((label_map_np >> (__LABEL_SIZE__ * d)) & label_bitmask) == label
+
+    return torch.tensor( polygon_mask_hw )
 
 def union_intersection_count_two_maps( map_hw_1: torch.Tensor, map_hw_2: torch.Tensor) -> torch.Tensor:
     """
@@ -251,7 +270,29 @@ def union_intersection_count_two_maps( map_hw_1: torch.Tensor, map_hw_2: torch.T
     return pixel_count_tensor_hwc
 
 
-def evaluate( cm: np.ndarray ) -> float:
+def map_to_depth(map_hw: torch.Tensor) -> torch.Tensor:
+    """
+    Compute depth of the pixels in the input map, i.e. how many polygons intersect on this pixel.
+    Note: 0-valued pixels have depth 1.
+
+    Args:
+        map_hw (torch.Tensor): the input flat map (32-bit integers).
+
+    Output:
+        torch.Tensor: a tensor of integers, where each value represents the
+                      number of intersecting polygons for the same position
+                      in the input map.
+    """
+    layer_1 = map_hw & (map_hw < (1<<__LABEL_SIZE__))
+    layer_2 = ((map_hw >= (1<<__LABEL_SIZE__)) & (map_hw < (1<<(__LABEL_SIZE__ * 2))))*2
+    layer_3 = (map_hw >= (1<<(__LABEL_SIZE__ * 2)))*3
+
+    depth_map = layer_1 + layer_2 + layer_3
+    depth_map[ depth_map==0 ]=1
+
+    return depth_map
+
+def evaluate( confusion_matrix: torch.Tensor ) -> float:
 
     label_count = cm.shape[0]
     # correctly A-predictions over sum of all A predictions (=row sum)
