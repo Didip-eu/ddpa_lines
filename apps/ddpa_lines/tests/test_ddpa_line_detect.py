@@ -384,43 +384,79 @@ class LineDetectTest( unittest.TestCase ):
                           [0,0,3,4,4,0],
                           [0,0,0x204,4,0,0]], dtype=torch.int)
 
-        pixel_count = seglib.union_intersection_count_two_maps( map1, map2 )
+        pixel_count = seglib.get_metrics_two_maps( map1, map2 )[:,:,:2]
 
-        c1l,c1r = 0,0
         c2l, c2r = 8+1/3+.5, 8+1/3+.5
         c3l, c3r = 1/3+.5*4, 1/3+2+.5*4
         c4l, c4r = 1/3+5*.5+6, 1/3+5*.5+6
-        i11, i12, i13, i14 = 0, 0, 0, 0
-        i21, i22, i23, i24 = 0, 6+1/3, 1/3, 1+1/3+.5
-        i31, i32, i33, i34 = 0, 1/3, 1/3+.5*4, 1/3+.5*4
-        i41, i42, i43, i44 = 0, 1/3+.5, 1/3+.5*4+1, 1/3+.5*6+4
-        u11, u12, u13, u14 = c1l+c1r-i11, c1l+c2r-i12, c1l+c3r-i13, c1l+c4r-i14
-        u21, u22, u23, u24 = c2l+c1r-i21, c2l+c2r-i22, c2l+c3r-i23, c2l+c4r-i24
-        u31, u32, u33, u34 = c3l+c1r-i31, c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34
-        u41, u42, u43, u44 = c4l+c1r-i41, c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44
+        i22, i23, i24 = 6+1/3, 1/3, 1+1/3+.5
+        i32, i33, i34 = 1/3, 1/3+.5*4, 1/3+.5*4
+        i42, i43, i44 = 1/3+.5, 1/3+.5*4+1, 1/3+.5*6+4
+        u22, u23, u24 = c2l+c2r-i22, c2l+c3r-i23, c2l+c4r-i24
+        u32, u33, u34 = c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34
+        u42, u43, u44 = c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44
 
-        expected =    torch.tensor([[[ i11, u11],  # 1,1
-                                     [ i12, u12],  # 1,2
-                                     [ i13, u13],  # 1,3
-                                     [ i14, u14]], # 1,4
-                                    [[ i21, u21],  # 2,1
-                                     [ i22, u22],  # 2,2
-                                     [ i23, u23],  # 2,3
-                                     [ i24, u24]], # 2,4
-                                    [[ i31, u31],  # 3,1
-                                     [ i32, u32],  # ...
-                                     [ i33, u33],
-                                     [ i34, u34]], # 3,4
-                                    [[ i41, u41],  # 4,1
-                                     [ i42, u42],  # ...
-                                     [ i43, u43],
-                                     [ i44, u44]]]) # 4,4
+        expected =    np.array([[[ i22, u22],  # 2,2
+                                 [ i23, u23],  # 2,3
+                                 [ i24, u24]], # 2,4
+                                [[ i32, u32],  # ...
+                                 [ i33, u33],
+                                 [ i34, u34]], # 3,4
+                                [[ i42, u42],  # ...
+                                 [ i43, u43],
+                                 [ i44, u44]]]) # 4,4
 
         # Note: we're comparing float value here
-        self.assertTrue( torch.all(torch.isclose( pixel_count, expected )))
+        self.assertTrue( np.all(np.isclose( pixel_count, expected )))
+
+    def test_precision_recall_two_maps( self ):
+        """
+        Provided two label maps that each encode (potentially overlapping) polygons, yield 
+        intersection and union counts for each possible pair of labels (i,j) with i ∈  map1
+        and j ∈ map2.
+        Shared pixels in each map (i.e. overlapping polygons) are counted independently for each polygon.
+        """
+        map1 = torch.tensor([[2,2,2,0,0,0],
+                          [2,2,2,0,0,0],
+                          [2,2,0x20304,0x304,4,0],
+                          [0,0,0x304,0x304,0x304,4],
+                          [0,0,4,4,4,0],
+                          [0,0,4,0x402,0,0]], dtype=torch.int)
+
+        map2 = torch.tensor( [[0,2,2,0,0,0],
+                          [2,2,4,2,2,0],
+                          [2,2,0x20304,0x304,4,0],
+                          [0,3,0x304,0x304,0x304,4],
+                          [0,0,3,4,4,0],
+                          [0,0,0x204,4,0,0]], dtype=torch.int)
+
+        precision_recall = seglib.get_metrics_two_maps( map1, map2 )[:,:,2:]
+
+        c2l, c2r = 8+1/3+.5, 8+1/3+.5
+        c3l, c3r = 1/3+.5*4, 1/3+2+.5*4
+        c4l, c4r = 1/3+5*.5+6, 1/3+5*.5+6
+        i22, i23, i24 = 6+1/3, 1/3, 1+1/3+.5
+        i32, i33, i34 = 1/3, 1/3+.5*4, 1/3+.5*4
+        i42, i43, i44 = 1/3+.5, 1/3+.5*4+1, 1/3+.5*6+4
+        u22, u23, u24 = c2l+c2r-i22, c2l+c3r-i23, c2l+c4r-i24
+        u32, u33, u34 = c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34
+        u42, u43, u44 = c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44
+
+        expected =    np.array([[[ i22/(c2r), i22/(c2l)],  # 2,2
+                                 [ i23/(c3r), i23/(c2l)],  # 2,3
+                                 [ i24/(c4r), i24/(c2l)]], # 2,4
+                                [[ i32/(c2r), i32/(c3l)],  # ...
+                                 [ i33/(c3r), i33/(c3l)],
+                                 [ i34/(c4r), i34/(c3l)]], # 3,4
+                                [[ i42/(c2r), i42/(c4l)],  # ...
+                                 [ i43/(c3r), i43/(c4l)],
+                                 [ i44/(c4r), i44/(c4l)]]]) # 4,4
+
+        # Note: we're comparing float value here
+        self.assertTrue( np.all(np.isclose( precision_recall, expected, 1e-4 )))
 
 
-    def test_line_segmentation_confusion_matrix( self ):
+    def test_line_segmentation_iou_matrix( self ):
         """
         On an actual, only a few sanity checks for testing
         """
@@ -474,19 +510,19 @@ class LineDetectTest( unittest.TestCase ):
                               [0, 0, 0, 0, 0, 0],
                               [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
-        confusion_matrix = seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
+        pixel_counts = seglib.get_metrics_from_polygon_maps(map1,map2)[:,:,:2]
+        iou_matrix = np.ma.MaskedArray( pixel_counts[:,:,0]/pixel_counts[:,:,1], fill_value=0.0 )
 
-        self.assertEqual( confusion_matrix.dtype, torch.float32 )
-        self.assertFalse( torch.all( confusion_matrix == 0 ))
+        self.assertEqual( iou_matrix.dtype, np.float64 )
+        self.assertFalse( np.all( iou_matrix == 0 ))
 
-        self.assertTrue( torch.all( confusion_matrix.isclose(
-            torch.tensor(
-                 [[0., 0., 0., 0. ],
-                  [0., 0.5588222318300937, 0.025971496029859816, 0.1157876121844467],
-                  [0., 0.03076624851153388, 0.538457988138370, 0.2641481665968551],
-                  [0., 0.049503068322907566, 0.33898081010444103, 0.7096764828273641]], dtype=torch.float32), 1e-4)))
+        self.assertTrue( np.all( np.isclose( iou_matrix,
+            np.array(
+                 [[0.5588222318300937, 0.025971496029859816, 0.1157876121844467],
+                  [0.03076624851153388, 0.538457988138370, 0.2641481665968551],
+                  [0.049503068322907566, 0.33898081010444103, 0.7096764828273641]], dtype=np.float64), 1e-4)))
 
-    def test_line_segmentation_confusion_matrix_wrong_gt_type( self ):
+    def test_get_metrics_wrong_gt_type( self ):
         """
         On an actual, only a few sanity checks for testing
         """
@@ -523,9 +559,9 @@ class LineDetectTest( unittest.TestCase ):
                               [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
         with self.assertRaises( TypeError ):
-            seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
+            seglib.get_metrics_from_polygon_maps(map1,map2)
 
-    def test_line_segmentation_confusion_matrix_wrong_pred_type( self ):
+    def test_get_metrics_wrong_pred_type( self ):
         """
         On an actual, only a few sanity checks for testing
         """
@@ -563,10 +599,10 @@ class LineDetectTest( unittest.TestCase ):
                              [0,0,4,0x402,0,0]], dtype=torch.int)
 
         with self.assertRaises( TypeError ):
-            seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
+            seglib.get_metrics_two_maps(map1,map2)
 
 
-    def test_line_segmentation_confusion_matrix_different_map_shapes( self ):
+    def test_get_metrics_different_map_shapes( self ):
         """
         On an actual, only a few sanity checks for testing
         """
@@ -617,9 +653,9 @@ class LineDetectTest( unittest.TestCase ):
                               [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
         with self.assertRaises( TypeError ):
-            seglib.get_confusion_matrix_from_polygon_maps(map1,map2)
+            seglib.get_metrics_from_polygon_maps(map1,map2)
 
-    def test_line_segmentation_confusion_matrix_realistic( self ):
+    def test_get_iou_matrix_realistic( self ):
         """
         On an actual image, only a few sanity checks for testing
         """
@@ -631,18 +667,19 @@ class LineDetectTest( unittest.TestCase ):
         polygon_pred = seglib.dict_to_polygon_map( dict_pred, input_img )
         binary_mask = seglib.get_mask( input_img )
 
-        confusion_matrix = seglib.get_confusion_matrix_from_polygon_maps(polygon_gt, polygon_pred, binary_mask)
-        #torch.save( confusion_matrix, self.data_path.joinpath('confusion_matrix.pt') )
+        metrics = seglib.get_metrics_from_polygon_maps(polygon_gt, polygon_pred, binary_mask)
+        print(repr(metrics))
+        iou_matrix = np.ma.MaskedArray( metrics[:,:,0]/metrics[:,:,1], fill_value=0.0 )
+        #torch.save( iou_matrix, self.data_path.joinpath('iou_matrix.pt') )
 
-        self.assertEqual( confusion_matrix.dtype, torch.float32 )
-        self.assertFalse( torch.all( confusion_matrix == 0 ))
+        self.assertEqual( iou_matrix.dtype, np.float64 )
+        self.assertFalse( np.all( iou_matrix == 0 ))
         self.assertTrue(
-        confusion_matrix[0,0]>confusion_matrix[0,1] and
-        confusion_matrix[1,1]>confusion_matrix[1,0] and confusion_matrix[1,2] and
-        confusion_matrix[2,2]>confusion_matrix[2,1] and confusion_matrix[2,3] and
-        confusion_matrix[3,3]>confusion_matrix[3,2] )
+        iou_matrix[0,0]>iou_matrix[0,1] and
+        iou_matrix[1,1]>iou_matrix[1,0] and iou_matrix[1,2] and
+        iou_matrix[2,2]>iou_matrix[2,1] )
 
-    def test_line_segmentation_confusion_matrix_from_img_json( self ):
+    def test_get_iou_matrix_from_img_json( self ):
         """
         On an actual image, only a few sanity checks for testing
         """
@@ -650,15 +687,34 @@ class LineDetectTest( unittest.TestCase ):
         dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
         dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
 
-        confusion_matrix = seglib.get_confusion_matrix_from_img_json(input_img, dict_gt, dict_pred)
+        pixel_counts = seglib.get_metrics_from_img_json(input_img, dict_gt, dict_pred)[:,:,:2]
+        iou_matrix = np.ma.MaskedArray( pixel_counts[:,:,0]/pixel_counts[:,:,1], fill_value=0.0 )
 
-        self.assertEqual( confusion_matrix.dtype, torch.float32 )
-        self.assertFalse( torch.all( confusion_matrix == 0 ))
+        self.assertEqual( iou_matrix.dtype, np.float64 )
+        self.assertFalse( np.all( iou_matrix == 0 ))
         self.assertTrue(
-        confusion_matrix[0,0]>confusion_matrix[0,1] and
-        confusion_matrix[1,1]>confusion_matrix[1,0] and confusion_matrix[1,2] and
-        confusion_matrix[2,2]>confusion_matrix[2,1] and confusion_matrix[2,3] and
-        confusion_matrix[3,3]>confusion_matrix[3,2] )
+        iou_matrix[0,0]>iou_matrix[0,1] and
+        iou_matrix[1,1]>iou_matrix[1,0] and iou_matrix[1,2] and
+        iou_matrix[2,2]>iou_matrix[2,1] )
+
+
+    def test_metrics_to_f1_matrix( self ):
+        """
+        On an actual image, only a few sanity checks for testing
+        """
+        input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+        dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
+        dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
+
+        metrics = seglib.get_metrics_from_img_json(input_img, dict_gt, dict_pred)
+
+        f1s = seglib.metrics_to_f1_matrix( metrics, 4, 4, .6 )
+
+        self.assertTrue( np.all( np.isclose( f1s,
+            np.array([[0.71335435, 0.11347753, 0.        , 0.        ],
+                      [0.        , 0.7213385 , 0.06344737, 0.        ],
+                      [0.        , 0.        , 0.79582833, 0.01475155],
+                      [0.        , 0.        , 0.        , 0.78407523]]))))
 
 
     def test_map_to_depth( self ):

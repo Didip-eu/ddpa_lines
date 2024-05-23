@@ -1,11 +1,20 @@
+from PIL import Image, ImageDraw
+from pathlib import Path
 
-def polygon_set_display( input_img: Image.Image, polygons: torch.Tensor ) -> np.ndarray:
+import torch
+from torch import Tensor
+
+import numpy as np
+from typing import Tuple
+
+
+def polygon_set_display( input_img: Image.Image, polygons: Tensor ) -> np.ndarray:
     """
     Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
 
     Args:
         input_img (Image.Image): the original manuscript image, as opened with PIL.
-        polygons (torch.Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
+        polygons (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
     Output:
         np.ndarray: A BGR image (3 channels, 8-bit unsigned integers).
     """
@@ -29,7 +38,7 @@ def polygon_set_display( input_img: Image.Image, polygons: torch.Tensor ) -> np.
     alpha = .75
     return (input_img * alpha + foreground * (1-alpha)).astype('uint8')
 
-def polygon_two_set_display( input_img: Image.Image, polygons1: torch.Tensor, polygons2: torch.Tensor ) -> Tuple[np.ndarray, np.ndarray]:
+def polygon_two_set_display( input_img: Image.Image, polygons1: Tensor, polygons2: Tensor ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis. For clarity's sake,
     it returns 2 images:
@@ -39,8 +48,8 @@ def polygon_two_set_display( input_img: Image.Image, polygons1: torch.Tensor, po
 
     Args:
         input_img (Image.Image): the original manuscript image, as opened with PIL.
-        polygons1 (torch.Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
-        polygons2 (torch.Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
+        polygons1 (Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
+        polygons2 (Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
     Output:
         A tuple containing two BGR images (8-bit unsigned integers), rendering the even-numbered lines
         and the odd-numbered lines, respectively.
@@ -69,7 +78,7 @@ def polygon_two_set_display( input_img: Image.Image, polygons1: torch.Tensor, po
     return ( oimg1, oimg2 ) 
 
 
-def polygon_two_set_display_alt( input_img: Image.Image, polygons1: torch.Tensor, polygons2: torch.Tensor ) -> Tuple[np.ndarray, np.ndarray]:
+def polygon_two_set_display_alt( input_img: Image.Image, polygons1: Tensor, polygons2: Tensor ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis. 
     Even- and odd-numbered lines use different pairs of colors.
@@ -79,8 +88,8 @@ def polygon_two_set_display_alt( input_img: Image.Image, polygons1: torch.Tensor
 
     Args:
         input_img (Image.Image): the original manuscript image, as opened with PIL.
-        polygons1 (torch.Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
-        polygons2 (torch.Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
+        polygons1 (Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
+        polygons2 (Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
     Output:
         np.ndarray: A BGR image (3 channels, 8-bit unsigned integers).
     """
@@ -104,3 +113,6 @@ def polygon_two_set_display_alt( input_img: Image.Image, polygons1: torch.Tensor
     # BG + FG
     return cv2.addWeighted( input_img, .75, foreground, .25, 0)
 
+
+def plot_precision_recall_curve( confusion_matrix: Tensor ):
+    pass
