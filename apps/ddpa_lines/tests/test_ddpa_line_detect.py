@@ -50,7 +50,8 @@ class LineDetectTest( unittest.TestCase ):
         """
         input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
         mask = seglib.get_mask( input_img )
-        self.assertEqual( type(mask), torch.Tensor ) and self.assertEqual( mask.dtype, torch.int32 )
+        self.assertEqual( type(mask), torch.Tensor )
+        self.assertEqual( mask.dtype, torch.bool )
         self.assertEqual( mask.shape, tuple(reversed(input_img.size)))
 
     def test_binary_mask_from_image_fg_bg(self):
@@ -241,7 +242,7 @@ class LineDetectTest( unittest.TestCase ):
 
     def test_polygon_mask_to_polygon_map_32b_store_three_intersecting_polygons(self):
         """
-        Storing two extra polygons (as binary mask + labels) on labeled tensor with overlap yields
+        Storing 2 extra polygons (as binary mask + labels) on labeled tensor with overlap yields
         map with intersection labels l = l1, l' = (l1<<8) + l2, l''=(l1<<16)+(l2<<8)+l3, ...
         """
         label_map = np.array( [[2,2,2,0,0,0],
@@ -311,14 +312,53 @@ class LineDetectTest( unittest.TestCase ):
                                   [0,0,0xff,0xff,0xff,0],
                                   [0,0,0xff,0xff,0,0]], dtype='int32')))
 
+    def test_polygon_mask_to_polygon_map_32b_4_polygon_exception(self):
+        """
+        Exception raised when trying to store more than 3 polygons on same pixel.
+        """
+        label_map = np.array( [[2,2,2,0],
+                               [2,2,2,0],
+                               [2,2,2,0],
+                               [0,0,0,0]], dtype='int32')
+
+        polygon_mask = np.array( [[0,0,0,0],
+                                  [0,0,0,0],
+                                  [0,0,1,1],
+                                  [0,0,0,0]], dtype='int32')
+
+        seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 3)
+        seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 3)
+
+        with pytest.raises( ValueError ) as e:
+            seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 1)
+
 
     def test_retrieve_polygon_mask_from_map_no_binary_mask_1( self ):
-        label_map = torch.tensor( [[2,2,2,0,0,0],
-                                   [2,2,2,0,0,0],
-                                   [2,2,0x20304,0x304,4,0],
-                                   [0,0,0x304,0x304,0x304,4],
-                                   [0,0,4,4,4,0],
-                                   [0,0,4,4,0,0]], dtype=torch.int)
+        label_map = torch.tensor([[[2, 2, 2, 0, 0, 0],
+                                   [2, 2, 2, 0, 0, 0],
+                                   [2, 2, 4, 4, 4, 0],
+                                   [0, 0, 4, 4, 4, 4],
+                                   [0, 0, 4, 4, 4, 0],
+                                   [0, 0, 4, 4, 0, 0]],
+                                  [[0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 3, 3, 0, 0],
+                                   [0, 0, 3, 3, 3, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0]],
+                                  [[0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 2, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0]],
+                                  [[0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
+
         expected = torch.tensor( [[False, False, False, False, False, False],
                                    [False, False, False, False, False, False],
                                    [False, False,  True,  True, False, False],
@@ -331,12 +371,30 @@ class LineDetectTest( unittest.TestCase ):
         self.assertTrue( torch.equal( seglib.retrieve_polygon_mask_from_map(label_map, 3), expected))
 
     def test_retrieve_polygon_mask_from_map_no_binary_mask_2( self ):
-        label_map = torch.tensor( [[2,2,2,0,0,0],
-                                   [2,2,2,0,0,0],
-                                   [2,2,0x20304,0x304,4,0],
-                                   [0,3,0x304,0x304,0x304,4],
-                                   [0,0,3,4,4,0],
-                                   [0,0,4,4,0,0]], dtype=torch.int)
+        label_map = torch.tensor([[[2, 2, 2, 0, 0, 0],
+                                   [2, 2, 2, 0, 0, 0],
+                                   [2, 2, 4, 4, 4, 0],
+                                   [0, 3, 4, 4, 4, 4],
+                                   [0, 0, 3, 4, 4, 0],
+                                   [0, 0, 4, 4, 0, 0]],
+                                  [[0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 3, 3, 0, 0],
+                                   [0, 0, 3, 3, 3, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0]],
+                                  [[0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 2, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0]],
+                                  [[0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
         self.assertTrue( torch.equal( seglib.retrieve_polygon_mask_from_map(label_map, 3),
                     torch.tensor( [[False, False, False, False, False, False],
@@ -370,21 +428,23 @@ class LineDetectTest( unittest.TestCase ):
         and j ∈ map2.
         Shared pixels in each map (i.e. overlapping polygons) are counted independently for each polygon.
         """
-        map1 = torch.tensor([[2,2,2,0,0,0],
+        # Pred. labels: 2,3,4
+        map1 = seglib.array_to_rgba_uint8(np.array([[2,2,2,0,0,0],
                           [2,2,2,0,0,0],
                           [2,2,0x20304,0x304,4,0],
                           [0,0,0x304,0x304,0x304,4],
                           [0,0,4,4,4,0],
-                          [0,0,4,0x402,0,0]], dtype=torch.int)
+                          [0,0,4,0x402,0,0]], dtype='int32'))
 
-        map2 = torch.tensor( [[0,2,2,0,0,0],
+        # GT labels: 2,3,4
+        map2 = seglib.array_to_rgba_uint8(np.array( [[0,2,2,0,0,0],
                           [2,2,4,2,2,0],
                           [2,2,0x20304,0x304,4,0],
                           [0,3,0x304,0x304,0x304,4],
                           [0,0,3,4,4,0],
-                          [0,0,0x204,4,0,0]], dtype=torch.int)
+                          [0,0,0x204,4,0,0]], dtype='int32'))
 
-        pixel_count = seglib.get_metrics_two_maps( map1, map2 )[:,:,:2]
+        pixel_count = seglib.polygon_pixel_metrics_two_maps( map1, map2 )[:,:,:2]
 
         c2l, c2r = 8+1/3+.5, 8+1/3+.5
         c3l, c3r = 1/3+.5*4, 1/3+2+.5*4
@@ -396,15 +456,131 @@ class LineDetectTest( unittest.TestCase ):
         u32, u33, u34 = c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34
         u42, u43, u44 = c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44
 
+        expected = np.array([[[ i22, u22],   # 2,2
+                              [ i23, u23],   # 2,3
+                              [ i24, u24]],  # 2,4
+                             [[ i32, u32],   # ...
+                              [ i33, u33],
+                              [ i34, u34]],  # 3,4
+                             [[ i42, u42],   # ...
+                              [ i43, u43],
+                              [ i44, u44]]]) # 4,4
+
+        # Note: we're comparing float value here
+        self.assertTrue( np.all(np.isclose( pixel_count, expected )))
+
+    def test_union_intersection_count_two_maps_more_labels_in_pred( self ):
+        """
+        Provided two label maps that each encode (potentially overlapping) polygons, yield 
+        intersection and union counts for each possible pair of labels (i,j) with i ∈  map1
+        and j ∈ map2.
+        Shared pixels in each map (i.e. overlapping polygons) are counted independently for each polygon.
+        The metrics function should deal correctly with GT labels that are missing in the predicted map.
+        """
+        # Pred. labels: 2,3,4,5
+        map1 = seglib.array_to_rgba_uint8(np.array(
+                         [[2,2,2,0,0,0],
+                          [2,2,2,0,0,0],
+                          [2,2,0x20304,0x304,4,0],
+                          [0,0x502,0x304,0x304,0x304,4],
+                          [5,0x405,4,4,4,0], 
+                          [0,0,4,0x402,0,0]], dtype='int32'))
+
+        # GT labels: 2,3,4
+        map2 = seglib.array_to_rgba_uint8(np.array(
+                         [[0,2,2,0,0,0],
+                          [2,2,4,2,2,0],
+                          [2,2,0x20304,0x304,4,0],
+                          [0,3,0x304,0x304,0x304,4],
+                          [0,0,3,4,4,0],
+                          [0,0,0x204,4,0,0]], dtype='int32'))
+
+        pixel_count = seglib.polygon_pixel_metrics_two_maps( map1, map2 )[:,:,:2]
+
+        c2l, c2r = 8+1/3+.5*2, 8+1/3+.5
+        c3l, c3r = 1/3+.5*4, 1/3+2+.5*4
+        c4l, c4r = 1/3+6*.5+6, 1/3+5*.5+6
+        c5l, c5r = 1+2*.5, 0
+        i22, i23, i24 = 6+1/3, 1/3+.5, 1+1/3+.5
+        i32, i33, i34 = 1/3, 1/3+.5*4, 1/3+.5*4
+        i42, i43, i44 = 1/3+.5, 1/3+.5*4+1, 1/3+.5*6+4
+        i52, i53, i54 = 0, .5, 0
+        u22, u23, u24 = c2l+c2r-i22, c2l+c3r-i23, c2l+c4r-i24
+        u32, u33, u34 = c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34
+        u42, u43, u44 = c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44
+        u52, u53, u54 = c5l+c2r-i52, c5l+c3r-i53, c5l+c4r-i54
+
+        #print("\n"+repr( pixel_count ))
+        expected =    np.array([[[ i22, u22],   # 2,2
+                                 [ i23, u23],   # 2,3
+                                 [ i24, u24]],  # 2,4
+                                [[ i32, u32],   # ...
+                                 [ i33, u33],
+                                 [ i34, u34]],  # 3,4
+                                [[ i42, u42],   # ...
+                                 [ i43, u43],
+                                 [ i44, u44]],
+                                [[ i52, u52],   # ...
+                                 [ i53, u53],
+                                 [ i54, u54]]]) # 4,4
+        #print("\n"+repr(expected))
+
+        # Note: we're comparing float value here
+        self.assertTrue( np.all(np.isclose( pixel_count, expected )))
+
+    def test_union_intersection_count_two_maps_more_labels_in_GT( self ):
+        """
+        Provided two label maps that each encode (potentially overlapping) polygons, yield 
+        intersection and union counts for each possible pair of labels (i,j) with i ∈  map1
+        and j ∈ map2.
+        Shared pixels in each map (i.e. overlapping polygons) are counted independently for each polygon.
+        The metrics function should deal correctly with GT labels that are missing in the predicted map.
+        """
+        # Pred. labels: 2,3,4
+        map1 = seglib.array_to_rgba_uint8(np.array( 
+                         [[0,2,2,0,0,0],
+                          [2,2,4,2,2,0],
+                          [2,2,0x20304,0x304,4,0],
+                          [0,3,0x304,0x304,0x304,4],
+                          [0,0,3,4,4,0],
+                          [0,0,0x204,4,0,0]], dtype='int32'))
+
+        # GT labels: 2,3,4,5
+        map2 = seglib.array_to_rgba_uint8(np.array(
+                         [[2,2,2,0,0,0],
+                          [2,2,2,0,0,0],
+                          [2,2,0x20304,0x304,4,0],
+                          [0,0x502,0x304,0x304,0x304,4],
+                          [5,0x405,4,4,4,0], 
+                          [0,0,4,0x402,0,0]], dtype='int32'))
+
+        pixel_count = seglib.polygon_pixel_metrics_two_maps( map1, map2 )[:,:,:2]
+
+        c2l, c2r = 8+1/3+.5, 8+1/3+.5*2
+        c3l, c3r = 1/3+2+.5*4, 1/3+.5*4
+        c4l, c4r = 1/3+5*.5+6, 1/3+6*.5+6
+        c5l, c5r = 0, 1+2*.5
+        i22, i23, i24, i25 = 6+1/3, 1/3, 1/3+.5, 0
+        i32, i33, i34, i35 = 1/3+.5, 1/3+.5*4, 1/3+.5*4+1, .5
+        i42, i43, i44, i45 = 1+1/3+.5, 1/3+.5*4, 1/3+.5*6+4, 0
+        u22, u23, u24, u25 = c2l+c2r-i22, c2l+c3r-i23, c2l+c4r-i24, c2l+c5r-i25
+        u32, u33, u34, u35 = c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34, c3l+c5r-i35
+        u42, u43, u44, u45 = c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44, c4l+c5r-i45
+
+        #print("\n"+repr( pixel_count ))
         expected =    np.array([[[ i22, u22],  # 2,2
                                  [ i23, u23],  # 2,3
-                                 [ i24, u24]], # 2,4
+                                 [ i24, u24],  # 2,4
+                                 [ i25, u25]], # 2,5
                                 [[ i32, u32],  # ...
                                  [ i33, u33],
-                                 [ i34, u34]], # 3,4
+                                 [ i34, u34],
+                                 [ i35, u35]], # 3,5
                                 [[ i42, u42],  # ...
                                  [ i43, u43],
-                                 [ i44, u44]]]) # 4,4
+                                 [ i44, u44],
+                                 [ i45, u45]]])
+        #print("\n"+repr(expected))
 
         # Note: we're comparing float value here
         self.assertTrue( np.all(np.isclose( pixel_count, expected )))
@@ -416,21 +592,23 @@ class LineDetectTest( unittest.TestCase ):
         and j ∈ map2.
         Shared pixels in each map (i.e. overlapping polygons) are counted independently for each polygon.
         """
-        map1 = torch.tensor([[2,2,2,0,0,0],
+        # map1 (_l_)  = Pred, map2 (_r_) = GT
+        map1 = seglib.array_to_rgba_uint8(np.array([[2,2,2,0,0,0],
                           [2,2,2,0,0,0],
                           [2,2,0x20304,0x304,4,0],
                           [0,0,0x304,0x304,0x304,4],
                           [0,0,4,4,4,0],
-                          [0,0,4,0x402,0,0]], dtype=torch.int)
+                          [0,0,4,0x402,0,0]], dtype='int32'))
 
-        map2 = torch.tensor( [[0,2,2,0,0,0],
+        map2 = seglib.array_to_rgba_uint8(np.array( [[0,2,2,0,0,0],
                           [2,2,4,2,2,0],
                           [2,2,0x20304,0x304,4,0],
                           [0,3,0x304,0x304,0x304,4],
                           [0,0,3,4,4,0],
-                          [0,0,0x204,4,0,0]], dtype=torch.int)
+                          [0,0,0x204,4,0,0]], dtype='int32'))
 
-        precision_recall = seglib.get_metrics_two_maps( map1, map2 )[:,:,2:]
+        metrics = seglib.polygon_pixel_metrics_two_maps( map1, map2 )
+        intersection_union, precision_recall = metrics[:,:,:2], metrics[:,:,2:]
 
         c2l, c2r = 8+1/3+.5, 8+1/3+.5
         c3l, c3r = 1/3+.5*4, 1/3+2+.5*4
@@ -442,89 +620,34 @@ class LineDetectTest( unittest.TestCase ):
         u32, u33, u34 = c3l+c2r-i32, c3l+c3r-i33, c3l+c4r-i34
         u42, u43, u44 = c4l+c2r-i42, c4l+c3r-i43, c4l+c4r-i44
 
-        expected =    np.array([[[ i22/(c2r), i22/(c2l)],  # 2,2
-                                 [ i23/(c3r), i23/(c2l)],  # 2,3
-                                 [ i24/(c4r), i24/(c2l)]], # 2,4
-                                [[ i32/(c2r), i32/(c3l)],  # ...
-                                 [ i33/(c3r), i33/(c3l)],
-                                 [ i34/(c4r), i34/(c3l)]], # 3,4
-                                [[ i42/(c2r), i42/(c4l)],  # ...
-                                 [ i43/(c3r), i43/(c4l)],
-                                 [ i44/(c4r), i44/(c4l)]]]) # 4,4
+        expected_intersection_union = np.array(
+                            [[[ i22, u22],   # 2,2
+                              [ i23, u23],   # 2,3
+                              [ i24, u24]],  # 2,4
+                             [[ i32, u32],   # ...
+                              [ i33, u33],
+                              [ i34, u34]],  # 3,4
+                             [[ i42, u42],   # ...
+                              [ i43, u43],
+                              [ i44, u44]]]) # 4,4
+
+        expected = np.array([[[ i22/c2l, i22/c2r],   # 2,2
+                              [ i23/c2l, i23/c3r],   # 2,3
+                              [ i24/c2l, i24/c4r]],  # 2,4
+                             [[ i32/c3l, i32/c2r],   # ...
+                              [ i33/c3l, i33/c3r],
+                              [ i34/c3l, i34/c4r]],  # 3,4
+                             [[ i42/c4l, i42/c2r],   # ...
+                              [ i43/c4l, i43/c3r],
+                              [ i44/c4l, i44/c4r]]]) # 4,4
 
         # Note: we're comparing float value here
+        self.assertTrue( np.all(np.isclose( intersection_union, expected_intersection_union, 1e-4 )))
         self.assertTrue( np.all(np.isclose( precision_recall, expected, 1e-4 )))
 
-
-    def test_line_segmentation_iou_matrix( self ):
+    def test_get_polygon_pixel_metrics_wrong_pred_type( self ):
         """
-        On an actual, only a few sanity checks for testing
-        """
-        map1 = torch.tensor([[[2, 2, 2, 0, 0, 0],
-                              [2, 2, 2, 0, 0, 0],
-                              [2, 2, 4, 4, 4, 0],
-                              [0, 0, 4, 4, 4, 4],
-                              [0, 0, 4, 4, 4, 0],
-                              [0, 0, 4, 2, 0, 0]],
-                             [[0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 3, 3, 0, 0],
-                              [0, 0, 3, 3, 3, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 4, 0, 0]],
-                             [[0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 2, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0]],
-                             [[0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
-
-        map2 = torch.tensor([[[0, 2, 2, 0, 0, 0],
-                              [2, 2, 4, 2, 2, 0],
-                              [2, 2, 4, 4, 4, 0],
-                              [0, 3, 4, 4, 4, 4],
-                              [0, 0, 3, 4, 4, 0],
-                              [0, 0, 4, 4, 0, 0]],
-                             [[0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 3, 3, 0, 0],
-                              [0, 0, 3, 3, 3, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 2, 0, 0, 0]],
-                             [[0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 2, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0]],
-                             [[0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
-
-        pixel_counts = seglib.get_metrics_from_polygon_maps(map1,map2)[:,:,:2]
-        iou_matrix = np.ma.MaskedArray( pixel_counts[:,:,0]/pixel_counts[:,:,1], fill_value=0.0 )
-
-        self.assertEqual( iou_matrix.dtype, np.float64 )
-        self.assertFalse( np.all( iou_matrix == 0 ))
-
-        self.assertTrue( np.all( np.isclose( iou_matrix,
-            np.array(
-                 [[0.5588222318300937, 0.025971496029859816, 0.1157876121844467],
-                  [0.03076624851153388, 0.538457988138370, 0.2641481665968551],
-                  [0.049503068322907566, 0.33898081010444103, 0.7096764828273641]], dtype=np.float64), 1e-4)))
-
-    def test_get_metrics_wrong_gt_type( self ):
-        """
-        On an actual, only a few sanity checks for testing
+        First map should be a 4-channel tensor
         """
         map1 = torch.tensor([[2,2,2,0,0,0],
                              [2,2,2,0,0,0],
@@ -559,11 +682,11 @@ class LineDetectTest( unittest.TestCase ):
                               [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
         with self.assertRaises( TypeError ):
-            seglib.get_metrics_from_polygon_maps(map1,map2)
+            seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(map1,map2)
 
-    def test_get_metrics_wrong_pred_type( self ):
+    def test_get_polygon_pixel_metrics_wrong_gt_type( self ):
         """
-        On an actual, only a few sanity checks for testing
+        Second map should be a 4-channel tensor
         """
 
         map1 = torch.tensor([[[0, 2, 2, 0, 0, 0],
@@ -599,10 +722,10 @@ class LineDetectTest( unittest.TestCase ):
                              [0,0,4,0x402,0,0]], dtype=torch.int)
 
         with self.assertRaises( TypeError ):
-            seglib.get_metrics_two_maps(map1,map2)
+            seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(map1,map2)
 
 
-    def test_get_metrics_different_map_shapes( self ):
+    def test_get_polygon_pixel_metrics_different_map_shapes( self ):
         """
         On an actual, only a few sanity checks for testing
         """
@@ -653,85 +776,141 @@ class LineDetectTest( unittest.TestCase ):
                               [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
         with self.assertRaises( TypeError ):
-            seglib.get_metrics_from_polygon_maps(map1,map2)
+            seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(map1,map2)
 
-    def test_get_iou_matrix_realistic( self ):
+    def test_get_polygon_pixel_metrics_from_maps_and_mask_small_image( self ):
         """
-        On an actual image, only a few sanity checks for testing
+        On an actual image, with polygons loaded from serialized tensors, only a few sanity checks for testing
         """
-        input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
-        dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
-        dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
 
-        polygon_gt = seglib.dict_to_polygon_map( dict_gt, input_img )
-        polygon_pred = seglib.dict_to_polygon_map( dict_pred, input_img )
-        binary_mask = seglib.get_mask( input_img )
+        polygon_pred = torch.load(str(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.pt')))
+        polygon_gt = torch.load(str(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.pt')))
+        binary_mask = torch.load(str(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced_binarized.pt')))
 
-        metrics = seglib.get_metrics_from_polygon_maps(polygon_gt, polygon_pred, binary_mask)
-        print(repr(metrics))
-        iou_matrix = np.ma.MaskedArray( metrics[:,:,0]/metrics[:,:,1], fill_value=0.0 )
-        #torch.save( iou_matrix, self.data_path.joinpath('iou_matrix.pt') )
+        metrics = seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_pred, polygon_gt, binary_mask)
 
-        self.assertEqual( iou_matrix.dtype, np.float64 )
-        self.assertFalse( np.all( iou_matrix == 0 ))
-        self.assertTrue(
-        iou_matrix[0,0]>iou_matrix[0,1] and
-        iou_matrix[1,1]>iou_matrix[1,0] and iou_matrix[1,2] and
-        iou_matrix[2,2]>iou_matrix[2,1] )
+        self.assertEqual( metrics.dtype, np.float32 )
+        self.assertTrue( np.all( metrics[:,:,0].diagonal() != 0 )) # intersections
+        self.assertTrue( np.all( metrics[:,:,1] != 0 )) # unions
 
-    def test_get_iou_matrix_from_img_json( self ):
+    def test_get_polygon_pixel_metrics_from_img_json( self ):
         """
-        On an actual image, only a few sanity checks for testing
+        On an actual image, with polygon loaded from JSON dictionaries, only a few sanity checks for testing
         """
         input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
         dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
         dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
 
-        pixel_counts = seglib.get_metrics_from_img_json(input_img, dict_gt, dict_pred)[:,:,:2]
-        iou_matrix = np.ma.MaskedArray( pixel_counts[:,:,0]/pixel_counts[:,:,1], fill_value=0.0 )
+        metrics = seglib.polygon_pixel_metrics_from_img_json(input_img, dict_pred, dict_gt)
 
-        self.assertEqual( iou_matrix.dtype, np.float64 )
-        self.assertFalse( np.all( iou_matrix == 0 ))
-        self.assertTrue(
-        iou_matrix[0,0]>iou_matrix[0,1] and
-        iou_matrix[1,1]>iou_matrix[1,0] and iou_matrix[1,2] and
-        iou_matrix[2,2]>iou_matrix[2,1] )
+        self.assertEqual( metrics.dtype, np.float32 )
+        self.assertTrue( np.all( metrics[:,:,0].diagonal() != 0 )) # intersections
+        self.assertTrue( np.all( metrics[:,:,1] != 0 )) # unions
 
-
-    def test_metrics_to_f1_matrix( self ):
+    @pytest.mark.fail_slow('30s')
+    def test_polygon_pixel_metrics_from_full_charter( self ):
         """
-        On an actual image, only a few sanity checks for testing
+        On an full page, with polygons loaded from serialized tensors, only a few sanity checks for testing.
+        + Crude check for performance for a couple of label distance.
         """
-        input_img = Image.open( self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
-        dict_pred = json.load( open(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
-        dict_gt = json.load( open(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
+        test_data = [
+                #{'case':'all_pairs'}, 'label_distance': 2},
+                {'case':'short_label_distance', 'label_distance': 2},
+                {'case':'mid_label_distance', 'label_distance': 7},
+        ]
 
-        metrics = seglib.get_metrics_from_img_json(input_img, dict_gt, dict_pred)
+        polygons_pred = torch.load(str(self.data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20.pt')))
+        polygons_gt = torch.load(str(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1.pt')))
+        binary_mask = torch.load(str(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_binarized.pt')))
 
-        f1s = seglib.metrics_to_f1_matrix( metrics, 4, 4, .6 )
+        for data in test_data:
+            with self.subTest( msg=data['case'] ): 
+                # for any polygon label in predicted map, counting intersections with GT map for labels in [l-d .. l+2d]
+                metrics = seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(polygons_pred, polygons_gt, binary_mask, label_distance=data['label_distance'])
+                self.assertEqual( metrics.dtype, np.float32 )
+                # union counts should never be 0
+                self.assertTrue( np.all( metrics[:,:,1] != 0 ))
 
-        self.assertTrue( np.all( np.isclose( f1s,
-            np.array([[0.71335435, 0.11347753, 0.        , 0.        ],
-                      [0.        , 0.7213385 , 0.06344737, 0.        ],
-                      [0.        , 0.        , 0.79582833, 0.01475155],
-                      [0.        , 0.        , 0.        , 0.78407523]]))))
+    def test_polygon_pixel_metrics_to_line_based_scores( self ):
+        """
+        On an actual image, a sanity check on the diagonal values.
+        """
+        metrics = np.array([[[ 6.3333335 , 11.833334  ,  0.7169811 ,  0.67857146],
+                             [ 0.33333334, 10.833334  ,  0.03773585,  0.14285713],
+                             [ 0.8333334 , 17.333334  ,  0.09433962,  0.08928571],
+                             [ 0.        , 10.833334  ,  0.        ,  0.        ]],
+                            [[ 0.8333334 , 12.833333  ,  0.1923077 ,  0.08928572],
+                             [ 2.3333335 ,  4.3333335 ,  0.53846157,  1.        ],
+                             [ 3.3333335 , 10.333334  ,  0.7692308 ,  0.35714284],
+                             [ 0.5       ,  5.8333335 ,  0.11538461,  0.25      ]],
+                            [[ 1.8333334 , 16.333334  ,  0.20754716,  0.19642858],
+                             [ 2.3333335 ,  8.833334  ,  0.26415095,  1.        ],
+                             [ 7.3333335 , 10.833334  ,  0.83018863,  0.78571427],
+                             [ 0.        , 10.833334  ,  0.        ,  0.        ]]],
+                            dtype=np.float32)
+
+        self.assertEqual( seglib.polygon_pixel_metrics_to_line_based_scores(metrics, .1), (2., 0.0, 1.0 , 2.0/3, 0.8))
+        self.assertEqual( seglib.polygon_pixel_metrics_to_line_based_scores(metrics, .5), (1.0, 2.0, 2.0, 0.2, 1.0/3))
+        self.assertEqual( seglib.polygon_pixel_metrics_to_line_based_scores( metrics, .9), (0.0, 3.0, 3.0, 0.0, 0.0))
+
+
+    def test_polygon_pixel_metrics_to_line_based_scores_full_charter( self ):
+        """
+        On an actual image, a sanity check on the diagonal values.
+        """
+        metrics = torch.load(str(self.data_path.joinpath('full_charter_metrics.pt')))
+
+        scores = seglib.polygon_pixel_metrics_to_line_based_scores( metrics, .6 )
+        self.assertTrue( scores[-1] >= .8 )
+
+
+    def Dtest_polygon_pixel_metrics_to_precision_recall_curve( self ):
+        """
+        Generate P/R data points for plotting purpose.
+        """
+        metrics = np.array([[[1.0285500e+04, 1.8551500e+04, 6.1405969e-01, 8.5095555e-01],
+        [1.5385000e+03, 2.5577000e+04, 1.0237216e-01, 1.2728551e-01],
+        [0.0000000e+00, 2.9597500e+04, 0.0000000e+00, 0.0000000e+00],
+        [0.0000000e+00, 2.7065000e+04, 0.0000000e+00, 0.0000000e+00]],
+
+       [[0.0000000e+00, 2.6585000e+04, 0.0000000e+00, 0.0000000e+00],
+        [8.9675000e+03, 1.5896000e+04, 5.9669960e-01, 9.1179460e-01],
+        [8.6750000e+02, 2.6478000e+04, 4.9541704e-02, 8.8205390e-02],
+        [0.0000000e+00, 2.4813000e+04, 0.0000000e+00, 0.0000000e+00]],
+
+       [[0.0000000e+00, 2.8820000e+04, 0.0000000e+00, 0.0000000e+00],
+        [0.0000000e+00, 2.7098500e+04, 0.0000000e+00, 0.0000000e+00],
+        [1.1770500e+04, 1.7810000e+04, 6.7219669e-01, 9.7518641e-01],
+        [1.9950000e+02, 2.6848500e+04, 1.3319535e-02, 1.6528584e-02]],
+
+       [[0.0000000e+00, 2.6438000e+04, 0.0000000e+00, 0.0000000e+00],
+        [0.0000000e+00, 2.4716500e+04, 0.0000000e+00, 0.0000000e+00],
+        [0.0000000e+00, 2.7198500e+04, 0.0000000e+00, 0.0000000e+00],
+        [9.6700000e+03, 1.4996000e+04, 6.4561355e-01, 9.9814200e-01]]],
+      dtype='float32')
+
+        precisions_recalls = seglib.metrics_to_precision_recall_curve( metrics, np.linspace(0, 1, num=11 ))
+        self.assertTrue( np.all(np.isclose( precisions_recalls,
+                np.array( [[1. , 1. , 1. , 1. , 1. , 1. , 0.5, 0. , 0. , 0. , 0. ],
+                           [1. , 1. , 1. , 1. , 1. , 1. , 0.5, 0. , 0. , 0. , 0. ]]))))
 
 
     def test_map_to_depth( self ):
         """
         Provided a polygon map with compound pixels (intersections), the matrix representing
-        the depth of each pixel 
+        the depth of each pixel should have 1 for 1-polygon pixels, 2 for 2-polygon pixels, etc.
         """
-        map_hw = torch.tensor([[2,2,2,0,0,0],
+        map_hw = seglib.array_to_rgba_uint8(np.array([[2,2,2,0,0,0],
                                [2,2,2,0,0,0],
                                [2,2,0x20304,0x304,4,0],
                                [0,0,0x304,0x304,0x304,4],
                                [0,0,4,4,4,0],
-                               [0,0,4,4,0,0]], dtype=torch.int)
+                               [0,0,4,4,0,0]], dtype='int32'))
 
+        depth_map = seglib.map_to_depth( map_hw )
 
         self.assertTrue( torch.equal(
-            seglib.map_to_depth( map_hw ),
+            depth_map,
             torch.tensor([[1,1,1,1,1,1],
                           [1,1,1,1,1,1],
                           [1,1,3,2,1,1],
@@ -739,17 +918,32 @@ class LineDetectTest( unittest.TestCase ):
                           [1,1,1,1,1,1],
                           [1,1,1,1,1,1]], dtype=torch.int)))
 
+    def test_pagexml_to_segmentation_dict( self ):
+        """
+        Conversion between PageXML segmentation output and JSON/Python dictionary should keep the lines.
+        """
+        pagexml = str(self.data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.xml'))
 
+        segdict = seglib.pagexml_to_segmentation_dict( pagexml )
+
+        self.assertEqual( len(segdict['lines']), 4)
+        self.assertEqual( [ l['line_id'] for l in segdict['lines'] ], ['r1l1', 'r1l2', 'r1l3', 'r1l4'] )
+        self.assertEqual( [ len(l['baseline']) for l in segdict['lines'] ], [21, 21, 21, 21] )
+
+    #@pytest.mark.parametrize("v,expected", [ (0,[0]), (3,[3]), (255,[255]) ])
     def test_recover_labels_from_map_value_single_polygon( self ):
-        self.assertEqual( seglib.recover_labels_from_map_value( 0 ), [0])
-        self.assertEqual( seglib.recover_labels_from_map_value( 3 ), [3])
-        self.assertEqual( seglib.recover_labels_from_map_value( 255 ), [255])
-
-    def test_recover_labels_from_map_value_two_polygons( self ):
-        self.assertEqual( seglib.recover_labels_from_map_value( 515 ), [2,3] )
-
-    def test_recover_labels_from_map_value_three_polygons( self ):
-        self.assertTrue( seglib.recover_labels_from_map_value( 0x20304 ), [2,3,4])
+        test_data = [
+            {'case': 'min. value', 'label': 0, 'expected': [0]},
+            {'case': 'max. value', 'label': 255, 'expected': [255]},
+            {'case': 'av. value', 'label': 3, 'expected': [3]},
+            {'case': 'two values (keep order)', 'label': 0x302, 'expected': [3,2]},
+            {'case': 'two values (keep order)', 'label': 0x203, 'expected': [2,3]},
+            {'case': 'three values', 'label': 0x40205, 'expected': [4,2,5]},
+            {'case': 'too big a value', 'label': 0x1ffffff, 'expected': []},
+            ]
+        for data in test_data:
+            with self.subTest( msg=data['case']):
+                self.assertEqual(seglib.recover_labels_from_map_value( data['label'] ), data['expected'])
 
 
 
