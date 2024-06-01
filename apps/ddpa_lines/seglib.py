@@ -40,7 +40,6 @@ def line_segment(img: Image.Image, model_path: str):
     Output:
         tuple: a pair with the maximum value of the line labels and the polygons rendered as an image.
     """
-
     if not Path( model_path ).exists():
         raise FileNotFoundError("Cound not find model file", model_path)
     # you want to load the model once (loaded model as a parameter)
@@ -461,6 +460,7 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
     # select one-to-one matches
     pred2match = { i:False for i in possible_match_indices[0] }
     for possible_match in np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] ):
+        # ensure that each predicted label is matched to at most one GT label
         if not pred2match[possible_match['pred_polygon']]: 
             pred2match[possible_match['pred_polygon']]=True
             precision, recall = possible_match[['precision', 'recall']]
@@ -476,6 +476,64 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
     F1 = 2*TP / (2*TP+FP+FN)
 
     return (TP, FP, FN, Jaccard, F1)
+
+
+
+def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray, threshold: float=.5 ) -> Tuple[float, float, float]:
+    """
+    et mplement ICDAR 2017 pixel-based evaluation metrics, as described in
+    Simistira et al., ICDAR2017 Competition on Layout Analysis for Challenging Medieval
+    Manuscripts, 2017.
+
+    Two versions of the pixel-based IoU metric:
+    + Pixel IU takes all pixels of all intersecting pairs into account
+    + Matched Pixel IU only takes into account the pixels from the matched lines 
+
+    Args:
+        metrics (np.ndarray): metrics matrix, with indices [0..m-1, 0..m-1] for labels 1..m, where m is the maximum label in either
+                            GT or predicted maps. In channels: intersection count, union count, precision, recall.
+    Out:
+        tuple: a pair (Pixel IU, Matched Pixel IU)
+    """
+    label_count_pred, label_count_gt = metrics.shape[:2] 
+
+    # find all rows with non-empty intersection
+    possible_match_indices = metrics[:,:,0].nonzero()
+    match_rows_cols, possible_matches = np.transpose(possible_match_indices), metrics[ possible_match_indices ]
+    ious = possible_matches[:,0]/possible_matches[:,1]
+    structured_row_col_match_iou = np.array([ 
+        (match_rows_cols[i,0],
+         match_rows_cols[i,1], 
+         possible_matches[i,0], 
+         possible_matches[i,1], 
+         possible_matches[i,2], 
+         possible_matches[i,3],
+         ious[i]) for i in range(len(possible_matches))], 
+         dtype=[('pred_polygon', 'int32'),
+                ('gt_polygon', 'int32'), 
+                ('intersection', 'float32'),
+                ('union', 'float32'),
+                ('precision', 'float32'),
+                ('recall', 'float32'), 
+                ('iou', 'float32')])
+
+    # pixel-based, page-wide IoU (over all non-empty intersections)
+    intersection_count, union_count = [ np.sum(structured_row_col_match_iou[:][field]) for field in ('intersection', 'union') ]
+    pixel_iou = intersection_count / union_count
+
+    # pixel-based, page-wide IoU (over all matched pairs)
+    matched_intersection_count, matched_union_count = 0, 0
+    pred2match = { i:False for i in possible_match_indices[0] }
+    for possible_match in np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] ):
+        # ensure that each predicted label is matched to at most one GT label
+        if not pred2match[possible_match['pred_polygon']]: 
+            pred2match[possible_match['pred_polygon']]=True
+            matched_intersection_count += possible_match['intersection']
+            matched_union_count += possible_match['union']
+    matched_pixel_iou = matched_intersection_count / matched_union_count
+    
+    return (pixel_iou, matched_pixel_iou)
+
     
 def metrics_to_precision_recall_curve( metrics: np.ndarray, threshold_range=np.linspace(0, 1, num=21)) -> np.ndarray:
     """
