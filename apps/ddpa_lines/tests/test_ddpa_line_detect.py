@@ -1,18 +1,13 @@
 #!/usr/env python3
 
-import unittest
+import pytest
 from torch import Tensor
 from pathlib import Path
-#from apps.ddpa_lines import seglib
-import logging
-import pytest
 from PIL import Image
-from torch import Tensor
 import json
+from torch import Tensor
 import numpy as np
 import torch
-import skimage as ski
-from matplotlib import pyplot as plt
 
 import sys
 
@@ -63,9 +58,69 @@ def test_binary_mask_from_image_fg_bg():
     assert binary_map[8,8] == 1 # single FG pixel = T
     assert torch.sum(binary_map).item() == 1 # remaining pixels = F
 
+
+def test_array_to_rgba_uint8_overflow():
+    """
+    Conversion of a map of 64-bit integers should raise an exception if overflow
+    """
+    arr = np.random.default_rng().integers(1, 0xffffffff, (5,4), dtype='int')
+    arr[2,2]=0xffffffff
+
+    with pytest.raises(OverflowError):
+        seglib.array_to_rgba_uint8( arr )
+
+def test_array_to_rgba_uint8_incorrect_shape():
+    """
+    Conversion of a map with more than 2 dimensions should raise an exception.
+    """
+    arr = np.random.default_rng().integers(1, 0xff, (2,5,4), dtype='int32')
+
+    with pytest.raises(TypeError):
+        seglib.array_to_rgba_uint8( arr )
+
+def test_array_to_rgba_uint8_int64():
+    """
+    Conversion of a map of 64-bit integers is cast silently if no overflow
+    """
+    arr = np.array( [[2,2,2,0,0,0],
+                     [2,2,2,0,0,0],
+                     [2,2,0x203,3,0,0],
+                     [0,0,3,3,3,0],
+                     [0,0,0,0,0,0],
+                     [0,0x40102,0,0,0,0]], dtype='int')
+
+    tensor = seglib.array_to_rgba_uint8( arr )
+
+    assert torch.equal( tensor,
+        torch.tensor([[[2, 2, 2, 0, 0, 0],
+                       [2, 2, 2, 0, 0, 0],
+                       [2, 2, 3, 3, 0, 0],
+                       [0, 0, 3, 3, 3, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 2, 0, 0, 0, 0]],
+                      [[0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 2, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 1, 0, 0, 0, 0]],
+                      [[0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 4, 0, 0, 0, 0]],
+                      [[0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8))
+    
+
 def test_array_to_rgba_uint8():
     """
-    Conversion of a 1-channel 32-bit unsigned int array yields a 4-channel tensor.
+    Conversion of a 1-channel array of 32-bit integers yields a 4-channel tensor.
     """
     arr = np.array( [[2,2,2,0,0,0],
                      [2,2,2,0,0,0],
@@ -100,55 +155,6 @@ def test_array_to_rgba_uint8():
                        [0, 0, 0, 0, 0, 0],
                        [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8))
 
-
-def test_rgba_uint8_to_hw_tensor():
-    """
-    Conversion of a 1-channel 32-bit unsigned int array yields a 4-channel tensor.
-    """
-    tensor = torch.tensor([[[2, 2, 2, 0, 0, 0],
-                            [2, 2, 2, 0, 0, 0],
-                            [2, 2, 3, 3, 0, 0],
-                            [0, 0, 3, 3, 3, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 2, 0, 0, 0, 0]],
-
-                           [[0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 2, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 1, 0, 0, 0, 0]],
-
-                           [[0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 4, 0, 0, 0, 0]],
-
-                           [[0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
-
-    assert np.array_equal( seglib.rgba_uint8_to_hw_tensor( tensor ),
-                    torch.tensor( [[2,2,2,0,0,0],
-                                   [2,2,2,0,0,0],
-                                   [2,2,0x203,3,0,0],
-                                   [0,0,3,3,3,0],
-                                   [0,0,0,0,0,0],
-                                   [0,0x40102,0,0,0,0]], dtype=torch.int32))
-
-
-def test_flat_to_cube_and_other_way_around():
-    """
-    A flat map that is stored into a cube and then retrieved back as a map should contain
-    the same values as the original.
-    """
-    a = np.random.randint(120398, size=(7,5), dtype=np.int32 )
-    assert torch.equal( torch.from_numpy( a ), seglib.rgba_uint8_to_hw_tensor( seglib.array_to_rgba_uint8(a) ))
 
 def test_polygon_mask_to_polygon_map_32b_store_single_polygon():
     """

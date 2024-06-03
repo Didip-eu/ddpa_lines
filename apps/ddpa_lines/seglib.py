@@ -190,7 +190,7 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
     label_map[ intersection_boolean_mask ] <<= __LABEL_SIZE__
 
     # only then add label to all pixels matching the polygon
-    label_map += polygon_mask.astype('int32') * label
+    label_map += polygon_mask.astype( label_map.dtype ) * label
 
 
 def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
@@ -198,28 +198,42 @@ def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
     Converts a numpy array of 32-bit unsigned ints into a 4-channel tensor.
 
     Args:
-        img_hw (np.ndarray): a flat label map.
+        img_hw (np.ndarray): a flat label map of 32-bit integers; other integers type allowed but checked for overflow
+                             before casting.
 
     Output:
         Tensor: a 4-channel (c,h,w) tensor of unsigned 8-bit integers.
     """
-    #img_chw = img_hw.view( torch.uint8 ).reshape( img_hw.shape + (4,) ).permute(2,0,1)
-    img_chw = torch.from_numpy( np.moveaxis( img_hw.view(np.uint8).reshape( (img_hw.shape[0], -1, 4)), 2, 0))
+    if len(img_hw.shape) != 2:
+        raise TypeError(format("Input map should have shape (W,H) (actual: {}).".format( img_hw.shape )))
+    img_hw_32b = img_hw.astype('int32')
+    spurious_pixels = (img_hw_32b != img_hw)
+    if np.any( spurious_pixels ):
+        raise OverflowError("Input map contains labels that are larger than the expected, 4-byte size (input {} with dtype={} cast into {} with dtype={}).".format(
+            repr(img_hw[ spurious_pixels ]), img_hw.dtype,
+            repr(img_hw_32b[ spurious_pixels ]), img_hw_32b.dtype))
+    img_chw = torch.from_numpy( np.moveaxis( img_hw_32b.view(np.uint8).reshape( (img_hw.shape[0], -1, 4)), 2, 0))
     return img_chw
 
 
-def rgba_uint8_to_hw_tensor( img_chw: Tensor ) -> Tensor:
-    """
-    Converts a 4-channel tensor of unsigned 8-bit integers into a numpy array of 32-bit ints.
-
-    Args:
-        img_chw (Tensor): a 4-channel tensor of 8-bit unsigned integers.
-
-    Output:
-        Tensor: a flat map of 32-bit integers.
-    """
-    img_hw = img_chw.permute(1,2,0).reshape( img_chw.shape[1], -1 ).view(torch.int32)
-    return img_hw
+#def rgba_uint8_to_hw_tensor( img_chw: Tensor ) -> Tensor:
+#    """
+#    Converts a 4-channel tensor of unsigned 8-bit integers into a 1-channel tensor of 32-bit integers.
+#    Note: not meant as an inverse of the array_to_rgba_uint8() function, since it yields a tensor, not 
+#    an array.
+#
+#    Args:
+#        img_chw (Tensor): a 4-channel tensor of 8-bit unsigned integers.
+#
+#    Output:
+#        Tensor: a flat map of 32-bit integers.
+#    """
+#    if img_chw.dtype != torch.uint8:
+#        raise TypeError(format("Input map's dtype should be torch.uint8 (actual: {}).".format( img_chw.dtype )))
+#    if len(img_chw.shape) != 3 or img_chw.shape[0] != 4:
+#        raise TypeError(format("Input map should have shape (4,W,H) (actual: {}).".format( img_chw.shape )))
+#    img_hw = img_chw.permute(1,2,0).reshape( img_chw.shape[1], -1 ).view(torch.int32)
+#    return img_hw
 
 
 
@@ -286,7 +300,7 @@ def polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_chw_pred: Tensor, p
     if len(polygon_chw_pred.shape) != 3 or polygon_chw_pred.shape[0] != 4 or polygon_chw_pred.dtype is not torch.uint8:
         raise TypeError("Wrong type: polygon predicted map should be a 4-channel tensor of unsigned 8-bit integers.")
     if polygon_chw_gt.shape != polygon_chw_pred.shape:
-        raise TypeError("Wrong type: both maps should have the same shape (got {} and {}).".format( polygon_chw_gt.shape, polygon_chw_pred.shape ))
+        raise TypeError("Wrong type: both maps should have the same shape (instead: {} and {}).".format( polygon_chw_gt.shape, polygon_chw_pred.shape ))
 
     polygon_chw_fg_gt, polygon_chw_fg_pred = [ polygon_img * binary_hw_mask for polygon_img in (polygon_chw_gt, polygon_chw_pred) ]
     
