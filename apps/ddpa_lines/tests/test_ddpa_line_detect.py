@@ -61,12 +61,26 @@ def test_binary_mask_from_image_fg_bg():
 
 def test_line_binary_mask_from_img_segmentation_dict( data_path, ndarrays_regression ):
     """
-    TODO: write the test
+    Provided an image and a segmentation dictionary, should return a boolean mask for all lines.
     """
     input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
     segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
     mask = seglib.line_binary_mask_from_img_segmentation_dict( input_img, segmentation_dict )
     ndarrays_regression.check( { 'mask': mask.numpy() } ) 
+
+
+def test_line_images_from_img_segmentation_dict( data_path, ndarrays_regression ):
+    """
+    Provided an image and a segmentation dictionary, should return an array of pairs
+    (line_image, polygon_mask) where line_image is the cropped BB for the line and 
+    polygon_mask a boolean_mask for the contained polygon.
+    """
+    input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
+    segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
+    imgs_and_masks = seglib.line_images_from_img_segmentation_dict( input_img, segmentation_dict )
+    #ndarrays_regression.check( { 'mask': mask.numpy() } ) 
+    assert len(imgs_and_masks) == 4
+
 
 def test_array_to_rgba_uint8_overflow():
     """

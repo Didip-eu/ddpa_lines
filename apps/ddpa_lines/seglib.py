@@ -11,7 +11,7 @@ from torch import Tensor
 
 import numpy as np
 import numpy.ma as ma
-from typing import Tuple, Callable
+from typing import List, Tuple, Callable
 import itertools
 
 
@@ -104,7 +104,6 @@ def line_binary_mask_from_img_segmentation_dict(img_wh: Image.Image, segmentatio
 
     # create 2D boolean matrix
     mask_size = img_wh.size[::-1]
-    label_map_hw = np.zeros( mask_size, dtype='bool' )
 
     # rendering polygons
     for lbl, polyg in enumerate( polygon_boundaries ):
@@ -112,6 +111,39 @@ def line_binary_mask_from_img_segmentation_dict(img_wh: Image.Image, segmentatio
         label_map_hw += polyg_mask
 
     return torch.tensor( label_map_hw )
+
+def line_images_from_img_segmentation_dict(img_wh: Image.Image, segmentation_dict: dict ) -> List[Tuple]:
+    """
+    From a segmentation dictionary describing polygons, return a boolean mask where any pixel belonging
+    to a polygon is 1 and the other pixels 0.
+
+    Args:
+        img_whc (Image.Image): the input image (needed for the size information).
+        segmentation_dict (dict): a dictionary, typically constructed from a JSON file.
+
+    Output:
+        list: a list of pairs (<line image BB>, mask)
+    """
+
+    polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
+    img_hwc = np.asarray( img_wh )
+
+    pairs_linebb_and_mask = [None] * len(polygon_boundaries)
+
+    for lbl, polyg in enumerate( polygon_boundaries ):
+        page_polyg_mask = ski.draw.polygon2mask( img_hwc.shape, polyg ) # np.ndarray (H,W,C)
+
+        # polygon's bounding box
+        points = np.array( polyg )
+        x_min, y_min, x_max, y_max = np.min( points[:,1] ), np.min( points[:,0] ), np.max( points[:,1] ), np.max( points[:,0] )
+
+        # crop both img and mask
+        line_bbox = img_hwc[y_min:y_min+1, x_min:x_min+1]
+        polygon_mask = page_polyg_mask[y_min:y_min+1, x_min:x_min+1]
+
+        pairs_linebb_and_mask[lbl]=( line_bbox, polygon_mask )
+
+    return pairs_linebb_and_mask
 
 
 def xml_to_polygon_map( page_xml: str, img: str ) -> Tensor:
