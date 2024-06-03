@@ -59,6 +59,15 @@ def test_binary_mask_from_image_fg_bg():
     assert torch.sum(binary_map).item() == 1 # remaining pixels = F
 
 
+def test_line_binary_mask_from_img_segmentation_dict( data_path, ndarrays_regression ):
+    """
+    TODO: write the test
+    """
+    input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
+    segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
+    mask = seglib.line_binary_mask_from_img_segmentation_dict( input_img, segmentation_dict )
+    ndarrays_regression.check( { 'mask': mask.numpy() } ) 
+
 def test_array_to_rgba_uint8_overflow():
     """
     Conversion of a map of 64-bit integers should raise an exception if overflow
@@ -289,7 +298,7 @@ def test_polygon_mask_to_polygon_map_32b_store_large_values():
                                 [0,0,1,1,1,0],
                                 [0,0,0,0,0,0],
                                 [0,0,0,0,0,0]], dtype='int32')
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_1, 255)
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_1, 253)
 
     polygon_mask_2 = np.array( [[0,0,0,0,0,0],
                                 [0,0,0,0,0,0],
@@ -297,20 +306,41 @@ def test_polygon_mask_to_polygon_map_32b_store_large_values():
                                 [0,0,1,1,1,1],
                                 [0,0,1,1,1,0],
                                 [0,0,1,1,0,0]], dtype='int32')
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 255)
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 254)
 
     assert np.array_equal( label_map,
                    np.array( [[0xff,0xff,0xff,0,0,0],
                               [0xff,0xff,0xff,0,0,0],
-                              [0xff,0xff,0xffffff,0xffff,0xff,0],
-                              [0,0,0xffff,0xffff,0xffff,0xff],
-                              [0,0,0xff,0xff,0xff,0],
-                              [0,0,0xff,0xff,0,0]], dtype='int32'))
+                              [0xff,0xff,0xfffdfe,0xfdfe,0xfe,0],
+                              [0,0,0xfdfe,0xfdfe,0xfdfe,0xfe],
+                              [0,0,0xfe,0xfe,0xfe,0],
+                              [0,0,0xfe,0xfe,0,0]], dtype='int32'))
 
 def test_polygon_mask_to_polygon_map_32b_4_polygon_exception():
     """
     Exception raised when trying to store more than 3 polygons on same pixel.
     """
+    label_map = np.array( [[1,1,1,0],
+                           [1,1,1,0],
+                           [1,1,1,0],
+                           [0,0,0,0]], dtype='int32')
+
+    polygon_mask = np.array( [[0,0,0,0],
+                              [0,0,0,0],
+                              [0,0,1,1],
+                              [0,0,0,0]], dtype='int32')
+
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 2)
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 3)
+
+    with pytest.raises( ValueError ) as e:
+        seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 4)
+
+def test_polygon_mask_to_polygon_map_32b_duplicate_label_single_channel():
+    """
+    Test that a pixel cannot store the same label twice.
+    """
+
     label_map = np.array( [[2,2,2,0],
                            [2,2,2,0],
                            [2,2,2,0],
@@ -321,14 +351,30 @@ def test_polygon_mask_to_polygon_map_32b_4_polygon_exception():
                               [0,0,1,1],
                               [0,0,0,0]], dtype='int32')
 
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 3)
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 3)
+    with pytest.raises( ValueError ) as e:
+        seglib.apply_polygon_mask_to_map( label_map, polygon_mask, 2)
+
+@pytest.mark.parametrize(('label'),[2, 0x402, 0x40102, 0x204, 0x20401])
+def test_polygon_mask_to_polygon_map_32b_duplicate_label_different_channels( label ):
+    """
+    Test that a pixel cannot store the same label twice.
+    """
+
+    label_map = np.array( [[1,1,1,0],
+                           [1,1,1,0],
+                           [1,label,1,0],
+                           [0,0,0,0]], dtype='int32')
+
+    polygon_mask = np.array( [[0,0,0,0],
+                              [0,0,0,0],
+                              [0,1,1,1],
+                              [0,1,0,0]], dtype='int32')
 
     with pytest.raises( ValueError ) as e:
-        seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 1)
+        seglib.apply_polygon_mask_to_map( label_map, polygon_mask, 2)
 
 
-def test_retrieve_polygon_mask_from_map_no_binary_mask_1():
+def test_retrieve_polygon_mask_from_map_1():
     label_map = torch.tensor([[[2, 2, 2, 0, 0, 0],
                                [2, 2, 2, 0, 0, 0],
                                [2, 2, 4, 4, 4, 0],
@@ -365,7 +411,7 @@ def test_retrieve_polygon_mask_from_map_no_binary_mask_1():
     # second call ensures that the map is not modified by the retrieval operation
     assert torch.equal( seglib.retrieve_polygon_mask_from_map(label_map, 3), expected)
 
-def test_retrieve_polygon_mask_from_map_no_binary_mask_2():
+def test_retrieve_polygon_mask_from_map_2():
     label_map = torch.tensor([[[2, 2, 2, 0, 0, 0],
                                [2, 2, 2, 0, 0, 0],
                                [2, 2, 4, 4, 4, 0],
@@ -387,7 +433,7 @@ def test_retrieve_polygon_mask_from_map_no_binary_mask_2():
                               [[0, 0, 0, 0, 0, 0],
                                [0, 0, 0, 0, 0, 0],
                                [0, 0, 0, 0, 0, 0],
-                               [0, 0, 0, 0, 0, 0],
+                               [0, 0, 0, 0, 0, 3],
                                [0, 0, 0, 0, 0, 0],
                                [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8)
 
@@ -395,7 +441,7 @@ def test_retrieve_polygon_mask_from_map_no_binary_mask_2():
                 torch.tensor( [[False, False, False, False, False, False],
                                [False, False, False, False, False, False],
                                [False, False,  True,  True, False, False],
-                               [False,  True,  True,  True,  True, False],
+                               [False,  True,  True,  True,  True, True],
                                [False, False,  True, False, False, False],
                                [False, False, False, False, False, False]]))
 
@@ -425,7 +471,8 @@ def test_union_intersection_count_two_maps():
     Shared pixels in each map (i.e. overlapping polygons) are counted independently for each polygon.
     """
     # Pred. labels: 2,3,4
-    map1 = seglib.array_to_rgba_uint8(np.array([[2,2,2,0,0,0],
+    map1 = seglib.array_to_rgba_uint8(
+            np.array([[2,2,2,0,0,0],
                       [2,2,2,0,0,0],
                       [2,2,0x20304,0x304,4,0],
                       [0,0,0x304,0x304,0x304,4],
@@ -433,7 +480,8 @@ def test_union_intersection_count_two_maps():
                       [0,0,4,0x402,0,0]], dtype='int32'))
 
     # GT labels: 2,3,4
-    map2 = seglib.array_to_rgba_uint8(np.array( [[0,2,2,0,0,0],
+    map2 = seglib.array_to_rgba_uint8(
+            np.array([[0,2,2,0,0,0],
                       [2,2,4,2,2,0],
                       [2,2,0x20304,0x304,4,0],
                       [0,3,0x304,0x304,0x304,4],
@@ -790,7 +838,7 @@ def test_get_polygon_pixel_metrics_from_maps_and_mask_small_image(  data_path ):
     assert np.all( metrics[:,:,0].diagonal() != 0 ) # intersections
     assert np.all( metrics[:,:,1] != 0 ) # unions
 
-def test_get_polygon_pixel_metrics_from_img_json(  data_path ):
+def test_get_polygon_pixel_metrics_from_img_segmentation_dict(  data_path ):
     """
     On an actual image, with polygon loaded from JSON dictionaries, only a few sanity checks for testing
     """
@@ -798,7 +846,7 @@ def test_get_polygon_pixel_metrics_from_img_json(  data_path ):
     dict_pred = json.load( open(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
     dict_gt = json.load( open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
 
-    metrics = seglib.polygon_pixel_metrics_from_img_json(input_img, dict_pred, dict_gt)
+    metrics = seglib.polygon_pixel_metrics_from_img_segmentation_dict(input_img, dict_pred, dict_gt)
 
     assert metrics.dtype == np.float32 
     assert np.all( metrics[:,:,0].diagonal() != 0 ) # intersections

@@ -46,7 +46,7 @@ def line_segment(img: Image.Image, model_path: str):
     return dict_to_polygon_map( blla.segment( img, model=vgsl.TorchVGSLModel.load_model( model_path )), img )
 
 
-def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tensor:
+def dict_to_polygon_map( segmentation_dict: dict, img_wh: Image.Image ) -> Tensor:
     """
     Store line polygons into a tensor, as pixel maps.
 
@@ -60,7 +60,7 @@ def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tensor:
                ...
              ]
              'regions': [ ... ] }
-        img (Image.Image): the input image
+        img_wh (Image.Image): the input image
 
     Output:
         Tensor: the polygons rendered as a 4-channel image (a tensor).
@@ -69,11 +69,12 @@ def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tensor:
 
     # create 2D matrix of 32-bit integers
     # (fillPoly() only accepts signed integers - risk of overflow is non-existent)
-    label_map = np.zeros( img.size[::-1], dtype='int32' )
+    mask_size = img_wh.size[::-1]
+    label_map = np.zeros( mask_size, dtype='int32' )
 
     # rendering polygons
     for lbl, polyg in enumerate( polygon_boundaries ):
-        polyg_mask = ski.draw.polygon2mask( img.size[::-1], polyg )
+        polyg_mask = ski.draw.polygon2mask( mask_size, polyg )
         apply_polygon_mask_to_map( label_map, polyg_mask, lbl+1 )
 
     #ski.io.imshow( polygon_img.transpose() )
@@ -85,6 +86,32 @@ def dict_to_polygon_map( segmentation_dict: dict, img: Image.Image ) -> Tensor:
     # max label + polygons as an image
     return polygon_img
 
+
+def line_binary_mask_from_img_segmentation_dict(img_wh: Image.Image, segmentation_dict: dict ) -> Tensor:
+    """
+    From a segmentation dictionary describing polygons, return a boolean mask where any pixel belonging
+    to a polygon is 1 and the other pixels 0.
+
+    Args:
+        img_whc (Image.Image): the input image (needed for the size information).
+        segmentation_dict (dict): a dictionary, typically constructed from a JSON file.
+
+    Output:
+        Tensor: a flat boolean tensor with size (H,W)
+    """
+
+    polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
+
+    # create 2D boolean matrix
+    mask_size = img_wh.size[::-1]
+    label_map_hw = np.zeros( mask_size, dtype='bool' )
+
+    # rendering polygons
+    for lbl, polyg in enumerate( polygon_boundaries ):
+        polyg_mask = ski.draw.polygon2mask( mask_size, polyg )
+        label_map_hw += polyg_mask
+
+    return torch.tensor( label_map_hw )
 
 
 def xml_to_polygon_map( page_xml: str, img: str ) -> Tensor:
@@ -100,32 +127,15 @@ def xml_to_polygon_map( page_xml: str, img: str ) -> Tensor:
     Output:
         Tensor: the polygons rendered as a 4-channel image (a tensor).
     """
-    polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
 
-    # create 2D matrix of 32-bit integers
-    # (fillPoly() only accepts signed integers - risk of overflow is non-existent)
-    label_map = np.zeros( img.size[::-1], dtype='int32' )
-
-    with Image.open( img, 'r'):
-        # rendering polygons
-        for lbl, polyg in enumerate( polygon_boundaries ):
-            polyg_mask = ski.draw.polygon2mask( img.size[::-1], polyg )
-            apply_polygon_mask_to_map( label_map, polyg_mask, lbl+1 )
-
-        #ski.io.imshow( polygon_img.transpose() )
-
-        # 8-bit/pixel, 4 channels (note: order is little-endian)
-        polygon_img = array_to_rgba_uint8( label_map )
-        #ski.io.imshow( polygon_img.permute(1,2,0).numpy() )
-
-        # max label + polygons as an image
-        return polygon_img
-
+    with Image.open( img ) as input_img:
+        segmentation_dict = pagexml_to_segmentation_dict( page_xml )
+        return dict_to_polygon_map( segmentation_dict, input_img )
 
 
 def pagexml_to_segmentation_dict(page: str) -> dict:
     """
-    Given a pageXML file, return a JSON dictionary describing the lines.
+    Given a pageXML file name, return a JSON dictionary describing the lines.
 
     Args:
         page (str): path of a PageXML file
@@ -168,24 +178,33 @@ def pagexml_to_segmentation_dict(page: str) -> dict:
 
 def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int):
     """
-    Label pixels matching a given polygon in the segmentation map.
+    In the segmentation map, label pixels matching a given polygon. Up to 3 labels
+    can be stored on a single pixel. A label cannot be applied twice to the same 
+    map.
 
     Args:
         label_map (np.ndarray): the map that stores the polygons
         polygon_mask (np.ndarray): a binary mask representing the polygon to be labeled.
         label (int): the label for this polygon; if the pixel already has a previous
-                     label l', the resulting, compound value is (l'<<8)+label. Eg. 
-                     applying label 4 on a pixel that already stores label 2 yields
-                     2 << 8 + 4 = 0x204 = 8192
+                     label l', the resulting, compound value is (l'<<8)+label.
+                     Ex. #1. Applying label 4 on a pixel that already stores label 2 yields
+                             2 << 8 + 4 = 0x204 = 8192
+                     Ex. #2. Pixel 0x10403 stores labels [1, 4, 3]
     """
     max_two_polygon_label=0xffff
+
+    # Handling duplicated labels:
+    if array_has_label(label_map, label):
+        raise ValueError("The label map already contains a label with value ({})".format(label))
+
     # for every pixel in intersection...
     intersection_boolean_mask = np.logical_and( label_map, polygon_mask )
     # if intersection does not already contain a 3-polygon pixel
     if np.any( label_map[ intersection_boolean_mask ] > max_two_polygon_label ):
         maxed_out_pixels = np.transpose(((label_map * intersection_boolean_mask) > max_two_polygon_label).nonzero())
-        print("Some pixels already store 3 polygons:", [ (row,col) for (row,col) in maxed_out_pixels ][:5], ' ...' if len(maxed_out_pixels)>5 else '')
-        raise ValueError('Cannot store more than 3 polygons on the same pixel!')
+        raise ValueError('Cannot store more than 4 polygons on the same pixel! Follwing positions maxed out: {}{}'.format(
+            repr([ (row,col) for (row,col) in maxed_out_pixels ][:5]),
+            ' ...' if len(maxed_out_pixels)>5 else ''))
     # ... shift it
     label_map[ intersection_boolean_mask ] <<= __LABEL_SIZE__
 
@@ -237,7 +256,7 @@ def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
 
 
 
-def polygon_pixel_metrics_from_img_json(img: Image.Image, segmentation_dict_pred: dict, segmentation_dict_gt: dict, binary_mask: Tensor=None) -> np.ndarray:
+def polygon_pixel_metrics_from_img_segmentation_dict(img: Image.Image, segmentation_dict_pred: dict, segmentation_dict_gt: dict, binary_mask: Tensor=None) -> np.ndarray:
     """
     Compute a IoU matrix from an image and two dictionaries describing the segmentation's output (line polygons).
 
@@ -278,9 +297,9 @@ def polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_chw_pred: Tensor, p
     and a FG mask.
 
     Args:
-        polygon_chw_gt (Tensor): a 4-channel image, where each position may store up to 4 overlapping labels
+        polygon_chw_gt (Tensor): a 4-channel image, where each position may store up to 3 overlapping labels
                                  (one for each channel)
-        polygon_chw_pred (Tensor): a 4-channel image, where each position may store up to 4 overlapping labels
+        polygon_chw_pred (Tensor): a 4-channel image, where each position may store up to 3 overlapping labels
                                    (one for each channel)
         binary_hw_mask (Tensor): a boolean mask that selects the input image's FG pixel
 
@@ -308,14 +327,14 @@ def polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_chw_pred: Tensor, p
 
     return metrics
 
-def retrieve_polygon_mask_from_map( label_map_chw: Tensor, label: int, binary_mask_hw: Tensor=None) -> Tensor:
+def retrieve_polygon_mask_from_map( label_map_chw: Tensor, label: int) -> Tensor:
     """
     From a label map (that may have compound pixels representing polygon intersections),
     compute a binary mask that covers _all_ pixels for the label, whether they belong to an
     intersection or not.
 
     Args:
-        label_mask_hw (Tensor): a flat map with labeled polygons, with potential overlaps.
+        label_map_chw (Tensor): a 4-channel tensor, where each pixel can store up to 3 labels.
         label (int): the label to be selected.
 
     Output:
@@ -326,6 +345,26 @@ def retrieve_polygon_mask_from_map( label_map_chw: Tensor, label: int, binary_ma
     polygon_mask_hw = torch.sum( label_map_chw==label, axis=0)
 
     return polygon_mask_hw
+
+
+def array_has_label( label_map_hw: np.array, label: int ) -> np.ndarray:
+    """
+    From a flat label map (as generated from a segmentation dictionary) where each pixel can store up to 3 values,
+    test whether a given polygon has been stored already.
+
+    Args:
+            label_map_hw (np.ndarray): a 2D map, where each 32-bit integer store up to 3 labels.
+            label (int): the label to be checked for.
+    Output:
+            bool: True if map already stores the given label; False otherwise.
+    """
+    if len(label_map_hw.shape) > 2:
+        raise TypeError("Map should be a flat map of integers.")
+
+    label_cube_chw = np.moveaxis(label_map_hw.view('uint8').reshape(label_map_hw.shape+(-1,)), 2, 0)
+    return np.any( label_cube_chw == label )
+
+
 
 def polygon_pixel_metrics_two_maps( map_chw_1: Tensor, map_chw_2: Tensor, label_distance=5) -> np.ndarray:
     """
@@ -495,9 +534,9 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
 
 def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray, threshold: float=.5 ) -> Tuple[float, float, float]:
     """
-    et mplement ICDAR 2017 pixel-based evaluation metrics, as described in
-    Simistira et al., ICDAR2017 Competition on Layout Analysis for Challenging Medieval
-    Manuscripts, 2017.
+    Implement ICDAR 2017 pixel-based evaluation metrics, as described in
+    Simistira et al., ICDAR2017, "Competition on Layout Analysis for Challenging Medieval
+    Manuscripts", 2017.
 
     Two versions of the pixel-based IoU metric:
     + Pixel IU takes all pixels of all intersecting pairs into account
@@ -551,7 +590,7 @@ def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray, threshold:
     
 def metrics_to_precision_recall_curve( metrics: np.ndarray, threshold_range=np.linspace(0, 1, num=21)) -> np.ndarray:
     """
-    Compute precision and recalls over a range of IoU thresholds, for plotting purpuse.
+    Compute precision and recalls over a range of IoU thresholds, for plotting purpose.
 
     Args:
         metrics (np.ndarray): a 4-channel table with GT labels in rows and predicted labels in columns, where
@@ -567,28 +606,6 @@ def metrics_to_precision_recall_curve( metrics: np.ndarray, threshold_range=np.l
         precisions_recalls[i] = metrics_to_aggregate_scores(metrics, iou_threshold=t)[:2]
         #print(precisions_recalls[:,i])
     return np.moveaxis( precisions_recalls, 1, 0)
-
-
-def test_map_value_for_label( px: int, label: int) -> bool:
-    """
-    Test whether a given label is encoded into a map pixel (for diagnosis purpose only:
-    applying this to large array is prohibitively slow).
-
-    Args:
-        vl (int): a map pixel, whose value is a number in base __LABEL_SIZE__ (with digits being 
-                  labels).
-        label (int): the label to check for.
-
-    Output:
-        bool: True if the label is part of the code; False otherwise.
-    """
-    vl = px
-    label_limit = 2**__LABEL_SIZE__-1
-    while vl > label_limit:
-        if (vl & label_limit) == label:
-            return True
-        vl >>= __LABEL_SIZE__
-    return vl == label
 
 
 def recover_labels_from_map_value( px: int) -> list:
