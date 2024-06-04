@@ -69,7 +69,7 @@ def test_line_binary_mask_from_img_segmentation_dict( data_path, ndarrays_regres
     ndarrays_regression.check( { 'mask': mask.numpy() } ) 
 
 
-def test_line_images_from_img_segmentation_dict( data_path, ndarrays_regression ):
+def test_line_images_from_img_segmentation_dict_type_checking( data_path, ndarrays_regression ):
     """
     Provided an image and a segmentation dictionary, should return an array of pairs
     (line_image, polygon_mask) where line_image is the cropped BB for the line and 
@@ -80,6 +80,28 @@ def test_line_images_from_img_segmentation_dict( data_path, ndarrays_regression 
     imgs_and_masks = seglib.line_images_from_img_segmentation_dict( input_img, segmentation_dict )
     #ndarrays_regression.check( { 'mask': mask.numpy() } ) 
     assert len(imgs_and_masks) == 4
+    assert type(imgs_and_masks[0][0]) is np.ndarray 
+    assert type(imgs_and_masks[0][1]) is np.ndarray 
+    assert imgs_and_masks[0][0].shape == imgs_and_masks[0][1].shape
+    assert imgs_and_masks[0][0].shape[-1] == 3
+    assert imgs_and_masks[0][1].shape[-1] == 3
+
+
+def test_line_images_from_img_segmentation_dict_image_content_checking( data_path, ndarrays_regression ):
+    """
+    Provided an image and a segmentation dictionary, should return an array of pairs
+    (line_image, polygon_mask) where line_image is the cropped BB for the line and 
+    polygon_mask a boolean_mask for the contained polygon.
+    """
+    input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
+    segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
+    imgs_and_masks = seglib.line_images_from_img_segmentation_dict( input_img, segmentation_dict )
+    ndarrays_regression.check( {
+        'image1': imgs_and_masks[0][0], 'mask1': imgs_and_masks[0][1],
+        'image2': imgs_and_masks[1][0], 'mask2': imgs_and_masks[1][1],
+        'image3': imgs_and_masks[2][0], 'mask3': imgs_and_masks[2][1],
+        'image4': imgs_and_masks[3][0], 'mask4': imgs_and_masks[3][1],
+        })
 
 
 def test_array_to_rgba_uint8_overflow():
@@ -460,22 +482,51 @@ def test_retrieve_polygon_mask_from_map_2():
                                [False, False, False, False, False, False]]))
 
 
-def test_segmentation_dict_to_polygon_map_label_count(  data_path ):
+def test_segmentation_polygon_map_from_img_segmentation_dict_label_count(  data_path ):
     """
-    seglib.dict_to_polygon_map(dict, image) should return a tuple (labels, polygons)
+    seglib.polygon_map_from_img_segmentation_dict(dict, image) should return a tuple (labels, polygons)
     """
     with open( data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r') as segdict_file, Image.open( data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r') as input_image:
         segdict = json.load( segdict_file )
-        polygons = seglib.dict_to_polygon_map( segdict, input_image )
+        polygons = seglib.polygon_map_from_img_segmentation_dict( input_image, segdict )
         assert type(polygons) is torch.Tensor
         assert torch.max(polygons) == 4
-
-
-def test_segmentation_dict_to_polygon_map_polygon_img_type(  data_path ):
-    with open( data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r') as segdict_file, Image.open( data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r') as input_image:
-        segdict = json.load( segdict_file )
-        polygons = seglib.dict_to_polygon_map( segdict, input_image )
         assert polygons.shape == (4,)+input_image.size[::-1]
+
+
+def test_segmentation_polygon_map_from_img_json_files(  data_path ):
+    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+    json_file = str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'))
+    polygons = seglib.polygon_map_from_img_json_files( img_file, json_file )
+    assert type(polygons) is torch.Tensor
+    assert torch.max(polygons) == 4
+
+
+
+def test_segmentation_polygon_map_from_img_xml_files(  data_path ):
+    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+    xml_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.xml'))
+    polygons = seglib.polygon_map_from_img_xml_files( img_file, xml_file )
+    assert type(polygons) is torch.Tensor
+    assert torch.max(polygons) == 4
+
+
+
+def test_line_binary_mask_from_img_json_files(  data_path ):
+    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+    json_file = str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'))
+    mask = seglib.line_binary_mask_from_img_json_files( img_file, json_file )
+    assert type(mask) is torch.Tensor
+    assert mask.dtype == torch.bool
+
+def test_line_binary_mask_from_img_xml_files(  data_path ):
+    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+    xml_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.xml'))
+    mask = seglib.line_binary_mask_from_img_xml_files( img_file, xml_file )
+    assert type(mask) is torch.Tensor
+    assert mask.dtype == torch.bool
+
+
 
 def test_union_intersection_count_two_maps():
     """
@@ -837,7 +888,8 @@ def test_get_polygon_pixel_metrics_different_map_shapes():
         seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(map1,map2)
 
 
-def test_get_polygon_pixel_metrics_from_maps_and_mask_small_image(  data_path ):
+@pytest.mark.parametrize("distance", [0, 2, 5])
+def test_get_polygon_pixel_metrics_from_maps_and_mask_small_image(  data_path, distance, ndarrays_regression ):
     """
     On an actual image, with polygons loaded from serialized tensors, only a few sanity checks for testing
     """
@@ -846,13 +898,14 @@ def test_get_polygon_pixel_metrics_from_maps_and_mask_small_image(  data_path ):
     polygon_gt = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.pt')))
     binary_mask = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced_binarized.pt')))
 
-    metrics = seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_pred, polygon_gt, binary_mask)
+    metrics = seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_pred, polygon_gt, binary_mask, label_distance=distance)
 
-    assert metrics.dtype == np.float32 
-    assert np.all( metrics[:,:,0].diagonal() != 0 ) # intersections
-    assert np.all( metrics[:,:,1] != 0 ) # unions
+    ndarrays_regression.check( {'pixel_metrics': metrics })
+    #assert metrics.dtype == np.float32 
+    #assert np.all( metrics[:,:,0].diagonal() != 0 ) # intersections
+    #assert np.all( metrics[:,:,1] != 0 ) # unions
 
-def test_get_polygon_pixel_metrics_from_img_segmentation_dict(  data_path ):
+def test_get_polygon_pixel_metrics_from_img_segmentation_dict_rough_check(  data_path, ndarrays_regression ):
     """
     On an actual image, with polygon loaded from JSON dictionaries, only a few sanity checks for testing
     """
@@ -862,9 +915,22 @@ def test_get_polygon_pixel_metrics_from_img_segmentation_dict(  data_path ):
 
     metrics = seglib.polygon_pixel_metrics_from_img_segmentation_dict(input_img, dict_pred, dict_gt)
 
-    assert metrics.dtype == np.float32 
-    assert np.all( metrics[:,:,0].diagonal() != 0 ) # intersections
-    assert np.all( metrics[:,:,1] != 0 ) # unions
+    ndarrays_regression.check( {'pixel_metrics': metrics })
+    #assert metrics.dtype == np.float32
+    #assert np.all( metrics[:,:,1] != 0 ) # unions
+
+def test_get_polygon_pixel_metrics_from_img_segmentation_dict_content_check(  data_path, ndarrays_regression ):
+    """
+    On an actual image, with polygon loaded from JSON dictionaries, only a few sanity checks for testing
+    """
+    input_img = Image.open( data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+    dict_pred = json.load( open(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r'))
+    dict_gt = json.load( open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
+
+    metrics = seglib.polygon_pixel_metrics_from_img_segmentation_dict(input_img, dict_pred, dict_gt)
+
+    ndarrays_regression.check( { 'pixel_metrics': metrics } )
+
 
 @pytest.mark.fail_slow('30s')
 @pytest.mark.parametrize("distance", [2, 7])
@@ -883,9 +949,14 @@ def test_polygon_pixel_metrics_from_full_charter(  data_path, distance ):
     # union counts should never be 0
     assert np.all( metrics[:,:,1] != 0 )
 
-def test_polygon_pixel_metrics_to_line_based_scores():
+
+@pytest.mark.parametrize("thld,expected_scores", [ 
+    (.1, (2.0, 0.0, 1.0 , 2.0/3, 0.8)),
+    (.5, (1.0, 2.0, 2.0, 0.2, 1.0/3)),
+    (.9, (0.0, 3.0, 3.0, 0.0, 0.0))])
+def test_polygon_pixel_metrics_to_line_based_scores(thld, expected_scores):
     """
-    On an actual image, a sanity check on the diagonal values.
+    Made-up matrix, constructed from the tests above (not from an actual image).
     """
     metrics = np.array([[[ 6.3333335 , 11.833334  ,  0.7169811 ,  0.67857146],
                          [ 0.33333334, 10.833334  ,  0.03773585,  0.14285713],
@@ -901,9 +972,31 @@ def test_polygon_pixel_metrics_to_line_based_scores():
                          [ 0.        , 10.833334  ,  0.        ,  0.        ]]],
                         dtype=np.float32)
 
-    assert seglib.polygon_pixel_metrics_to_line_based_scores(metrics, .1) == (2., 0.0, 1.0 , 2.0/3, 0.8)
-    assert seglib.polygon_pixel_metrics_to_line_based_scores(metrics, .5) == (1.0, 2.0, 2.0, 0.2, 1.0/3)
-    assert seglib.polygon_pixel_metrics_to_line_based_scores( metrics, .9) == (0.0, 3.0, 3.0, 0.0, 0.0)
+
+    assert seglib.polygon_pixel_metrics_to_line_based_scores(metrics, threshold=thld) == expected_scores
+
+
+def test_polygon_pixel_metrics_to_pixel_based_scores():
+    """
+    Made-up matrix, constructed from the tests above.
+    """
+
+    metrics = np.array([[[ 6.3333335 , 11.833334  ,  0.7169811 ,  0.67857146],
+                         [ 0.33333334, 10.833334  ,  0.03773585,  0.14285713],
+                         [ 0.8333334 , 17.333334  ,  0.09433962,  0.08928571],
+                         [ 0.        , 10.833334  ,  0.        ,  0.        ]],
+                        [[ 0.8333334 , 12.833333  ,  0.1923077 ,  0.08928572],
+                         [ 2.3333335 ,  4.3333335 ,  0.53846157,  1.        ],
+                         [ 3.3333335 , 10.333334  ,  0.7692308 ,  0.35714284],
+                         [ 0.5       ,  5.8333335 ,  0.11538461,  0.25      ]],
+                        [[ 1.8333334 , 16.333334  ,  0.20754716,  0.19642858],
+                         [ 2.3333335 ,  8.833334  ,  0.26415095,  1.        ],
+                         [ 7.3333335 , 10.833334  ,  0.83018863,  0.78571427],
+                         [ 0.        , 10.833334  ,  0.        ,  0.        ]]],
+                        dtype=np.float32)
+
+    scores = seglib.polygon_pixel_metrics_to_pixel_based_scores( metrics )
+    assert np.all(np.isclose( scores, (0.23780487, 0.2195121958311082) ))
 
 
 def test_polygon_pixel_metrics_to_line_based_scores_full_charter(  data_path ):
@@ -921,7 +1014,7 @@ def test_polygon_pixel_metrics_to_pixel_based_scores_full_charter(  data_path ):
     """
     metrics = torch.load(str(data_path.joinpath('full_charter_metrics.pt')))
 
-    scores = seglib.polygon_pixel_metrics_to_pixel_based_scores( metrics, .6 )
+    scores = seglib.polygon_pixel_metrics_to_pixel_based_scores( metrics )
     assert scores[0] > .25
     assert scores[1] > .5 
 
@@ -949,13 +1042,13 @@ def test_map_to_depth():
                       [1,1,1,1,1,1],
                       [1,1,1,1,1,1]], dtype=torch.int))
 
-def test_pagexml_to_segmentation_dict(  data_path ):
+def test_segmentation_dict_from_xml(  data_path ):
     """
     Conversion between PageXML segmentation output and JSON/Python dictionary should keep the lines.
     """
     pagexml = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.xml'))
 
-    segdict = seglib.pagexml_to_segmentation_dict( pagexml )
+    segdict = seglib.segmentation_dict_from_xml( pagexml )
 
     assert len(segdict['lines']) == 4
     assert [ l['line_id'] for l in segdict['lines'] ] == ['r1l1', 'r1l2', 'r1l3', 'r1l4'] 

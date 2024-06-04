@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8'?>
+<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15/pagecontent.xsd">
+    <Metadata>
+        <Creator>prov=University of Rostock/Institute of Mathematics/CITlab/Tobias Gruening/tobias.gruening@uni-rostock.de:name=/net_tf/LA73_249_0mod360.pb:de.uros.citlab.segmentation.CITlab_LA_ML:v=2.4.2
+TRP</Creator>
+        <Created>2019-09-06T10:06:55.047+02:00</Created>
+        <LastChange>2019-11-25T11:19:47.893+01:00</LastChange>
+    </Metadata>
+    <Page imageFilename="NA-ACK_14201223_01485_r-r1.png" imageWidth="9362" imageHeight="7859">
+        <ReadingOrder>
+            <OrderedGroup id="ro_1574677187924" caption="Regions reading order">
+                <RegionRefIndexed index="0" regionRef="r1" />
+                <RegionRefIndexed index="1" regionRef="region_1573562701639_204" />
+            </OrderedGroup>
+        </ReadingOrder>
+        <TextRegion orientation="0.0" id="r1" custom="readingOrder {index:0;}">
+            <Coords points="0,0 4553,2856" />
+            <TextLine id="r1l1" custom="readingOrder {index:0;} person {offset:0; length:93;} place {offset:58; length:8;} place {offset:68; length:6;} place {offset:76; length:8;} place {offset:86; length:7;}">
+                <Coords points="0,175 222,169 445,163 667,157 890,152 1113,147 1335,144 1558,139 1781,134 2003,130 2226,126 2449,121 2671,116 2894,111 3117,106 3339,100 3562,94 3785,87 4007,80 4230,72 4453,64 4453,0 4230,8 4007,16 3785,23 3562,30 3339,36 3117,42 2894,47 2671,52 2449,57 2226,62 2003,66 1781,70 1558,75 1335,80 1113,83 890,88 667,93 445,99 222,105 0,111" />
+                <Baseline points="0,154 222,148 445,142 667,136 890,131 1113,126 1335,123 1558,118 1781,113 2003,109 2226,105 2449,100 2671,95 2894,90 3117,85 3339,79 3562,73 3785,66 4007,59 4230,51 4453,43" />
+                <TextEquiv>
+                    <Unicode>Sigismundus, Dei gratia romanorum rex, semper augustus ac Hungarie, Boemie, Dalmacie, Croatie et cetera rex notum facimus tenore pre¬</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l2" custom="readingOrder {index:1;} person {offset:31; length:27;} place {offset:52; length:6;} person {offset:62; length:18;} place {offset:73; length:7;}">
+                <Coords points="66,255 285,251 504,247 723,244 943,240 1162,237 1381,233 1600,230 1820,226 2039,223 2258,219 2477,215 2697,211 2916,206 3135,201 3354,196 3574,192 3793,185 4012,180 4231,173 4451,166 4451,103 4231,110 4012,117 3793,122 3574,129 3354,133 3135,138 2916,143 2697,148 2477,152 2258,156 2039,160 1820,163 1600,167 1381,170 1162,174 943,177 723,181 504,184 285,188 66,192" />
+                <Baseline points="66,234 285,230 504,226 723,223 943,219 1162,216 1381,212 1600,209 1820,205 2039,202 2258,198 2477,194 2697,190 2916,185 3135,180 3354,175 3574,171 3793,164 4012,159 4231,152 4451,145" />
+                <TextEquiv>
+                    <Unicode>sencium universis, quod validi Nyepr dictus Ducz de Warzin et Andreas de Slatyna, fideles nostri dilecti, ad singularem nostram requisitionem</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l3" custom="readingOrder {index:2;}">
+                <Coords points="59,342 277,337 496,333 715,329 934,325 1153,321 1372,318 1591,314 1810,312 2029,309 2248,306 2466,303 2685,299 2904,296 3123,292 3342,289 3561,285 3780,280 3999,276 4218,271 4437,265 4437,202 4218,208 3999,213 3780,217 3561,222 3342,226 3123,229 2904,233 2685,236 2466,240 2248,243 2029,246 1810,249 1591,251 1372,255 1153,258 934,262 715,266 496,270 277,274 59,279" />
+                <Baseline points="59,321 277,316 496,312 715,308 934,304 1153,300 1372,297 1591,293 1810,291 2029,288 2248,285 2466,282 2685,278 2904,275 3123,271 3342,268 3561,264 3780,259 3999,255 4218,250 4437,244" />
+                <TextEquiv>
+                    <Unicode>nobis sexaginta sexagenas grossorum pragensium in paratis pecuniis mutuarunt, in quo nostre celsitudini exhibuerunt specialiter servicia</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l4" custom="readingOrder {index:3;} person {offset:33; length:5;} person {offset:42; length:7;} person {offset:94; length:23;} place {offset:111; length:6;}">
+                <Coords points="57,427 275,426 493,424 711,422 929,419 1147,415 1365,412 1584,408 1802,405 2020,401 2238,397 2456,393 2674,389 2892,385 3111,381 3329,377 3547,374 3765,371 3983,368 4201,365 4420,364 4420,301 4201,302 3983,305 3765,308 3547,311 3329,314 3111,318 2892,322 2674,326 2456,330 2238,334 2020,338 1802,342 1584,345 1365,349 1147,352 929,356 711,359 493,361 275,363 57,364" />
+                <Baseline points="57,406 275,405 493,403 711,401 929,398 1147,394 1365,391 1584,387 1802,384 2020,380 2238,376 2456,372 2674,368 2892,364 3111,360 3329,356 3547,353 3765,350 3983,347 4201,344 4420,343" />
+                <TextEquiv>
+                    <Unicode>valde grata, verum quia predicti Nyepr et Andreas etiam tempore serenissimi principis, domini Wenceslai, regis Boemie dive memorie,</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Sigismundus, Dei gratia romanorum rex, semper augustus ac Hungarie, Boemie, Dalmacie, Croatie et cetera rex notum facimus tenore pre¬
+sencium universis, quod validi Nyepr dictus Ducz de Warzin et Andreas de Slatyna, fideles nostri dilecti, ad singularem nostram requisitionem
+nobis sexaginta sexagenas grossorum pragensium in paratis pecuniis mutuarunt, in quo nostre celsitudini exhibuerunt specialiter servicia
+valde grata, verum quia predicti Nyepr et Andreas etiam tempore serenissimi principis, domini Wenceslai, regis Boemie dive memorie,
+fratris nostri carissimi et usque ad hec tempora de voluntate nostra castrum nostrum Necztyna cum suis pertinenciis tenuerunt et rexerunt, pro cuius guber¬
+natione semper certam provisionem habuerunt, in qua, sicut percepimus, eis hucusque ducente sexagene grossorum sunt retente, denique volentes prefa¬
+tos Nyepr et Andream de tam mutuatis quam retentis pecuniis certos reddere et contentos, cupientes ipsos nichilominus de benignitate regia pro
+impensis nobis per eos fidelibus servitiis graciose consolari, eis centum sexagenas grossorum pragensium pro talibus servitiis reddidimus et sic in toto
+ipsorum debito, in quo ipsis rite et legittime obligamur, comportato ipsis remansimus in noningentis sexagenis grossorum pragensium debitorie obligati,
+idcirco animo deliberato, sano etiam baronum, nobilium, procerum et fidelium corone nostre, regni Boemie, attendente consilio et de certa nostra sciencia
+ac autoritate regia Boemie predictis Nyepr et Andree ipsorumque heredibus et successoribus castrum nostrum Necztyna pro predictis noningentis sexagenis grossorum
+pragensium titulo pignoris obligavimus et proscripsimus, obligamus et proscribimus per presentes predictum castrum cum suis oppidis, villis, redditibus,
+censibus, serviciis, curiis, alodiis, agris cultis et incultis, pratis, pascuis, rubetis, silvis, nemoribus, piscinis, molendinis, aquis aquarumque decursibus ac
+aliis quibuscumque suis pertinenciis et utilitatibus, in quibuscunque consistant, habendum, tenendum, utifruendum et pacifice possidendum tamdiu, quousque nos, he¬
+redes et successores nostri, reges Boemie, ipsis noningentas sexagenas dederimus et persoluerimus peccunia in parata. Debebit eciam predictum
+castrum Necztyn, quamdiu idipsum prefati Nyepr et Andreas ipsorumque heredes in sua habuerint potestate, nobis appertum fore, ita quod nos et officiales
+nostri nostro nomine contra emulos et hostes nostros quoscunque iuvare et deffendere poterimus, tociens quociens fuerit opportunum, absque tamen ipsorum dampno,
+sed nostris sumptibus et expensis. Preterea, quia predictum castrum Necztyna in suis censibus et pertinenciis tam tenue et exile fore dinoscitur, quod pro eiusdem castrum
+conservatione et custodia sui proprii census et usufructus non valuere sufficere, sed opportebat, quod de nostra bernali summa, quam abbas de Tepla ad cameram
+nostram regalem annis singulis consuevit persolvere, pro defectus supplemento annis singulis ad predicti castri conservationem centum sexagenae grossorum pragensium
+traderentur, quas quidem centum sexagenas grossorum pragensium predicto Nyepr et Andree ipsorumque heredibus, quamdiu predictum castrum titulo pignoris pro noningentis
+sexagenis grossorum pragensium tenuerint, a predicto abbate in Tepla tollendas pariter et levandas deputamus, mandantes abbati Teplensi presenti vel futuro
+firmiter et districte, quatenus centum sexagenas grossorum pragensium de nostra bernali summa singulis annis prefatis Nyepr et Andree ipsorumque heredibus pro predicti
+castri conservatione et sustentatione absque omni contradictione dent, tribuant et persoluant tamdiu, quousque predictum castrum per nos vel nostros heredes et
+successores, reges Boemie, ab eis non fuerit pro noningentis sexagenis grossorum pragensium realiter exsolutum. In casu vero, quo predictus abbas in persolvendis
+in certis terminis prefatis centum sexagenis grossorum pragensium prefatis Nyepr et Andree ipsorumque heredibus se negligentem redderet et tepidum, extunc ipsis ple¬
+nam damus facultatem, quod supradicti abbatis homines et bona in civitatibus nostris regalibus regni Boemie et in aliis baronum regni nostri predicti
+civitatibus et locis impedire possint et arrestare et eosdem ac eadem in arresto tenere iuxta regni nostri Boemie consuetudinem tamdiu, quousque ipsis predicte
+centum sexagene per predictum abbatem realiter et integre fuerint persolute. Et quotienscumque predictus abbas presens vel futurus prefatis Nyepr et
+Andree ipsorumque heredibus prefatas centum sexagenas de nostra bernali summa persolverit, totiens ipsum de eisdem centum sexagenis grossorum absolvimus peni¬
+tus et quittamus. Presentium sub nostre maiestatis sigilli appensione testimonio literarum. Data in Leuthomericz vicesima tertia die decembris
+anno Domini millesimo quadringentesimo vigesimo, regnorum nostrorum anno Hungarie et cetera tricesimoquarto, romanorum undecimo et Boemie primo.</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        </Page>
+</PcGts>
