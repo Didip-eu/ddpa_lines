@@ -950,9 +950,9 @@ def test_polygon_pixel_metrics_from_full_charter(  data_path, distance ):
 
 
 @pytest.mark.parametrize("thld,expected_scores", [ 
-    (.1, (2.0, 0.0, 1.0 , 2.0/3, 0.8)),
-    (.5, (1.0, 2.0, 2.0, 0.2, 1.0/3)),
-    (.9, (0.0, 3.0, 3.0, 0.0, 0.0))])
+    (.1, (3.0, 0.0, 0.0 , 1.0, 1.0)),
+    (.5, (3.0, 0.0, 0.0, 1.0, 1.0)),
+    (.9, (0.0, 3.0, 2.0, 0.0, 0.0))])
 def test_polygon_pixel_metrics_to_line_based_scores(thld, expected_scores):
     """
     Made-up matrix, constructed from the tests above (not from an actual image).
@@ -971,15 +971,14 @@ def test_polygon_pixel_metrics_to_line_based_scores(thld, expected_scores):
                          [ 0.        , 10.833334  ,  0.        ,  0.        ]]],
                         dtype=np.float32)
 
-
-    assert seglib.polygon_pixel_metrics_to_line_based_scores(metrics, threshold=thld) == expected_scores
+    scores = seglib.polygon_pixel_metrics_to_line_based_scores(metrics, threshold=thld)
+    assert scores == expected_scores
 
 
 def test_polygon_pixel_metrics_to_pixel_based_scores():
     """
     Made-up matrix, constructed from the tests above.
     """
-
     metrics = np.array([[[ 6.3333335 , 11.833334  ,  0.7169811 ,  0.67857146],
                          [ 0.33333334, 10.833334  ,  0.03773585,  0.14285713],
                          [ 0.8333334 , 17.333334  ,  0.09433962,  0.08928571],
@@ -995,27 +994,29 @@ def test_polygon_pixel_metrics_to_pixel_based_scores():
                         dtype=np.float32)
 
     scores = seglib.polygon_pixel_metrics_to_pixel_based_scores( metrics )
-    assert np.all(np.isclose( scores, (0.23780487, 0.2195121958311082) ))
+    assert np.all(np.isclose( scores, (0.23780487, 0.5925925788565435) ))
 
 
 def test_polygon_pixel_metrics_to_line_based_scores_full_charter(  data_path ):
     """
     On an actual image, a sanity check
     """
-    metrics = torch.load(str(data_path.joinpath('full_charter_metrics.pt')))
+    with open(data_path.joinpath('full_charter_pixel_metrics.npy'), 'rb') as f:
+        metrics = np.load( f )
 
-    scores = seglib.polygon_pixel_metrics_to_line_based_scores( metrics, .6 )
-    assert scores[-1] >= .8 
+        scores = seglib.polygon_pixel_metrics_to_line_based_scores( metrics, .5 )
+        assert scores == (32.0, 0.0, 0.0, 1.0, 1.0)
 
 def test_polygon_pixel_metrics_to_pixel_based_scores_full_charter(  data_path ):
     """
     On an actual image, a sanity check
     """
-    metrics = torch.load(str(data_path.joinpath('full_charter_metrics.pt')))
+    with open(data_path.joinpath('full_charter_pixel_metrics.npy'), 'rb') as f:
+        metrics = np.load( f )
 
-    scores = seglib.polygon_pixel_metrics_to_pixel_based_scores( metrics )
-    assert scores[0] > .25
-    assert scores[1] > .5 
+        scores = seglib.polygon_pixel_metrics_to_pixel_based_scores( metrics )
+        assert scores[0] > .25
+        assert scores[1] > .5 
 
 
 def test_map_to_depth():

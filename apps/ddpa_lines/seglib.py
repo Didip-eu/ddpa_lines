@@ -458,7 +458,7 @@ def array_has_label( label_map_hw: np.array, label: int ) -> np.ndarray:
 def polygon_pixel_metrics_two_maps( map_chw_1: Tensor, map_chw_2: Tensor, label_distance=5) -> np.ndarray:
     """
     Provided two label maps that each encode (potentially overlapping) polygons, compute
-    for each possible pair of labels (i,j) with i ∈  map1 and j ∈ map2.
+    for each possible pair of labels (i_pred, j_gt) with i ∈  map1 and j ∈  map2.
     + intersection and union counts
     + precision and recall
 
@@ -466,8 +466,8 @@ def polygon_pixel_metrics_two_maps( map_chw_1: Tensor, map_chw_2: Tensor, label_
     to the number of polygons they vote for. 
 
     Args:
-        map_chw_1 (Tensor): a 4-channel map with labeled polygons, with potential overlaps.
-        map_hw_2 (Tensor): a 4-channel map with labeled polygons, with potential overlaps.
+        map_chw_1 (Tensor): the predicted map, i.e. a 4-channel map with labeled polygons, with potential overlaps.
+        map_hw_2 (Tensor): the GT map, i.e. a 4-channel map with labeled polygons, with potential overlaps.
 
     Output:
         np.ndarray: a 4 channel array, where each cell [i,j] stores respectively intersection and union counts,
@@ -600,10 +600,18 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
                 ('iou', 'float32')])
 
     TP, FP, FN = 0.0, 0.0, 0.0
+    
+    # sort candidate matches by ascending label order and descending IoU order
+    sorted_possible_matches = np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] )
+    pred_label_iou_copy = sorted_possible_matches[['pred_polygon', 'iou']]
+    pred_label_iou_copy['iou'] *= -1
+    I = np.argsort( pred_label_iou_copy, order=['pred_polygon', 'iou'])
+
     # select one-to-one matches
     pred2match = { i:False for i in possible_match_indices[0] }
-    for possible_match in np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] ):
+    for possible_match in sorted_possible_matches[ I ]:
         # ensure that each predicted label is matched to at most one GT label
+        # (first hit is the one with highest IoU)
         if not pred2match[possible_match['pred_polygon']]:
             pred2match[possible_match['pred_polygon']]=True
             precision, recall = possible_match[['precision', 'recall']]
@@ -668,8 +676,15 @@ def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[f
 
     # pixel-based, page-wide IoU (over all matched pairs)
     matched_intersection_count, matched_union_count = 0, 0
+
+    # sort candidate matches by ascending label order and descending IoU order
+    sorted_possible_matches = np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] )
+    pred_label_iou_copy = sorted_possible_matches[['pred_polygon', 'iou']]
+    pred_label_iou_copy['iou'] *= -1
+    I = np.argsort( pred_label_iou_copy, order=['pred_polygon', 'iou'])
+
     pred2match = { i:False for i in possible_match_indices[0] }
-    for possible_match in np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] ):
+    for possible_match in sorted_possible_matches[I]:
         # ensure that each predicted label is matched to at most one GT label
         if not pred2match[possible_match['pred_polygon']]:
             pred2match[possible_match['pred_polygon']]=True
