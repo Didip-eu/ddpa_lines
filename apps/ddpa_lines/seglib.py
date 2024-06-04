@@ -185,6 +185,41 @@ def line_binary_mask_from_img_segmentation_dict(img_wh: Image.Image, segmentatio
 
     return torch.tensor( page_mask_hw )
 
+
+def line_images_from_img_xml_files(img: str, page_xml: str ) -> List[Tuple]:
+    """
+    From an image file path and a segmentation JSON file describing polygons, return
+    a list of pairs (<line cropped BB>, <polygon mask>).
+
+    Args:
+        img (str): the input image's file path
+
+        page_xml (str): a Page XML file describing the lines.
+
+    Output:
+        list: a list of pairs (<line image BB>: np.ndarray, mask: np.ndarray)
+    """
+    with Image.open(img, 'r') as img_wh:
+        segmentation_dict = segmentation_dict_from_xml( page_xml )
+        return line_images_from_img_segmentation_dict( img_wh, segmentation_dict )
+
+
+def line_images_from_img_json_files( img: str, segmentation_json: str ) -> List[Tuple]:
+    """
+    From an image file path and a segmentation JSON file describing polygons, return
+    a list of pairs (<line cropped BB>, <polygon mask>).
+
+    Args:
+        img (str): the input image's file path
+
+        segmentation_json (str): path of a JSON file
+
+    Output:
+        list: a list of pairs (<line image BB>: np.ndarray, mask: np.ndarray) 
+    """
+    with Image.open(img, 'r') as img_wh, open( segmentation_json, 'r' ) as json_file:
+        return line_images_from_img_segmentation_dict( img_wh, json.load( json_file ))
+
 def line_images_from_img_segmentation_dict(img_wh: Image.Image, segmentation_dict: dict ) -> List[Tuple]:
     """
     From a segmentation dictionary describing polygons, return a boolean mask where any pixel belonging
