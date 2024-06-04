@@ -893,9 +893,8 @@ def test_get_polygon_pixel_metrics_from_maps_and_mask_small_image(  data_path, d
     """
     On an actual image, with polygons loaded from serialized tensors, only a few sanity checks for testing
     """
-
-    polygon_pred = torch.load(str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.pt')))
-    polygon_gt = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.pt')))
+    polygon_pred = torch.load(str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced_polygon_map.pt')))
+    polygon_gt = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced_polygon_map.pt')))
     binary_mask = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced_binarized.pt')))
 
     metrics = seglib.polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_pred, polygon_gt, binary_mask, label_distance=distance)
@@ -939,8 +938,8 @@ def test_polygon_pixel_metrics_from_full_charter(  data_path, distance ):
     On an full page, with polygons loaded from serialized tensors, only a few sanity checks for testing.
     + Crude check for performance for a couple of label distance.
     """
-    polygons_pred = torch.load(str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20.pt')))
-    polygons_gt = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1.pt')))
+    polygons_pred = torch.load(str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_polygon_map.pt')))
+    polygons_gt = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_polygon_map.pt')))
     binary_mask = torch.load(str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_binarized.pt')))
 
     # for any polygon label in predicted map, counting intersections with GT map for labels in [l-d .. l+2d]
