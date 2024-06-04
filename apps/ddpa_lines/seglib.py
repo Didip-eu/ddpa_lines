@@ -359,27 +359,6 @@ def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
     return img_chw
 
 
-#def rgba_uint8_to_hw_tensor( img_chw: Tensor ) -> Tensor:
-#    """
-#    Converts a 4-channel tensor of unsigned 8-bit integers into a 1-channel tensor of 32-bit integers.
-#    Note: not meant as an inverse of the array_to_rgba_uint8() function, since it yields a tensor, not 
-#    an array.
-#
-#    Args:
-#        img_chw (Tensor): a 4-channel tensor of 8-bit unsigned integers.
-#
-#    Output:
-#        Tensor: a flat map of 32-bit integers.
-#    """
-#    if img_chw.dtype != torch.uint8:
-#        raise TypeError(format("Input map's dtype should be torch.uint8 (actual: {}).".format( img_chw.dtype )))
-#    if len(img_chw.shape) != 3 or img_chw.shape[0] != 4:
-#        raise TypeError(format("Input map should have shape (4,W,H) (actual: {}).".format( img_chw.shape )))
-#    img_hw = img_chw.permute(1,2,0).reshape( img_chw.shape[1], -1 ).view(torch.int32)
-#    return img_hw
-
-
-
 def polygon_pixel_metrics_from_img_segmentation_dict(img: Image.Image, segmentation_dict_pred: dict, segmentation_dict_gt: dict, binary_mask: Tensor=None) -> np.ndarray:
     """
     Compute a IoU matrix from an image and two dictionaries describing the segmentation's output (line polygons).
