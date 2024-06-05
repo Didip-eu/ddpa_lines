@@ -30,6 +30,7 @@ A note about types:
 + torch.Tensor: map storage and computations (eg. counting intersections)
 + np.ndarray: metrics and scores; initial mapping of labels: use 32-bit _signed_ integers
   for storing compound (intersecting) labels, to ensure smooth conversion into 
+  tensors.
 """
 
 
@@ -159,6 +160,8 @@ def line_binary_mask_from_img_segmentation_dict(img_wh: Image.Image, segmentatio
     """
     From a segmentation dictionary describing polygons, return a boolean mask where any pixel belonging
     to a polygon is 1 and the other pixels 0.
+    Note: masks can be built from a polygon map and an arbitrary selection function, with 
+    the mask_from_polygon_map_functional() function below.
 
     Args:
         img_whc (Image.Image): the input image (needed for the size information).
@@ -311,7 +314,14 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
                              2 << 8 + 4 = 0x204 = 8192
                      Ex. #2. Pixel 0x10403 stores labels [1, 4, 3]
     """
-    max_three_polygon_label=0xffffff
+    label_limit = 2**__LABEL_SIZE__-1
+    max_three_polygon_label = 0xffffff
+
+    # a label may not use more than 1 byte.
+    # With large label values, 4-polygon intersections may result in negative compound label values, though,
+    # which is not an issue (the map is meant to be stored and used as an cube of unsigned bytes).
+    if label > label_limit:
+        raise OverflowError('Overflow: label value ({}) exceeds the limit ({}).'.format( label, label_limit ))
 
     # Handling duplicated labels:
     if array_has_label(label_map, label):
@@ -331,29 +341,22 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
     # only then add label to all pixels matching the polygon
     label_map += polygon_mask.astype( label_map.dtype ) * label
 
-    # check for overflow
-    if np.any(label_map < 0):
-        raise OverflowError('Overflow: a 4-label intersection compound value cannot exceed {0x7fffffff}.')
 
 def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
     """
     Converts a numpy array of 32-bit integers into a 4-channel tensor.
 
     Args:
-        img_hw (np.ndarray): a flat label map of 32-bit integers; other integers type allowed but checked for overflow
-                             before casting.
+        img_hw (np.ndarray): a flat label map of 32-bit integers.
 
     Output:
         Tensor: a 4-channel (c,h,w) tensor of unsigned 8-bit integers.
     """
     if len(img_hw.shape) != 2:
         raise TypeError(format("Input map should have shape (W,H) (actual: {}).".format( img_hw.shape )))
+    if img_hw.dtype != 'int32': 
+        raise TypeError("Label map's dtype should 'int32' (actual: {}".format( img_hw.dtype ))
     img_hw_32b = img_hw.astype('int32')
-    spurious_pixels = (img_hw_32b != img_hw)
-    if np.any( spurious_pixels ):
-        raise OverflowError("Input map contains labels that are larger than the expected, 4-byte size (input {} with dtype={} cast into {} with dtype={}).".format(
-            repr(img_hw[ spurious_pixels ]), img_hw.dtype,
-            repr(img_hw_32b[ spurious_pixels ]), img_hw_32b.dtype))
     img_chw = torch.from_numpy( np.moveaxis( img_hw_32b.view(np.uint8).reshape( (img_hw.shape[0], -1, 4)), 2, 0))
     return img_chw
 
@@ -730,25 +733,40 @@ def metrics_to_precision_recall_curve( metrics: np.ndarray, threshold_range=np.l
 def recover_labels_from_map_value( px: int) -> list:
     """
     Retrieves intersecting polygon labels from a single map pixel value (for
-    diagnosis purpose: prohibitively slow on large arrays).
+    diagnosis purpose).
 
     Args:
-        vl (int): a map pixel, whose value is a number in base __LABEL_SIZE__ (with digits being 
+        vl (int): a map pixel, whose value is a 32-bit signed integer.
                   labels).
     Output:
         list: a list of labels
     """
-    vl = px
-    labels = []
-    label_limit = 2**__LABEL_SIZE__-1
-    compound_label_limit = 2**(__LABEL_SIZE__*3)-1
-    if px > compound_label_limit:
-        return []
-    while vl > label_limit:
-        labels.append( vl & label_limit )
-        vl >>= __LABEL_SIZE__
-    labels.append( vl )
-    return labels[::-1]
+    return [ b for b in np.array( [px], dtype='int32').view('uint8')[::-1] if b ]
+
+
+def mask_from_polygon_map_functional( polygon_map: Tensor, test: Callable) -> Tensor:
+    """
+    Given a 3D map of polygons (where each pixel contains at most 4 labels,
+    select labels based on a boolean function.
+    Eg. mask_from_functional( polygon_map, lambda m: m % 2 ) cover all odd-labeled
+        polygons.
+
+        mask_from_function( polygon_map, lambda m: m 
+
+    Args:
+        polygon_map (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
+        test (Callable): a boolean function, to be applied to the map; a partial
+                         function may be passed, if added parameters are needed.
+    Output:
+        Tensor: a boolean, flat mask.
+    """
+    if polygon_map.dtype != torch.uint8:
+        raise TypeError("First parameter should be a Tensor of uint8.")
+    if len(polygon_map.shape) != 3 or polygon_map.shape[0]!=4:
+        raise TypeError("Polygon map should have shape (4, m, n)")
+
+    return torch.sum( test( polygon_map ), axis=0).type(torch.bool)
+
 
 
 def dummy():

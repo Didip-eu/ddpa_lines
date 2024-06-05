@@ -8,6 +8,7 @@ import json
 from torch import Tensor
 import numpy as np
 import torch
+from functools import partial
 
 import sys
 
@@ -106,12 +107,12 @@ def test_line_images_from_img_segmentation_dict_image_content_checking( data_pat
 
 def test_array_to_rgba_uint8_overflow():
     """
-    Conversion of a map of 64-bit integers should raise an exception if overflow
+    Conversion of a map of 64-bit integers should raise an exception
     """
     arr = np.random.default_rng().integers(1, 0xffffffff, (5,4), dtype='int')
     arr[2,2]=0xffffffff
 
-    with pytest.raises(OverflowError):
+    with pytest.raises(TypeError):
         seglib.array_to_rgba_uint8( arr )
 
 def test_array_to_rgba_uint8_incorrect_shape():
@@ -123,44 +124,21 @@ def test_array_to_rgba_uint8_incorrect_shape():
     with pytest.raises(TypeError):
         seglib.array_to_rgba_uint8( arr )
 
-def test_array_to_rgba_uint8_int64():
+@pytest.mark.parametrize("dtype", ["int64", "uint64", "uint32"])
+def test_array_to_rgba_uint8_wrong_dtype(dtype):
     """
-    Conversion of a map of 64-bit integers is cast silently if no overflow
+    Converting a map that has not 'int32' as dtype raises an exception.
     """
     arr = np.array( [[2,2,2,0,0,0],
                      [2,2,2,0,0,0],
                      [2,2,0x203,3,0,0],
                      [0,0,3,3,3,0],
                      [0,0,0,0,0,0],
-                     [0,0x40102,0,0,0,0]], dtype='int')
+                     [0,0x40102,0,0,0,0]], dtype=dtype)
 
-    tensor = seglib.array_to_rgba_uint8( arr )
+    with pytest.raises(TypeError) as e:
+        tensor = seglib.array_to_rgba_uint8( arr )
 
-    assert torch.equal( tensor,
-        torch.tensor([[[2, 2, 2, 0, 0, 0],
-                       [2, 2, 2, 0, 0, 0],
-                       [2, 2, 3, 3, 0, 0],
-                       [0, 0, 3, 3, 3, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 2, 0, 0, 0, 0]],
-                      [[0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 2, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 1, 0, 0, 0, 0]],
-                      [[0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 4, 0, 0, 0, 0]],
-                      [[0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0]]], dtype=torch.uint8))
 
 def test_array_to_rgba_uint8():
     """
@@ -220,6 +198,22 @@ def test_polygon_mask_to_polygon_map_32b_store_single_polygon():
                               [0,0,0,0,0,0],
                               [0,0,0,0,0,0],
                               [0,0,0,0,0,0]], dtype='int32'))
+
+def test_polygon_mask_to_polygon_map_32b_store_too_large_a_label():
+    """
+    Trying to store a label larger than 255 causes an exception.
+    """
+    label_map = np.zeros((6,6), dtype='int32')
+    polygon_mask = np.array( [[1,1,1,0,0,0],
+                              [1,1,1,0,0,0],
+                              [1,1,1,0,0,0],
+                              [0,0,0,0,0,0],
+                              [0,0,0,0,0,0],
+                              [0,0,0,0,0,0]], dtype='int32')
+
+    with pytest.raises(OverflowError) as e:
+        seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 256)
+
 
 def test_polygon_mask_to_polygon_map_32b_store_two_intersecting_polygons():
     """
@@ -324,16 +318,15 @@ def test_polygon_mask_to_polygon_map_32b_store_three_intersecting_polygons():
                            [0,0,0x30401,0x304,0x304,4],
                            [0,1,0x401,0x401,4,0],
                            [0,1,0x401,4,0,0]], dtype='int32')),
-    ((0x7f, 0xfd, 0xfe, 0xff), np.array( [[0x7f,0x7f,0x7f,0,0,0],
-                                          [0x7f,0x7f,0x7f,0,0,0],
-                                          [0x7f,0x7f,0x7ffdfeff,0xfdfe,0xfe,0],
-                                          [0,0,0xfdfeff,0xfdfe,0xfdfe,0xfe],
-                                          [0,0xff,0xfeff,0xfeff,0xfe,0],
-                                          [0,0xff,0xfeff,0xfe,0,0]], dtype='int32'))])
+    ((0xff, 0xfe, 0xfd, 0xfc), np.array( [[0xff,0xff,0xff,0,0,0], 
+                                          [0xff,0xff,0xff,0,0,0],
+                                          [0xff,0xff,0xfffefdfc,0xfefd,0xfd,0],
+                                          [0,0,0xfefdfc,0xfefd,0xfefd,0xfd],
+                                          [0,0xfc,0xfdfc,0xfdfc,0xfd,0],
+                                          [0,0xfc,0xfdfc,0xfd,0,0]], dtype='int32'))])
 def test_polygon_mask_to_polygon_map_32b_store_four_intersecting_polygons(label_values, expected_matrix):
     """
-    Storing 3 extra polygons (as binary mask + labels) on labeled tensor with overlap yields
-    map with intersection labels l = l1, l' = (l1<<8) + l2, l''=(l1<<16)+(l2<<8)+l3, ...
+    Storing 4 polygons, both with small and large values (including negative compound labels)
     """
     label_map = np.array( [[label_values[0],label_values[0],label_values[0],0,0,0],
                            [label_values[0],label_values[0],label_values[0],0,0,0],
@@ -373,9 +366,9 @@ def test_polygon_mask_to_polygon_map_32b_store_overflow():
     Storing 4 extra polygons (as binary mask + labels) on labeled tensor 
     causes an exception when intersection pixel value overflows.
     """
-    label_map = np.array( [[0x7f,0x7f,0x7f,0,0,0],
-                           [0x7f,0x7f,0x7f,0,0,0],
-                           [0x7f,0x7f,0x7f,0,0,0],
+    label_map = np.array( [[0xff,0xff,0xff,0,0,0],
+                           [0xff,0xff,0xff,0,0,0],
+                           [0xff,0xff,0xff,0,0,0],
                            [0,0,0,0,0,0],
                            [0,0,0,0,0,0],
                            [0,0,0,0,0,0]], dtype='int32')
@@ -386,7 +379,7 @@ def test_polygon_mask_to_polygon_map_32b_store_overflow():
                                 [0,0,1,1,1,0],
                                 [0,0,0,0,0,0],
                                 [0,0,0,0,0,0]], dtype='int32')
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_1, 0xff)
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_1, 0xfe)
 
     polygon_mask_2 = np.array( [[0,0,0,0,0,0],
                                 [0,0,0,0,0,0],
@@ -394,7 +387,7 @@ def test_polygon_mask_to_polygon_map_32b_store_overflow():
                                 [0,0,1,1,1,1],
                                 [0,0,1,1,1,0],
                                 [0,0,1,1,0,0]], dtype='int32')
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 0xfe)
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 0xfd)
 
     polygon_mask_3 = np.array( [[0,0,0,0,0,0],
                                 [0,0,0,0,0,0],
@@ -404,44 +397,8 @@ def test_polygon_mask_to_polygon_map_32b_store_overflow():
                                 [0,1,1,0,0,0]], dtype='int32')
 
     with pytest.raises( OverflowError ) as e:
-        seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 0x1ff+1)
+        seglib.apply_polygon_mask_to_map(label_map, polygon_mask_3, 0x102ff+1)
 
-
-
-def test_polygon_mask_to_polygon_map_32b_store_large_values():
-    """
-    Storing 3 polygons with large labels (ex. 255) yields correct map (no overflow)
-    """
-    label_map = np.array( [[255,255,255,0,0,0],
-                           [255,255,255,0,0,0],
-                           [255,255,255,0,0,0],
-                           [0,0,0,0,0,0],
-                           [0,0,0,0,0,0],
-                           [0,0,0,0,0,0]], dtype='int32')
-
-    polygon_mask_1 = np.array( [[0,0,0,0,0,0],
-                                [0,0,0,0,0,0],
-                                [0,0,1,1,0,0],
-                                [0,0,1,1,1,0],
-                                [0,0,0,0,0,0],
-                                [0,0,0,0,0,0]], dtype='int32')
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_1, 253)
-
-    polygon_mask_2 = np.array( [[0,0,0,0,0,0],
-                                [0,0,0,0,0,0],
-                                [0,0,1,1,1,0],
-                                [0,0,1,1,1,1],
-                                [0,0,1,1,1,0],
-                                [0,0,1,1,0,0]], dtype='int32')
-    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 254)
-
-    assert np.array_equal( label_map,
-                   np.array( [[0xff,0xff,0xff,0,0,0],
-                              [0xff,0xff,0xff,0,0,0],
-                              [0xff,0xff,0xfffdfe,0xfdfe,0xfe,0],
-                              [0,0,0xfdfe,0xfdfe,0xfdfe,0xfe],
-                              [0,0,0xfe,0xfe,0xfe,0],
-                              [0,0,0xfe,0xfe,0,0]], dtype='int32'))
 
 def test_polygon_mask_to_polygon_map_32b_5_polygon_exception():
     """
@@ -1149,17 +1106,120 @@ def test_segmentation_dict_from_xml(  data_path ):
 
 @pytest.mark.parametrize(
         'label,expected',[
-            (0, [0]), 
+            (0, []), 
             (255, [255]),
             (3, [3]), 
             (0x302, [3,2]), 
             (0x203, [2,3]),
             (0x40205, [4,2,5]),
-            (0x1ffffff,[]),
+            (0x1fffffff,[31,255,255,255]),
+            (0xffffffff,[255,255,255,255]),
             ])
 def test_recover_labels_from_map_value_single_polygon(  label, expected ):
     assert seglib.recover_labels_from_map_value( label ) == expected
 
 
+def test_mask_from_polygon_map_functional():
+
+    t=torch.tensor([[[  1,   1,   1],
+                     [  1,   1,   0],
+                     [  0,   0,   0],
+                     [  0,   0,   0],
+                     [  0,   0,   0]],
+                    [[  0,   0,   0],
+                     [  2,   0,   0],
+                     [  2,   2,   2],
+                     [  0,   0,   0],
+                     [  0,   0,   0]],
+                    [[  0,   0,   0],
+                     [  0,   0,   3],
+                     [  3,   3,   3],
+                     [  0,   3,   3],
+                     [  0,   0,   0]],
+                    [[  0,   0,   0],
+                     [  0,   0,   0],
+                     [  0,   0,   0],
+                     [  4,   4,   0],
+                     [  0,   4,   0]]], dtype=torch.uint8 )
+
+    # select every nth positive label
+    nth = lambda m, n: np.logical_and( m % n == 0, m != 0)
+    expected = np.array([[False, False, False],
+                         [False, False, False],
+                         [False, False, False],
+                         [True,  True, False],
+                         [False,  True, False]])
+    assert np.array_equal( seglib.mask_from_polygon_map_functional(t, partial(nth, n=4)), expected )
+
+def test_mask_from_polygon_map_functional_wrong_type():
+    """
+    Passing a Numpy array as an input causes an exception.
+    """
+
+    t=np.array([[[  1,   1,   1],
+                 [  1,   1,   0],
+                 [  0,   0,   0],
+                 [  0,   0,   0],
+                 [  0,   0,   0]],
+                [[  0,   0,   0],
+                 [  2,   0,   0],
+                 [  2,   2,   2],
+                 [  0,   0,   0],
+                 [  0,   0,   0]],
+                [[  0,   0,   0],
+                 [  0,   0,   3],
+                 [  3,   3,   3],
+                 [  0,   3,   3],
+                 [  0,   0,   0]],
+                [[  0,   0,   0],
+                 [  0,   0,   0],
+                 [  0,   0,   0],
+                 [  4,   4,   0],
+                 [  0,   4,   0]]], dtype='uint8' )
+
+    with pytest.raises(TypeError) as e:
+            seglib.mask_from_polygon_map_functional(t, lambda m: m % 2 != 0)
 
 
+def test_mask_from_polygon_map_functional_wrong_shape():
+    """
+    Tensor with wrong shape (eg. (H,W,C)) causes an exception."
+    """
+
+    t=torch.tensor([[[  1,   1,   1],
+                     [  1,   1,   0],
+                     [  0,   0,   0],
+                     [  0,   0,   0],
+                     [  0,   0,   0]],
+                    [[  0,   0,   0],
+                     [  2,   0,   0],
+                     [  2,   2,   2],
+                     [  0,   0,   0],
+                     [  0,   0,   0]],
+                    [[  0,   0,   0],
+                     [  0,   0,   3],
+                     [  3,   3,   3],
+                     [  0,   3,   3],
+                     [  0,   0,   0]],
+                    [[  0,   0,   0],
+                     [  0,   0,   0],
+                     [  0,   0,   0],
+                     [  4,   4,   0],
+                     [  0,   4,   0]]], dtype=torch.uint8 ).permute(1,2,0)
+
+    with pytest.raises(TypeError) as e:
+            seglib.mask_from_polygon_map_functional(t, lambda m: m % 2 != 0)
+
+def test_mask_from_polygon_map_functional_all_line_images( data_path ):
+    """
+    Selecting all lines in the polygon map through the generic function should give 
+    the same result as constructing the mask directly from the segmentation dictionary.
+    """
+
+    input_img = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+    dict_gt = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'))
+
+    polygon_map = seglib.polygon_map_from_img_json_files( input_img, dict_gt )
+
+    assert torch.equal( seglib.mask_from_polygon_map_functional(polygon_map, lambda m: m > 0),
+                        seglib.line_binary_mask_from_img_json_files( input_img, dict_gt))
