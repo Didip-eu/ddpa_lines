@@ -5,7 +5,9 @@ import torch
 from torch import Tensor
 
 import numpy as np
+import seglib
 from typing import Tuple
+
 
 
 def polygon_set_display( input_img: Image.Image, polygons: Tensor ) -> np.ndarray:
@@ -22,7 +24,6 @@ def polygon_set_display( input_img: Image.Image, polygons: Tensor ) -> np.ndarra
     input_img = np.asarray( input_img )
 
     # create mask tensor for all pred. polygon: odd-numbered polygons in R, even-numbered ones in G
-    polygon_32b_img = rgba_uint8_to_int32( polygons ) # 4-channel -> 1-channel
     odd_polygon_8b1c_mask, even_polygon_8b1c_mask = [ torch.logical_and( (polygon_32b_img > 0 ), pt).numpy().astype( np.uint8 ) for pt in ((polygon_32b_img % 2), (polygon_32b_img % 2) == 0) ]
     odd_polygon_8b3c_mask, even_polygon_8b3c_mask = [ np.stack((pm, pm, pm), axis=2) for pm in (odd_polygon_8b1c_mask, even_polygon_8b1c_mask) ]
     
