@@ -28,7 +28,8 @@ A note about types:
 
 + PageXML or JSON: initial input (typically: from segmentation framework) 
 + torch.Tensor: map storage and computations (eg. counting intersections)
-+ np.ndarray: metrics and scores
++ np.ndarray: metrics and scores; initial mapping of labels: use 32-bit _signed_ integers
+  for storing compound (intersecting) labels, to ensure smooth conversion into 
 """
 
 
@@ -297,7 +298,7 @@ def segmentation_dict_from_xml(page: str) -> dict:
 
 def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int):
     """
-    In the segmentation map, label pixels matching a given polygon. Up to 3 labels
+    In the segmentation map, label pixels matching a given polygon. Up to 4 labels
     can be stored on a single pixel. A label cannot be applied twice to the same 
     map.
 
@@ -310,7 +311,7 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
                              2 << 8 + 4 = 0x204 = 8192
                      Ex. #2. Pixel 0x10403 stores labels [1, 4, 3]
     """
-    max_two_polygon_label=0xffff
+    max_three_polygon_label=0xffffff
 
     # Handling duplicated labels:
     if array_has_label(label_map, label):
@@ -319,9 +320,9 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
     # for every pixel in intersection...
     intersection_boolean_mask = np.logical_and( label_map, polygon_mask )
     # if intersection does not already contain a 3-polygon pixel
-    if np.any( label_map[ intersection_boolean_mask ] > max_two_polygon_label ):
-        maxed_out_pixels = np.transpose(((label_map * intersection_boolean_mask) > max_two_polygon_label).nonzero())
-        raise ValueError('Cannot store more than 4 polygons on the same pixel! Follwing positions maxed out: {}{}'.format(
+    if np.any( label_map[ intersection_boolean_mask ] > max_three_polygon_label ):
+        maxed_out_pixels = np.transpose(((label_map * intersection_boolean_mask) > max_three_polygon_label).nonzero())
+        raise ValueError('Cannot store more than 4 polygons on the same pixel! Following positions maxed out: {}{}'.format(
             repr([ (row,col) for (row,col) in maxed_out_pixels ][:5]),
             ' ...' if len(maxed_out_pixels)>5 else ''))
     # ... shift it
@@ -330,10 +331,13 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
     # only then add label to all pixels matching the polygon
     label_map += polygon_mask.astype( label_map.dtype ) * label
 
+    # check for overflow
+    if np.any(label_map < 0):
+        raise OverflowError('Overflow: a 4-label intersection compound value cannot exceed {0x7fffffff}.')
 
 def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
     """
-    Converts a numpy array of 32-bit unsigned ints into a 4-channel tensor.
+    Converts a numpy array of 32-bit integers into a 4-channel tensor.
 
     Args:
         img_hw (np.ndarray): a flat label map of 32-bit integers; other integers type allowed but checked for overflow
@@ -434,7 +438,7 @@ def retrieve_polygon_mask_from_map( label_map_chw: Tensor, label: int) -> Tensor
     intersection or not.
 
     Args:
-        label_map_chw (Tensor): a 4-channel tensor, where each pixel can store up to 3 labels.
+        label_map_chw (Tensor): a 4-channel tensor, where each pixel can store up to 4 labels.
         label (int): the label to be selected.
 
     Output:
@@ -453,7 +457,7 @@ def array_has_label( label_map_hw: np.array, label: int ) -> np.ndarray:
     test whether a given polygon has been stored already.
 
     Args:
-            label_map_hw (np.ndarray): a 2D map, where each 32-bit integer store up to 3 labels.
+            label_map_hw (np.ndarray): a 2D map, where each 32-bit integer store up to 4 labels.
             label (int): the label to be checked for.
     Output:
             bool: True if map already stores the given label; False otherwise.

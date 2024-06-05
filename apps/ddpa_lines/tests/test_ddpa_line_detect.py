@@ -317,6 +317,97 @@ def test_polygon_mask_to_polygon_map_32b_store_three_intersecting_polygons():
                               [0,0,4,4,0,0]], dtype='int32'))
 
 
+@pytest.mark.parametrize('label_values, expected_matrix',[
+    ((2,3,4,1), np.array( [[2,2,2,0,0,0],
+                           [2,2,2,0,0,0],
+                           [2,2,0x2030401,0x304,4,0],
+                           [0,0,0x30401,0x304,0x304,4],
+                           [0,1,0x401,0x401,4,0],
+                           [0,1,0x401,4,0,0]], dtype='int32')),
+    ((0x7f, 0xfd, 0xfe, 0xff), np.array( [[0x7f,0x7f,0x7f,0,0,0],
+                                          [0x7f,0x7f,0x7f,0,0,0],
+                                          [0x7f,0x7f,0x7ffdfeff,0xfdfe,0xfe,0],
+                                          [0,0,0xfdfeff,0xfdfe,0xfdfe,0xfe],
+                                          [0,0xff,0xfeff,0xfeff,0xfe,0],
+                                          [0,0xff,0xfeff,0xfe,0,0]], dtype='int32'))])
+def test_polygon_mask_to_polygon_map_32b_store_four_intersecting_polygons(label_values, expected_matrix):
+    """
+    Storing 3 extra polygons (as binary mask + labels) on labeled tensor with overlap yields
+    map with intersection labels l = l1, l' = (l1<<8) + l2, l''=(l1<<16)+(l2<<8)+l3, ...
+    """
+    label_map = np.array( [[label_values[0],label_values[0],label_values[0],0,0,0],
+                           [label_values[0],label_values[0],label_values[0],0,0,0],
+                           [label_values[0],label_values[0],label_values[0],0,0,0],
+                           [0,0,0,0,0,0],
+                           [0,0,0,0,0,0],
+                           [0,0,0,0,0,0]], dtype='int32')
+
+    polygon_mask_1 = np.array( [[0,0,0,0,0,0],
+                                [0,0,0,0,0,0],
+                                [0,0,1,1,0,0],
+                                [0,0,1,1,1,0],
+                                [0,0,0,0,0,0],
+                                [0,0,0,0,0,0]], dtype='int32')
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_1, label_values[1])
+
+    polygon_mask_2 = np.array( [[0,0,0,0,0,0],
+                                [0,0,0,0,0,0],
+                                [0,0,1,1,1,0],
+                                [0,0,1,1,1,1],
+                                [0,0,1,1,1,0],
+                                [0,0,1,1,0,0]], dtype='int32')
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, label_values[2])
+
+    polygon_mask_3 = np.array( [[0,0,0,0,0,0],
+                                [0,0,0,0,0,0],
+                                [0,0,1,0,0,0],
+                                [0,0,1,0,0,0],
+                                [0,1,1,1,0,0],
+                                [0,1,1,0,0,0]], dtype='int32')
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_3, label_values[3])
+
+    assert np.array_equal( label_map, expected_matrix)
+
+def test_polygon_mask_to_polygon_map_32b_store_overflow():
+    """
+    Storing 4 extra polygons (as binary mask + labels) on labeled tensor 
+    causes an exception when intersection pixel value overflows.
+    """
+    label_map = np.array( [[0x7f,0x7f,0x7f,0,0,0],
+                           [0x7f,0x7f,0x7f,0,0,0],
+                           [0x7f,0x7f,0x7f,0,0,0],
+                           [0,0,0,0,0,0],
+                           [0,0,0,0,0,0],
+                           [0,0,0,0,0,0]], dtype='int32')
+
+    polygon_mask_1 = np.array( [[0,0,0,0,0,0],
+                                [0,0,0,0,0,0],
+                                [0,0,1,1,0,0],
+                                [0,0,1,1,1,0],
+                                [0,0,0,0,0,0],
+                                [0,0,0,0,0,0]], dtype='int32')
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_1, 0xff)
+
+    polygon_mask_2 = np.array( [[0,0,0,0,0,0],
+                                [0,0,0,0,0,0],
+                                [0,0,1,1,1,0],
+                                [0,0,1,1,1,1],
+                                [0,0,1,1,1,0],
+                                [0,0,1,1,0,0]], dtype='int32')
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 0xfe)
+
+    polygon_mask_3 = np.array( [[0,0,0,0,0,0],
+                                [0,0,0,0,0,0],
+                                [0,0,1,0,0,0],
+                                [0,0,1,0,0,0],
+                                [0,1,1,1,0,0],
+                                [0,1,1,0,0,0]], dtype='int32')
+
+    with pytest.raises( OverflowError ) as e:
+        seglib.apply_polygon_mask_to_map(label_map, polygon_mask_2, 0x1ff+1)
+
+
+
 def test_polygon_mask_to_polygon_map_32b_store_large_values():
     """
     Storing 3 polygons with large labels (ex. 255) yields correct map (no overflow)
@@ -352,9 +443,9 @@ def test_polygon_mask_to_polygon_map_32b_store_large_values():
                               [0,0,0xfe,0xfe,0xfe,0],
                               [0,0,0xfe,0xfe,0,0]], dtype='int32'))
 
-def test_polygon_mask_to_polygon_map_32b_4_polygon_exception():
+def test_polygon_mask_to_polygon_map_32b_5_polygon_exception():
     """
-    Exception raised when trying to store more than 3 polygons on same pixel.
+    Exception raised when trying to store more than 4 polygons on same pixel.
     """
     label_map = np.array( [[1,1,1,0],
                            [1,1,1,0],
@@ -368,9 +459,10 @@ def test_polygon_mask_to_polygon_map_32b_4_polygon_exception():
 
     seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 2)
     seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 3)
+    seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 4)
 
     with pytest.raises( ValueError ) as e:
-        seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 4)
+        seglib.apply_polygon_mask_to_map(label_map, polygon_mask, 1)
 
 def test_polygon_mask_to_polygon_map_32b_duplicate_label_single_channel():
     """
