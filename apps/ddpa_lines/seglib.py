@@ -54,7 +54,6 @@ def polygon_map_from_img_json_files(  img: str, segmentation_json: str):
 
     Args:
         img (str): the input image's file path
-
         segmentation_json (str): path of a JSON file
 
     Output:
@@ -71,7 +70,6 @@ def polygon_map_from_img_xml_files( img: str, page_xml: str ) -> Tensor:
 
     Args:
         img (str): the input image's file path
-
         page_xml (str): path of a PageXML file.
 
     Output:
@@ -131,7 +129,6 @@ def line_binary_mask_from_img_json_files(img: str, segmentation_json: str ) -> T
 
     Args:
         img (str): the input image's file path
-
         segmentation_json (str): a JSON file describing the lines.
 
     Output:
@@ -147,7 +144,6 @@ def line_binary_mask_from_img_xml_files(img: str, page_xml: str ) -> Tensor:
 
     Args:
         img (str): the input image's file path
-
         page_xml (str): a Page XML file describing the lines.
 
     Output:
@@ -193,7 +189,6 @@ def line_images_from_img_xml_files(img: str, page_xml: str ) -> List[Tuple]:
 
     Args:
         img (str): the input image's file path
-
         page_xml (str): a Page XML file describing the lines.
 
     Output:
@@ -211,7 +206,6 @@ def line_images_from_img_json_files( img: str, segmentation_json: str ) -> List[
 
     Args:
         img (str): the input image's file path
-
         segmentation_json (str): path of a JSON file
 
     Output:
@@ -263,6 +257,7 @@ def segmentation_dict_from_xml(page: str) -> dict:
 
     Args:
         page (str): path of a PageXML file
+
     Output:
         dict: a dictionary of the form
 
@@ -367,6 +362,7 @@ def polygon_pixel_metrics_from_img_segmentation_dict(img: Image.Image, segmentat
         img (Image.Image): the input page, needed for the size information and the binarization mask.
         segmentation_dict_pred (dict): a dictionary, typically constructed from a JSON file.
         segmentation_dict_gt (dict): a dictionary, typically constructed from a JSON file.
+
     Output:
         np.ndarray: a 2D array, representing IoU values for each possible pair of polygons.
     """
@@ -384,6 +380,7 @@ def get_mask( img_whc: Image.Image, thresholding_alg: Callable=ski.filters.thres
 
     Args:
         img (PIL image): input image
+
     Output:
         Tensor: a binary map with FG pixels=1 and BG=0.
     """
@@ -616,14 +613,13 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
     TP, FP, FN = 0.0, 0.0, 0.0
     
     # sort candidate matches by ascending label order and descending IoU order
-    sorted_possible_matches = np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] )
-    pred_label_iou_copy = sorted_possible_matches[['pred_polygon', 'iou']]
+    pred_label_iou_copy = structured_row_col_match_iou[['pred_polygon', 'iou']].copy()
     pred_label_iou_copy['iou'] *= -1
     I = np.argsort( pred_label_iou_copy, order=['pred_polygon', 'iou'])
 
     # select one-to-one matches
     pred2match = { i:False for i in possible_match_indices[0] }
-    for possible_match in sorted_possible_matches[ I ]:
+    for possible_match in structured_row_col_match_iou[I]:
         # ensure that each predicted label is matched to at most one GT label
         # (first hit is the one with highest IoU)
         if not pred2match[possible_match['pred_polygon']]:
@@ -641,7 +637,6 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
     F1 = 2*TP / (2*TP+FP+FN)
 
     return (TP, FP, FN, Jaccard, F1)
-
 
 
 def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[float, float, float]:
@@ -692,13 +687,12 @@ def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[f
     matched_intersection_count, matched_union_count = 0, 0
 
     # sort candidate matches by ascending label order and descending IoU order
-    sorted_possible_matches = np.sort( structured_row_col_match_iou, order=['pred_polygon', 'gt_polygon', 'iou'] )
-    pred_label_iou_copy = sorted_possible_matches[['pred_polygon', 'iou']]
+    pred_label_iou_copy = structured_row_col_match_iou[['pred_polygon', 'iou']].copy()
     pred_label_iou_copy['iou'] *= -1
     I = np.argsort( pred_label_iou_copy, order=['pred_polygon', 'iou'])
 
     pred2match = { i:False for i in possible_match_indices[0] }
-    for possible_match in sorted_possible_matches[I]:
+    for possible_match in structured_row_col_match_iou[I]:
         # ensure that each predicted label is matched to at most one GT label
         if not pred2match[possible_match['pred_polygon']]:
             pred2match[possible_match['pred_polygon']]=True
