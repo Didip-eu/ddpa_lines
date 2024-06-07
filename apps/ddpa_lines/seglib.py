@@ -230,30 +230,68 @@ def line_images_from_img_segmentation_dict(img_wh: Image.Image, segmentation_dic
     Output:
         list: a list of pairs (<line image BB>: np.ndarray, mask: np.ndarray)
     """
-
     polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
     img_hwc = np.asarray( img_wh )
 
-    pairs_linebb_and_mask = [None] * len(polygon_boundaries)
+    pairs_line_bb_and_mask = [None] * len(polygon_boundaries)
 
     for lbl, polyg in enumerate( polygon_boundaries ):
 
         # polygon's points ( x <-> y )
         points = np.array( polyg )[:,::-1]
         page_polyg_mask = ski.draw.polygon2mask( img_hwc.shape, points ) # np.ndarray (H,W,C)
-
         y_min, x_min, y_max, x_max = np.min( points[:,0] ), np.min( points[:,1] ), np.max( points[:,0] ), np.max( points[:,1] )
-
         # crop both img and mask
         line_bbox = img_hwc[y_min:y_max+1, x_min:x_max+1]
         # note: mask has as many channels as the original image
-        polygon_mask = page_polyg_mask[y_min:y_max+1, x_min:x_max+1]
+        bb_label_mask = page_polyg_mask[y_min:y_max+1, x_min:x_max+1]
 
-        pairs_linebb_and_mask[lbl]=( line_bbox, polygon_mask )
+        pairs_line_bb_and_mask[lbl]=( line_bbox, bb_label_mask )
 
-    return pairs_linebb_and_mask
+    return pairs_line_bb_and_mask
+
+def line_images_from_img_polygon_map(img_wh: Image.Image, polygon_map_chw: Tensor) -> List[Tuple]:
+    """
+    From a tensor storing polygons, return a boolean mask where any pixel belonging
+    to a polygon is 1 and the other pixels 0.
+
+    Args:
+        img_whc (Image.Image): the input image (needed for the size information).
+        segmentation_dict (dict): a dictionary, typically constructed from a JSON file.
+
+    Output:
+        list: a list of pairs (<line image BB>: np.ndarray, mask: np.ndarray)
+    """
+
+    max_label = torch.max( polygon_map_chw )
+    img_hwc = np.array( img_wh )
+
+    pairs_line_bb_and_mask = [None] * max_label
+
+    for lbl in range(1, max_label+1 ):
+        page_label_mask_hw = retrieve_polygon_mask_from_map( polygon_map_chw, lbl )
+
+        # BB of non-zero pixels
+        non_zero_ys, non_zero_xs = page_label_mask_hw.numpy().nonzero()
+        y_min, x_min, y_max, x_max = np.min(non_zero_ys), np.min(non_zero_xs), np.max(non_zero_ys), np.max(non_zero_xs)
+        line_bbox = img_hwc[y_min:y_max+1, x_min:x_max+1]
+
+        bb_label_mask = expand_flat_tensor_to_n_channels(page_label_mask_hw[y_min:y_max+1, x_min:x_max+1], 3)
+
+        pairs_line_bb_and_mask[ lbl-1 ]=(line_bbox, bb_label_mask) 
+
+    return pairs_line_bb_and_mask
 
 
+def expand_flat_tensor_to_n_channels( t_hw: Tensor, n: int ) -> np.array:
+    """
+    Expand a flat map by duplicating its only channel into n identical ones.
+    Channels dimension is last for convenient use with PIL images.
+    """
+    if len(t_hw.shape) != 2:
+        raise TypeError("Function expects a 2D map!")
+    t_hwc = t_hw.reshape( t_hw.shape+(1,)).expand(-1,-1,n)
+    return t_hwc.numpy()
 
 def segmentation_dict_from_xml(page: str) -> dict:
     """
@@ -449,7 +487,7 @@ def retrieve_polygon_mask_from_map( label_map_chw: Tensor, label: int) -> Tensor
     """
     if len(label_map_chw.shape) != 3 and label_map_chw.shape[0] != 4:
         raise TypeError("Wrong type: label map should be a 4-channel tensor (shape={} instead).".format( label_map_chw.shape ))
-    polygon_mask_hw = torch.sum( label_map_chw==label, axis=0)
+    polygon_mask_hw = torch.sum( label_map_chw==label, axis=0).type(torch.bool)
 
     return polygon_mask_hw
 
@@ -766,7 +804,6 @@ def mask_from_polygon_map_functional( polygon_map: Tensor, test: Callable) -> Te
         raise TypeError("Polygon map should have shape (4, m, n)")
 
     return torch.sum( test( polygon_map ), axis=0).type(torch.bool)
-
 
 
 def dummy():

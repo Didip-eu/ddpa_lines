@@ -72,9 +72,7 @@ def test_line_binary_mask_from_img_segmentation_dict( data_path, ndarrays_regres
 
 def test_line_images_from_img_segmentation_dict_type_checking( data_path, ndarrays_regression ):
     """
-    Provided an image and a segmentation dictionary, should return an array of pairs
-    (line_image, polygon_mask) where line_image is the cropped BB for the line and 
-    polygon_mask a boolean_mask for the contained polygon.
+    The elements in the pair (image and mask) should both be numpy arrays with shape (H,W,3).
     """
     input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
     segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
@@ -90,9 +88,7 @@ def test_line_images_from_img_segmentation_dict_type_checking( data_path, ndarra
 
 def test_line_images_from_img_segmentation_dict_image_content_checking( data_path, ndarrays_regression ):
     """
-    Provided an image and a segmentation dictionary, should return an array of pairs
-    (line_image, polygon_mask) where line_image is the cropped BB for the line and 
-    polygon_mask a boolean_mask for the contained polygon.
+    Each line image should match the line polygon's bounding box.
     """
     input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
     segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
@@ -104,6 +100,58 @@ def test_line_images_from_img_segmentation_dict_image_content_checking( data_pat
         'image4': imgs_and_masks[3][0], 'mask4': imgs_and_masks[3][1],
         })
 
+
+def test_line_images_from_img_polygon_map_type_checking( data_path, ndarrays_regression ):
+    """
+    The elements in the pair (image and mask) should both be numpy arrays with shape (H,W,3).
+    """
+    input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
+    polygon_map_chw = torch.load(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced_polygon_map.pt'))
+    imgs_and_masks = seglib.line_images_from_img_polygon_map( input_img, polygon_map_chw )
+    assert len(imgs_and_masks) == 4
+    assert type(imgs_and_masks[0][0]) is np.ndarray 
+    assert type(imgs_and_masks[0][1]) is np.ndarray 
+    assert imgs_and_masks[0][0].shape == imgs_and_masks[0][1].shape
+    assert imgs_and_masks[0][0].shape[-1] == 3
+    assert imgs_and_masks[0][1].shape[-1] == 3
+
+
+def test_line_images_from_img_polygon_map_content_checking( data_path, ndarrays_regression ):
+    """
+    Each line image should match the line polygon's bounding box.
+    """
+    input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
+    polygon_map_chw = torch.load(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced_polygon_map.pt'))
+    imgs_and_masks = seglib.line_images_from_img_polygon_map( input_img, polygon_map_chw )
+    ndarrays_regression.check( {
+        'image1': imgs_and_masks[0][0], 'mask1': imgs_and_masks[0][1],
+        'image2': imgs_and_masks[1][0], 'mask2': imgs_and_masks[1][1],
+        'image3': imgs_and_masks[2][0], 'mask3': imgs_and_masks[2][1],
+        'image4': imgs_and_masks[3][0], 'mask4': imgs_and_masks[3][1],
+        })
+
+@pytest.mark.parametrize('input_map,n,expected',
+        [ ( torch.tensor([[1]]), 3, np.array([[[1,1,1]]])),
+          ( torch.tensor([[1]]), 4, np.array([[[1,1,1,1]]])),
+          ( torch.tensor([[ 1, 2, 3],
+                          [ 4, 5, 6],
+                          [ 7, 8, 9],
+                          [10,11,12]]), 3, np.array([[[ 1, 1, 1],[ 2, 2, 2],[ 3, 3, 3]],
+                                                     [[ 4, 4, 4],[ 5, 5, 5],[ 6, 6, 6]],
+                                                     [[ 7, 7, 7],[ 8, 8, 8],[ 9, 9, 9]],
+                                                     [[10,10,10],[11,11,11],[12,12,12]]])),
+          ( torch.tensor([[ 1, 2, 3],
+                          [ 4, 5, 6],
+                          [ 7, 8, 9],
+                          [10,11,12]]), 4, np.array([[[ 1, 1, 1, 1],[ 2, 2, 2, 2],[ 3, 3, 3, 3]],
+                                                     [[ 4, 4, 4, 4],[ 5, 5, 5, 5],[ 6, 6, 6, 6]],
+                                                     [[ 7, 7, 7, 7],[ 8, 8, 8, 8],[ 9, 9, 9, 9]],
+                                                     [[10,10,10,10],[11,11,11,11],[12,12,12,12]]]))])
+def test_expand_flat_tensor_to_n_channels( input_map, n, expected):
+    
+    assert np.array_equal( seglib.expand_flat_tensor_to_n_channels( input_map, n ), expected )
+
+    
 
 def test_array_to_rgba_uint8_overflow():
     """
