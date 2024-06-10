@@ -10,10 +10,8 @@ import random
 from typing import Tuple
 import skimage as ski
 
-RED=(255,0,0)
-GREEN=(0,255,0)
 
-def polygon_set_display( input_img_hw: Image.Image, polygons_chw: Tensor, color_scheme=2, alpha=.75 ) -> np.array:
+def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_count=0, alpha=.75 ) -> np.array:
     """
     Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
 
@@ -25,69 +23,84 @@ def polygon_set_display( input_img_hw: Image.Image, polygons_chw: Tensor, color_
     """
 
     input_img_hwc = np.asarray( input_img_hw )
-
-    colors = get_n_color_palette(2)
-
-    # create mask tensor for all pred. polygon: odd-numbered polygons in R, even-numbered ones in G
-    odd_polygon_mask_hw = seglib.mask_from_polygon_map_functional( polygons_chw, lambda m: m % 2 )
-    even_polygon_mask_hw = seglib.mask_from_polygon_map_functional( polygons_chw, lambda m: torch.logical_and( m % 2 == 0, m != 0)) 
-    odd_polygon_mask_hwc, even_polygon_mask_hwc = [ p.reshape( p.shape+(1,)).expand(-1,-1,3).numpy() for p  in (odd_polygon_mask_hw, even_polygon_mask_hw) ]
-
-    # foreground color image (red or green, with RGB), masked
-    full_odd_fg_hwc, full_even_fg_hwc = [ np.full( input_img_hwc.shape, color, dtype=np.uint8) for color in colors ]
-    #print(foreground_red.dtype, foreground_green.dtype, odd_polygon_8b3c_mask.dtype)
-    fg_odd_masked_hwc, fg_even_masked_hwc = (full_odd_fg_hwc * odd_polygon_mask_hwc, full_even_fg_hwc * even_polygon_mask_hwc) 
-
-    # combine both FG layers
-    foreground_hwc = fg_odd_masked_hwc + fg_even_masked_hwc 
-
-    # BG + FG
-    alpha = .75
-    output_img = (input_img_hwc * alpha + foreground_hwc * (1-alpha)).astype('uint8') 
-    print(output_img.dtype)
-    print(type(output_img))
-
-    return output_img
-
-
-def polygon_set_display_2( input_img_hw: Image.Image, polygons_chw: Tensor, color_scheme=2, alpha=.75 ) -> np.array:
-    """
-    Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
-
-    Args:
-        input_img_hw (Image.Image): the original manuscript image, as opened with PIL.
-        polygons_chw (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
-    Output:
-        np.ndarray: A RGB image ((H,W,3), 8-bit unsigned integers).
-    """
-
-    input_img_hwc = np.asarray( input_img_hw )
-
     polygon_count = torch.max( polygons_chw )
 
-    colors = get_n_color_palette(polygon_count)
-
-    alpha = .75
+    colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(polygon_count)
 
     fg_masked_hwc = np.zeros( input_img_hwc.shape ) 
+
+    output_img = input_img_hwc.copy()
     # create mask tensor for all pred. polygon: odd-numbered polygons in R, even-numbered ones in G
-    for p in range(1, polygon_count ):
+    for p in range(1, polygon_count+1 ):
         polygon_mask_hw = seglib.mask_from_polygon_map_functional( polygons_chw, lambda m: m == p )
         polygon_mask_hwc = polygon_mask_hw.reshape( polygon_mask_hw.shape+(1,)).expand(-1,-1,3).numpy() 
-        color = colors[ p ]
-        # foreground color image (red or green, with RGB), masked
+        color = colors[ p%len(colors) ]
+        # foreground color image masked
         full_fg_hwc = np.full( input_img_hwc.shape, color, dtype=np.uint8 ) 
         fg_masked_hwc += full_fg_hwc * polygon_mask_hwc
 
-        # combine both FG layers
-        foreground_hwc = fg_masked_hwc 
+    # transparency applies only to polygons, not to the original image.
+    alpha_mask = fg_masked_hwc != 0
+    alphas = np.full( alpha_mask.shape, 1.0 )
+    alphas[ alpha_mask ] = alpha
 
-    # BG + FG
-    output_img = (input_img_hwc * alpha ) + foreground_hwc * (1-alpha))
+    # combine: BG + FG
+    # use this statement instead to make the polygons more visible
+    #output_img = (input_img_hwc * alpha ) + fg_masked_hwc * (1-alpha)
+    output_img = (input_img_hwc * alphas ) + fg_masked_hwc * (1-alpha)
 
     return output_img.astype('uint8')
 
 
+def polygon_two_set_display_new( input_img_hw: Image.Image, polygons_1_chw: Tensor, polygons_2_chw: Tensor ) -> np.array:
+    """
+    Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis.
+    it returns 2 images:
+
+    Args:
+        input_img (Image.Image): the original manuscript image, as opened with PIL.
+        polygons_1_chw (Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
+        polygons_2_chw (Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
+    Output:
+        np.ndarray: A RGB image ((H,W,3), 8-bit unsigned integers.
+    """
+    input_img_hwc = np.asarray( input_img_hw )
+    polygon_count_1 = torch.max( polygons_1_chw )
+    polygon_count_2 = torch.max( polygons_2_chw )
+
+    colors = get_n_color_palette( 2 ) 
+
+    fg_masked_hwc = np.zeros( input_img_hwc.shape ) 
+
+    alpha = .75
+
+    
+    output_img = input_img_hwc.copy()
+    # create mask tensor for all pred. polygon: odd-numbered polygons in R, even-numbered ones in G
+    for pi, pset in enumerate([ polygons_1_chw, polygons_2_chw ]):
+        for p in range(1, polygon_count_1+1 ):
+            polygon_mask_hw = seglib.mask_from_polygon_map_functional( pset, lambda m: m == p )
+            polygon_mask_hwc = polygon_mask_hw.reshape( polygon_mask_hw.shape+(1,)).expand(-1,-1,3).numpy() 
+            color = colors[pi]
+            # foreground color image masked
+            full_fg_hwc = np.full( input_img_hwc.shape, color, dtype=np.uint8 ) 
+            # TODO: only add to zero-pixels
+            fg_mask_zero = (fg_masked_hwc == 0)
+            if pi==1:
+                fg_mask_zero = np.logical_or( fg_masked_hwc == 0, fg_masked_hwc == colors[0] )
+            fg_masked_hwc[fg_mask_zero] += (full_fg_hwc * polygon_mask_hwc)[fg_mask_zero]
+
+    # transparency applies only to polygons, not to the original image.
+    alpha_mask = fg_masked_hwc != 0
+    alphas = np.full( alpha_mask.shape, 1.0 )
+    alphas[ alpha_mask ] = alpha
+
+    # combine: BG + FG
+    # use this statement instead to make the polygons more visible
+    #output_img = (input_img_hwc * alpha ) + fg_masked_hwc * (1-alpha)
+    output_img = (input_img_hwc * alphas ) + fg_masked_hwc * (1-alpha)
+    
+    return output_img.astype('uint8')
 
 def get_n_color_palette(n: int, s=.85, v=.95) -> list:
     """
