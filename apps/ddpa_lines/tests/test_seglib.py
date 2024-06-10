@@ -70,14 +70,14 @@ def test_line_binary_mask_from_img_segmentation_dict( data_path, ndarrays_regres
     ndarrays_regression.check( { 'mask': mask.numpy() } ) 
 
 
-def test_line_images_from_img_segmentation_dict_type_checking( data_path, ndarrays_regression ):
+def test_line_images_from_img_segmentation_dict_type_checking( data_path ):
     """
     The elements in the pair (image and mask) should both be numpy arrays with shape (H,W,3).
     """
     input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
     segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
     imgs_and_masks = seglib.line_images_from_img_segmentation_dict( input_img, segmentation_dict )
-    #ndarrays_regression.check( { 'mask': mask.numpy() } ) 
+
     assert len(imgs_and_masks) == 4
     assert type(imgs_and_masks[0][0]) is np.ndarray 
     assert type(imgs_and_masks[0][1]) is np.ndarray 
@@ -101,7 +101,7 @@ def test_line_images_from_img_segmentation_dict_image_content_checking( data_pat
         })
 
 
-def test_line_images_from_img_polygon_map_type_checking( data_path, ndarrays_regression ):
+def test_line_images_from_img_polygon_map_type_checking( data_path ):
     """
     The elements in the pair (image and mask) should both be numpy arrays with shape (H,W,3).
     """

@@ -33,11 +33,8 @@ def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_
     # create mask tensor for all pred. polygon: odd-numbered polygons in R, even-numbered ones in G
     for p in range(1, polygon_count+1 ):
         polygon_mask_hw = seglib.mask_from_polygon_map_functional( polygons_chw, lambda m: m == p )
-        polygon_mask_hwc = polygon_mask_hw.reshape( polygon_mask_hw.shape+(1,)).expand(-1,-1,3).numpy() 
         color = colors[ p%len(colors) ]
-        # foreground color image masked
-        full_fg_hwc = np.full( input_img_hwc.shape, color, dtype=np.uint8 ) 
-        fg_masked_hwc += full_fg_hwc * polygon_mask_hwc
+        fg_masked_hwc[ polygon_mask_hw ] += color
 
     # transparency applies only to polygons, not to the original image.
     alpha_mask = fg_masked_hwc != 0
@@ -52,7 +49,7 @@ def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_
     return output_img.astype('uint8')
 
 
-def polygon_two_set_display_new( input_img_hw: Image.Image, polygons_1_chw: Tensor, polygons_2_chw: Tensor ) -> np.array:
+def display_two_polygon_sets( input_img_hw: Image.Image, polygons_1_chw: Tensor, polygons_2_chw: Tensor, bg_alpha=.5 ) -> np.array:
     """
     Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis.
     it returns 2 images:
@@ -68,37 +65,27 @@ def polygon_two_set_display_new( input_img_hw: Image.Image, polygons_1_chw: Tens
     polygon_count_1 = torch.max( polygons_1_chw )
     polygon_count_2 = torch.max( polygons_2_chw )
 
-    colors = get_n_color_palette( 2 ) 
+    #colors = (255,0,0), (0,0,255)
+    colors = get_n_color_palette( 2, s=.99, v=.99 )
 
     fg_masked_hwc = np.zeros( input_img_hwc.shape ) 
 
-    alpha = .75
-
-    
     output_img = input_img_hwc.copy()
-    # create mask tensor for all pred. polygon: odd-numbered polygons in R, even-numbered ones in G
-    for pi, pset in enumerate([ polygons_1_chw, polygons_2_chw ]):
-        for p in range(1, polygon_count_1+1 ):
-            polygon_mask_hw = seglib.mask_from_polygon_map_functional( pset, lambda m: m == p )
-            polygon_mask_hwc = polygon_mask_hw.reshape( polygon_mask_hw.shape+(1,)).expand(-1,-1,3).numpy() 
-            color = colors[pi]
-            # foreground color image masked
-            full_fg_hwc = np.full( input_img_hwc.shape, color, dtype=np.uint8 ) 
-            # TODO: only add to zero-pixels
-            fg_mask_zero = (fg_masked_hwc == 0)
-            if pi==1:
-                fg_mask_zero = np.logical_or( fg_masked_hwc == 0, fg_masked_hwc == colors[0] )
-            fg_masked_hwc[fg_mask_zero] += (full_fg_hwc * polygon_mask_hwc)[fg_mask_zero]
+    
+    # create a single mask for each set
+    mask_1_hw = seglib.mask_from_polygon_map_functional( polygons_1_chw, lambda m: m != 0 )
+    mask_2_hw = seglib.mask_from_polygon_map_functional( polygons_2_chw, lambda m: m != 0 )
+
+    fg_masked_hwc[ mask_1_hw ] = colors[0]
+    fg_masked_hwc[ mask_2_hw ] += colors[1]
 
     # transparency applies only to polygons, not to the original image.
     alpha_mask = fg_masked_hwc != 0
     alphas = np.full( alpha_mask.shape, 1.0 )
-    alphas[ alpha_mask ] = alpha
+    alphas[ alpha_mask ] = bg_alpha
 
     # combine: BG + FG
-    # use this statement instead to make the polygons more visible
-    #output_img = (input_img_hwc * alpha ) + fg_masked_hwc * (1-alpha)
-    output_img = (input_img_hwc * alphas ) + fg_masked_hwc * (1-alpha)
+    output_img = (input_img_hwc * alphas ) + fg_masked_hwc * (1-bg_alpha)
     
     return output_img.astype('uint8')
 
@@ -125,83 +112,3 @@ def get_n_color_palette(n: int, s=.85, v=.95) -> list:
 
  
 
-
-
-def polygon_two_set_display( input_img: Image.Image, polygons1: Tensor, polygons2: Tensor ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis. For clarity's sake,
-    it returns 2 images:
-
-    + one highlights the even-numbered lines, showing both sets of polygons (1: red, 2: green)
-    + one highlights the odd-numbered lines, 
-
-    Args:
-        input_img (Image.Image): the original manuscript image, as opened with PIL.
-        polygons1 (Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
-        polygons2 (Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
-    Output:
-        A tuple containing two BGR images (8-bit unsigned integers), rendering the even-numbered lines
-        and the odd-numbered lines, respectively.
-    """
-    input_img = np.asarray( input_img )
-
-    # create mask tensor for polygon set #1
-    polygon_32b_img_1, polygon_32b_img_2 = [ rgba_uint8_to_int32( p ) for p in (polygons1, polygons2) ]  # 4-channel -> 1-channel
-
-    # sets 1 and 2, even-numbered lines
-    mask1, mask2 = [ torch.logical_and( (p % 2), ( p > 0 )).numpy().astype( np.uint8 ) for p in (polygon_32b_img_1, polygon_32b_img_2) ]
-    # sets 1 and 2, odd-numbered lines
-    mask3, mask4 = [ torch.logical_and( (p % 2) == 0, ( p > 0 )).numpy().astype( np.uint8 ) for p in (polygon_32b_img_1, polygon_32b_img_2) ]
-    pg_8b3c_mask_1, pg_8b3c_mask_2, pg_8b3c_mask_3, pg_8b3c_mask_4 = [ np.stack((p, p, p), axis=2) for p in (mask1, mask2,  mask3, mask4) ]
-
-    full_red, full_green = [ np.full( input_img.shape, color, dtype=np.uint8 ) for color in (RED, GREEN) ]
-    fg_red_masked_even, fg_green_masked_even, fg_red_masked_odd, fg_green_masked_odd = [ (fg * mask ) for (fg, mask) in ((full_red, pg_8b3c_mask_1), (full_green, pg_8b3c_mask_2), (full_red, pg_8b3c_mask_3), (full_green, pg_8b3c_mask_4)) ]
-
-    # combine both FG layers
-    foreground_even = fg_red_masked_even + fg_green_masked_even
-    foreground_odd = fg_red_masked_odd + fg_green_masked_odd
-
-    # BG + FG
-    alpha = .75
-    oimg1, oimg2 = [ (input_img * alpha + fg * (1-alpha)).astype('uint8') for fg in (foreground_even, foreground_odd) ]
-    return ( oimg1, oimg2 ) 
-
-
-def polygon_two_set_display_alt( input_img: Image.Image, polygons1: Tensor, polygons2: Tensor ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis. 
-    Even- and odd-numbered lines use different pairs of colors.
-
-    Note: output is utterly confusing.
-
-
-    Args:
-        input_img (Image.Image): the original manuscript image, as opened with PIL.
-        polygons1 (Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
-        polygons2 (Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
-    Output:
-        np.ndarray: A BGR image (3 channels, 8-bit unsigned integers).
-    """
-    # do everything in openCV
-    input_img = cv2.cvtColor( np.array( input_img ), cv2.COLOR_RGB2BGR )
-
-    polygon_32b_img_1, polygon_32b_img_2 = [ rgba_uint8_to_int32( p ) for p in (polygons1, polygons2) ]  # 4-channel -> 1-channel
-    # sets 1 and 2, even-numbered lines
-    mask1, mask2 = [ torch.logical_and( (p % 2), ( p > 0 )).numpy().astype( np.uint8 ) for p in (polygon_32b_img_1, polygon_32b_img_2) ]
-    # sets 1 and 2, odd-numbered lines
-    mask3, mask4 = [ torch.logical_and( (p % 2) == 0, ( p > 0 )).numpy().astype( np.uint8 ) for p in (polygon_32b_img_1, polygon_32b_img_2) ]
-    pg_8b3c_mask_1, pg_8b3c_mask_2, pg_8b3c_mask_3, pg_8b3c_mask_4 = [ cv2.merge((p, p, p)) for p in (mask1, mask2,  mask3, mask4) ]
-
-    # foreground color image: red/green (set 1), yellow/blue (set 2) 
-    full_red, full_green, full_yellow, full_blue = [ np.full( input_img.shape, color, dtype=np.uint8 ) for color in (RED, GREEN, YELLOW, BLUE) ]
-    fg_red_masked, fg_green_masked, fg_yellow_masked, fg_blue_masked = [ cv2.multiply( f, m ) for (f, m) in ((full_red, pg_8b3c_mask_1), (full_green, pg_8b3c_mask_3), (full_yellow, pg_8b3c_mask_2), (full_blue, pg_8b3c_mask_4)) ]
-
-    # combine 4 FG layers
-    foreground = cv2.add( cv2.add( cv2.add( fg_red_masked, fg_green_masked), fg_yellow_masked), fg_blue_masked)
-
-    # BG + FG
-    return cv2.addWeighted( input_img, .75, foreground, .25, 0)
-
-
-def plot_precision_recall_curve( confusion_matrix: Tensor ):
-    pass
