@@ -12,7 +12,7 @@ from torch import Tensor
 
 import numpy as np
 import numpy.ma as ma
-from typing import List, Tuple, Callable
+from typing import List, Tuple, Callable, Optional, Dict, Union, Mapping, Any
 import itertools
 
 
@@ -46,10 +46,10 @@ def line_segment(img: Image.Image, model_path: str):
     if not Path( model_path ).exists():
         raise FileNotFoundError("Cound not find model file", model_path)
     # you want to load the model once (loaded model as a parameter)
-    return dict_to_polygon_map( blla.segment( img, model=vgsl.TorchVGSLModel.load_model( model_path )), img )
+    return polygon_map_from_img_segmentation_dict( img, blla.segment( img, model=vgsl.TorchVGSLModel.load_model( model_path )) )
 
 
-def polygon_map_from_img_json_files(  img: str, segmentation_json: str):
+def polygon_map_from_img_json_files(  img: str, segmentation_json: str) -> Tensor:
     """
     Read line polygons from a JSON file and store them into a tensor, as pixel maps.
     Channels allow for easy storage of overlapping polygons.
@@ -233,7 +233,7 @@ def line_images_from_img_segmentation_dict(img_wh: Image.Image, segmentation_dic
     polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
     img_hwc = np.asarray( img_wh )
 
-    pairs_line_bb_and_mask = [None] * len(polygon_boundaries)
+    pairs_line_bb_and_mask = []# [None] * len(polygon_boundaries)
 
     for lbl, polyg in enumerate( polygon_boundaries ):
 
@@ -246,7 +246,8 @@ def line_images_from_img_segmentation_dict(img_wh: Image.Image, segmentation_dic
         # note: mask has as many channels as the original image
         bb_label_mask = page_polyg_mask[y_min:y_max+1, x_min:x_max+1]
 
-        pairs_line_bb_and_mask[lbl]=( line_bbox, bb_label_mask )
+        #pairs_line_bb_and_mask[lbl]=( line_bbox, bb_label_mask )
+        pairs_line_bb_and_mask.append( (line_bbox, bb_label_mask) )
 
     return pairs_line_bb_and_mask
 
@@ -266,7 +267,7 @@ def line_images_from_img_polygon_map(img_wh: Image.Image, polygon_map_chw: Tenso
     max_label = torch.max( polygon_map_chw )
     img_hwc = np.array( img_wh )
 
-    pairs_line_bb_and_mask = [None] * max_label
+    pairs_line_bb_and_mask = []# [None] * max_label
 
     for lbl in range(1, max_label+1 ):
         page_label_mask_hw = retrieve_polygon_mask_from_map( polygon_map_chw, lbl )
@@ -278,12 +279,13 @@ def line_images_from_img_polygon_map(img_wh: Image.Image, polygon_map_chw: Tenso
 
         bb_label_mask = expand_flat_tensor_to_n_channels(page_label_mask_hw[y_min:y_max+1, x_min:x_max+1], 3)
 
-        pairs_line_bb_and_mask[ lbl-1 ]=(line_bbox, bb_label_mask) 
+        #pairs_line_bb_and_mask[ lbl-1 ]=(line_bbox, bb_label_mask) 
+        pairs_line_bb_and_mask.append( (line_bbox, bb_label_mask) )
 
     return pairs_line_bb_and_mask
 
 
-def expand_flat_tensor_to_n_channels( t_hw: Tensor, n: int ) -> np.array:
+def expand_flat_tensor_to_n_channels( t_hw: Tensor, n: int ) -> np.ndarray:
     """
     Expand a flat map by duplicating its only channel into n identical ones.
     Channels dimension is last for convenient use with PIL images.
@@ -293,7 +295,7 @@ def expand_flat_tensor_to_n_channels( t_hw: Tensor, n: int ) -> np.array:
     t_hwc = t_hw.reshape( t_hw.shape+(1,)).expand(-1,-1,n)
     return t_hwc.numpy()
 
-def segmentation_dict_from_xml(page: str) -> dict:
+def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
     """
     Given a pageXML file name, return a JSON dictionary describing the lines.
 
@@ -308,14 +310,20 @@ def segmentation_dict_from_xml(page: str) -> dict:
     """
     direction = {'0.0': 'horizontal-lr', '0.1': 'horizontal-rl', '1.0': 'vertical-td', '1.1': 'vertical-bu'}
 
+
+    page_dict: Dict[str, Union['str', List[Any]]] = { 'type': 'baselines' }
+
     with open( page, 'r' ) as page_file:
         page_tree = ET.parse( page_file )
         ns = { 'pc': "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
         page_root = page_tree.getroot()
 
-        page_dict = { 'type': 'baselines' }
 
-        page_dict['text_direction'] = direction[ page_root.find('.//pc:TextRegion', ns).get( 'orientation' )]
+        textRegionElement = page_root.find('.//pc:TextRegion', ns) 
+        if textRegionElement is not None:
+            orientation = textRegionElement.get( 'orientation' )
+            if orientation is not None:
+                page_dict['text_direction'] = direction[ orientation ]
 
         lines_object = []
         for line in page_root.findall('.//pc:TextLine', ns):
@@ -323,12 +331,17 @@ def segmentation_dict_from_xml(page: str) -> dict:
             baseline_elt = line.find('./pc:Baseline', ns)
             if baseline_elt is None:
                 continue
-            baseline_points = [ [ int(p) for p in pt.split(',') ] for pt in baseline_elt.get('points').split(' ') ]
-
+            bl_points = baseline_elt.get('points')
+            if bl_points is None:
+                continue
+            baseline_points = [ [ int(p) for p in pt.split(',') ] for pt in bl_points.split(' ') ]
             coord_elt = line.find('./pc:Coords', ns)
             if coord_elt is None:
                 continue
-            polygon_points = [ [ int(p) for p in pt.split(',') ] for pt in coord_elt.get('points').split(' ') ]
+            c_points = coord_elt.get('points')
+            if c_points is None:
+                continue
+            polygon_points = [ [ int(p) for p in pt.split(',') ] for pt in c_points.split(' ') ]
 
             lines_object.append( {'line_id': line_id, 'baseline': baseline_points, 'boundary': polygon_points} )
 
@@ -337,7 +350,7 @@ def segmentation_dict_from_xml(page: str) -> dict:
     return page_dict 
 
 
-def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int):
+def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int) -> None:
     """
     In the segmentation map, label pixels matching a given polygon. Up to 4 labels
     can be stored on a single pixel. A label cannot be applied twice to the same 
@@ -399,7 +412,7 @@ def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
     return img_chw
 
 
-def polygon_pixel_metrics_from_img_segmentation_dict(img: Image.Image, segmentation_dict_pred: dict, segmentation_dict_gt: dict, binary_mask: Tensor=None) -> np.ndarray:
+def polygon_pixel_metrics_from_img_segmentation_dict(img: Image.Image, segmentation_dict_pred: dict, segmentation_dict_gt: dict, binary_mask: Optional[Tensor]=None) -> np.ndarray:
     """
     Compute a IoU matrix from an image and two dictionaries describing the segmentation's output (line polygons).
 
@@ -436,7 +449,7 @@ def get_mask( img_whc: Image.Image, thresholding_alg: Callable=ski.filters.thres
     return img_bin_hw
 
 
-def polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_chw_pred: Tensor, polygon_chw_gt: Tensor, binary_hw_mask: Tensor=None, label_distance=0) -> np.ndarray:
+def polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_chw_pred: Tensor, polygon_chw_gt: Tensor, binary_hw_mask: Optional[Tensor]=None, label_distance=0) -> np.ndarray:
     """
     Compute pixel-based metrics from two tensors that each encode (potentially overlapping) polygons
     and a FG mask.
@@ -487,12 +500,12 @@ def retrieve_polygon_mask_from_map( label_map_chw: Tensor, label: int) -> Tensor
     """
     if len(label_map_chw.shape) != 3 and label_map_chw.shape[0] != 4:
         raise TypeError("Wrong type: label map should be a 4-channel tensor (shape={} instead).".format( label_map_chw.shape ))
-    polygon_mask_hw = torch.sum( label_map_chw==label, axis=0).type(torch.bool)
+    polygon_mask_hw = torch.sum( label_map_chw==label, dim=0).type(torch.bool)
 
     return polygon_mask_hw
 
 
-def array_has_label( label_map_hw: np.array, label: int ) -> np.ndarray:
+def array_has_label( label_map_hw: np.ndarray, label: int ) -> bool:
     """
     From a flat label map (as generated from a segmentation dictionary) where each pixel can store up to 3 values,
     test whether a given polygon has been stored already.
@@ -507,7 +520,7 @@ def array_has_label( label_map_hw: np.array, label: int ) -> np.ndarray:
         raise TypeError("Map should be a flat map of integers.")
 
     label_cube_chw = np.moveaxis(label_map_hw.view('uint8').reshape(label_map_hw.shape+(-1,)), 2, 0)
-    return np.any( label_cube_chw == label )
+    return bool(np.any( label_cube_chw == label ))
 
 
 
@@ -529,8 +542,8 @@ def polygon_pixel_metrics_two_maps( map_chw_1: Tensor, map_chw_2: Tensor, label_
         np.ndarray: a 4 channel array, where each cell [i,j] stores respectively intersection and union counts,
                     as well as precision and recall for a pair of labels [i,j].
     """
-    min_label_1, max_label_1 = torch.min( map_chw_1[ map_chw_1 > 0 ] ).item(), torch.max( map_chw_1 ).item()
-    min_label_2, max_label_2 = torch.min( map_chw_2[ map_chw_2 > 0 ] ).item(), torch.max( map_chw_2 ).item()
+    min_label_1, max_label_1 = int(torch.min( map_chw_1[ map_chw_1 > 0 ] ).item()), int(torch.max( map_chw_1 ).item())
+    min_label_2, max_label_2 = int(torch.min( map_chw_2[ map_chw_2 > 0 ] ).item()), int(torch.max( map_chw_2 ).item())
     label2index_1 = { l:i for i,l in enumerate( range(min_label_1, max_label_1+1)) }
     label2index_2 = { l:i for i,l in enumerate( range(min_label_2, max_label_2+1)) }
 
@@ -601,13 +614,13 @@ def map_to_depth(map_chw: Tensor) -> Tensor:
                 number of intersecting polygons for the same position
                 in the input map.
     """
-    depth_map = torch.sum( map_chw != 0, axis=0)
+    depth_map = torch.sum( map_chw != 0, dim=0)
     depth_map[ depth_map == 0 ]=1
 
     return depth_map
 
 
-def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: float=.5 ) -> Tuple[float, float, float]:
+def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: float=.5 ) -> Tuple[float, float, float, float, float]:
     """
     Implement ICDAR 2017 evaluation metrics, as described in
     https://github.com/DIVA-DIA/DIVA_Line_Segmentation_Evaluator/releases/tag/v1.0.0
@@ -684,7 +697,7 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
     return (TP, FP, FN, Jaccard, F1)
 
 
-def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[float, float, float]:
+def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[float, float]:
     """
     Implement ICDAR 2017 pixel-based evaluation metrics, as described in
     Simistira et al., ICDAR2017, "Competition on Layout Analysis for Challenging Medieval
@@ -748,24 +761,24 @@ def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[f
     return (pixel_iou, matched_pixel_iou)
 
 
-def metrics_to_precision_recall_curve( metrics: np.ndarray, threshold_range=np.linspace(0, 1, num=21)) -> np.ndarray:
-    """
-    Compute precision and recalls over a range of IoU thresholds, for plotting purpose.
-
-    Args:
-        metrics (np.ndarray): a 4-channel table with GT labels in rows and predicted labels in columns, where
-                              each entry is a [intersection_count, union_count, precision, recall] sequence.
-        threshold_range: a series of threshold values, between 0 and 1 (default: [0, 0.05, 0.1, ..., 0.95, 1])
-
-    Output:
-        np.ndarray: a 2D array, with precisions in row 0 and recalls in row 1.
-
-    """
-    precisions_recalls = np.zeros((len(threshold_range), 2))
-    for (i,t) in enumerate(threshold_range):
-        precisions_recalls[i] = metrics_to_aggregate_scores(metrics, iou_threshold=t)[:2]
-        #print(precisions_recalls[:,i])
-    return np.moveaxis( precisions_recalls, 1, 0)
+#def metrics_to_precision_recall_curve( metrics: np.ndarray, threshold_range=np.linspace(0, 1, num=21)) -> np.ndarray:
+#    """
+#    Compute precision and recalls over a range of IoU thresholds, for plotting purpose.
+#
+#    Args:
+#        metrics (np.ndarray): a 4-channel table with GT labels in rows and predicted labels in columns, where
+#                              each entry is a [intersection_count, union_count, precision, recall] sequence.
+#        threshold_range: a series of threshold values, between 0 and 1 (default: [0, 0.05, 0.1, ..., 0.95, 1])
+#
+#    Output:
+#        np.ndarray: a 2D array, with precisions in row 0 and recalls in row 1.
+#
+#    """
+#    precisions_recalls = np.zeros((len(threshold_range), 2))
+#    for (i,t) in enumerate(threshold_range):
+#        precisions_recalls[i] = metrics_to_aggregate_scores(metrics, iou_threshold=t)[:2]
+#        #print(precisions_recalls[:,i])
+#    return np.moveaxis( precisions_recalls, 1, 0)
 
 
 def recover_labels_from_map_value( px: int) -> list:
@@ -803,7 +816,7 @@ def mask_from_polygon_map_functional( polygon_map: Tensor, test: Callable) -> Te
     if len(polygon_map.shape) != 3 or polygon_map.shape[0]!=4:
         raise TypeError("Polygon map should have shape (4, m, n)")
 
-    return torch.sum( test( polygon_map ), axis=0).type(torch.bool)
+    return torch.sum( test( polygon_map ), dim=0).type(torch.bool)
 
 
 def dummy():

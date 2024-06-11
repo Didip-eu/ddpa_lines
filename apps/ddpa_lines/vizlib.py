@@ -10,8 +10,36 @@ import random
 from typing import Tuple
 import skimage as ski
 
+def display_polygon_set_from_img_and_tensor_files( img_file: str, polygon_file: str, color_count=0, alpha=.75) -> np.ndarray:
+    """
+    Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
 
-def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_count=0, alpha=.75 ) -> np.array:
+    Args:
+        img_file (str): path to the original manuscript image.
+        polygon_file (str): path to the pickled polygon set, encoded as a 4-channel, 8-bit tensor.
+    Output:
+        np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
+    """
+    with Image.open(img_file) as input_img_hw, torch.load( polygon_file ) as polygons_chw:
+        return display_polygon_set( input_img_hw, polygons_chw, color_count, alpha )
+
+def display_two_polygon_sets_from_img_and_tensor_files( img_file: str, polygon_file_1: str, polygon_file_2: str, bg_alpha=.75) -> np.ndarray:
+    """
+    Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis.
+   
+    Args:
+        img_file (str): path to the original manuscript image.
+        polygon_file_1 (str): path to the first pickled polygon set, encoded as a 4-channel, 8-bit tensor.
+        polygon_file_2 (str): path to the second pickled polygon set, encoded as a 4-channel, 8-bit tensor.
+    Output:
+        np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
+    """
+    with Image.open(img_file) as input_img_hw, \
+            torch.load( polygon_file_1 ) as polygons_1_chw, \
+            torch.load( polygon_file_2 ) as polygons_2_chw:
+        return display_two_polygon_sets( input_img_hw, polygons_1_chw, polygons_2_chw, bg_alpha )
+
+def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_count=0, alpha=.75 ) -> np.ndarray:
     """
     Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
 
@@ -19,24 +47,24 @@ def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_
         input_img_hw (Image.Image): the original manuscript image, as opened with PIL.
         polygons_chw (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
     Output:
-        np.ndarray: A RGB image ((H,W,3), 8-bit unsigned integers).
+        np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
 
     input_img_hwc = np.asarray( input_img_hw )
     polygon_count = torch.max( polygons_chw )
 
-    colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(polygon_count)
+    colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(int( polygon_count ))
 
     fg_masked_hwc = np.zeros( input_img_hwc.shape ) 
 
     output_img = input_img_hwc.copy()
-    # create mask tensor for all pred. polygon: odd-numbered polygons in R, even-numbered ones in G
+    
     for p in range(1, polygon_count+1 ):
+        # flat binary mask
         polygon_mask_hw = seglib.mask_from_polygon_map_functional( polygons_chw, lambda m: m == p )
-        color = colors[ p%len(colors) ]
-        fg_masked_hwc[ polygon_mask_hw ] += color
+        fg_masked_hwc[ polygon_mask_hw ] += colors[ p % len(colors) ]
 
-    # transparency applies only to polygons, not to the original image.
+    # in original image, transparency applies only to the polygon pixels
     alpha_mask = fg_masked_hwc != 0
     alphas = np.full( alpha_mask.shape, 1.0 )
     alphas[ alpha_mask ] = alpha
@@ -49,17 +77,16 @@ def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_
     return output_img.astype('uint8')
 
 
-def display_two_polygon_sets( input_img_hw: Image.Image, polygons_1_chw: Tensor, polygons_2_chw: Tensor, bg_alpha=.5 ) -> np.array:
+def display_two_polygon_sets( input_img_hw: Image.Image, polygons_1_chw: Tensor, polygons_2_chw: Tensor, bg_alpha=.5 ) -> np.ndarray:
     """
     Render two sets of polygons (typically: GT and pred.) using two colors, for human diagnosis.
-    it returns 2 images:
 
     Args:
         input_img (Image.Image): the original manuscript image, as opened with PIL.
         polygons_1_chw (Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
         polygons_2_chw (Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
     Output:
-        np.ndarray: A RGB image ((H,W,3), 8-bit unsigned integers.
+        np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
     input_img_hwc = np.asarray( input_img_hw )
     polygon_count_1 = torch.max( polygons_1_chw )
@@ -79,7 +106,7 @@ def display_two_polygon_sets( input_img_hw: Image.Image, polygons_1_chw: Tensor,
     fg_masked_hwc[ mask_1_hw ] = colors[0]
     fg_masked_hwc[ mask_2_hw ] += colors[1]
 
-    # transparency applies only to polygons, not to the original image.
+    # in original image, transparency applies only to the polygon pixels
     alpha_mask = fg_masked_hwc != 0
     alphas = np.full( alpha_mask.shape, 1.0 )
     alphas[ alpha_mask ] = bg_alpha
