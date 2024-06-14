@@ -20,7 +20,8 @@ def display_polygon_set_from_img_and_tensor_files( img_file: str, polygon_file: 
     Output:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
-    with Image.open(img_file) as input_img_hw, torch.load( polygon_file ) as polygons_chw:
+    with Image.open(img_file) as input_img_hw:
+        polygons_chw = torch.load( polygon_file ) 
         return display_polygon_set( input_img_hw, polygons_chw, color_count, alpha )
 
 def display_two_polygon_sets_from_img_and_tensor_files( img_file: str, polygon_file_1: str, polygon_file_2: str, bg_alpha=.75) -> np.ndarray:
@@ -34,9 +35,9 @@ def display_two_polygon_sets_from_img_and_tensor_files( img_file: str, polygon_f
     Output:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
-    with Image.open(img_file) as input_img_hw, \
-            torch.load( polygon_file_1 ) as polygons_1_chw, \
-            torch.load( polygon_file_2 ) as polygons_2_chw:
+    with Image.open(img_file) as input_img_hw:
+        polygons_1_chw = torch.load( polygon_file_1 )
+        polygons_2_chw = torch.load( polygon_file_2 )
         return display_two_polygon_sets( input_img_hw, polygons_1_chw, polygons_2_chw, bg_alpha )
 
 def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_count=0, alpha=.75 ) -> np.ndarray:
@@ -120,6 +121,8 @@ def get_n_color_palette(n: int, s=.85, v=.95) -> list:
     """
     Generate n well-distributed random colors. Use golden ratio to generate colors from the HSV color
     space. 
+
+    Reference: https://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
 
     Args:
         n (int): number of color to generate.
