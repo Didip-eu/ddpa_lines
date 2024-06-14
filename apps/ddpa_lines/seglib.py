@@ -34,21 +34,6 @@ A note about types:
 """
 
 
-def line_segment(img: Image.Image, model_path: str):
-    r"""
-    Args:
-        img (Image.Image): input image
-        model_path (str): model location
-
-    Output:
-        tuple: a pair with the maximum value of the line labels and the polygons rendered as an image.
-    """
-    if not Path( model_path ).exists():
-        raise FileNotFoundError("Cound not find model file", model_path)
-    # you want to load the model once (loaded model as a parameter)
-    return polygon_map_from_img_segmentation_dict( img, blla.segment( img, model=vgsl.TorchVGSLModel.load_model( model_path )) )
-
-
 def polygon_map_from_img_json_files(  img: str, segmentation_json: str) -> Tensor:
     """
     Read line polygons from a JSON file and store them into a tensor, as pixel maps.
@@ -289,6 +274,13 @@ def expand_flat_tensor_to_n_channels( t_hw: Tensor, n: int ) -> np.ndarray:
     """
     Expand a flat map by duplicating its only channel into n identical ones.
     Channels dimension is last for convenient use with PIL images.
+
+    Args:
+        t_hw (Tensor): a flat map.
+        n (int): number of (identical) channels in the resulting tensor.
+
+    Output:
+        np.ndarray: a (H,W,n) array.
     """
     if len(t_hw.shape) != 2:
         raise TypeError("Function expects a 2D map!")
@@ -309,7 +301,6 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
 
     """
     direction = {'0.0': 'horizontal-lr', '0.1': 'horizontal-rl', '1.0': 'vertical-td', '1.1': 'vertical-bu'}
-
 
     page_dict: Dict[str, Union['str', List[Any]]] = { 'type': 'baselines' }
 
@@ -365,7 +356,7 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
                              2 << 8 + 4 = 0x204 = 8192
                      Ex. #2. Pixel 0x10403 stores labels [1, 4, 3]
     """
-    label_limit = 2**__LABEL_SIZE__-1
+    label_limit = 0xff
     max_three_polygon_label = 0xffffff
 
     # a label may not use more than 1 byte.
@@ -387,7 +378,7 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
             repr([ (row,col) for (row,col) in maxed_out_pixels ][:5]),
             ' ...' if len(maxed_out_pixels)>5 else ''))
     # ... shift it
-    label_map[ intersection_boolean_mask ] <<= __LABEL_SIZE__
+    label_map[ intersection_boolean_mask ] <<= 8
 
     # only then add label to all pixels matching the polygon
     label_map += polygon_mask.astype( label_map.dtype ) * label

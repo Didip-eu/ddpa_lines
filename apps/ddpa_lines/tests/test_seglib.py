@@ -368,7 +368,7 @@ def test_polygon_mask_to_polygon_map_32b_store_three_intersecting_polygons():
                            [0,1,0x401,4,0,0]], dtype='int32')),
     ((0xff, 0xfe, 0xfd, 0xfc), np.array( [[0xff,0xff,0xff,0,0,0], 
                                           [0xff,0xff,0xff,0,0,0],
-                                          [0xff,0xff,0xfffefdfc,0xfefd,0xfd,0],
+                                          [0xff,0xff,0xfffefdfc-(1<<32),0xfefd,0xfd,0], # Numpy will deprecate casting of out-of-bound intgers
                                           [0,0,0xfefdfc,0xfefd,0xfefd,0xfd],
                                           [0,0xfc,0xfdfc,0xfdfc,0xfd,0],
                                           [0,0xfc,0xfdfc,0xfd,0,0]], dtype='int32'))])
@@ -1161,7 +1161,7 @@ def test_segmentation_dict_from_xml(  data_path ):
             (0x203, [2,3]),
             (0x40205, [4,2,5]),
             (0x1fffffff,[31,255,255,255]),
-            (0xffffffff,[255,255,255,255]),
+            (-1,[255,255,255,255]), # or 0xffffffff (Numpy may prevent casting out-of-bound integer literals in the future)
             ])
 def test_recover_labels_from_map_value_single_polygon(  label, expected ):
     assert seglib.recover_labels_from_map_value( label ) == expected
