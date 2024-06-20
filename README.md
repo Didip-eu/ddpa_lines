@@ -1,3 +1,0 @@
-# didip
-
-Simple Didip scripts

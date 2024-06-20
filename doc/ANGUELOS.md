@@ -1,5 +1,0 @@
-```commandline
-export SSH
-
-```
-
