@@ -1,6 +1,3 @@
-
-from kraken import blla
-from kraken.lib import vgsl
 from PIL import Image, ImageDraw
 import skimage as ski
 from pathlib import Path

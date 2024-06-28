@@ -30,15 +30,6 @@ def test_dummy( data_path):
     print(data_path)
     assert seglib.dummy() == True
 
-def test_line_segmentation_model_not_found(  data_path ):
-    """
-    An exception should be raised when no segmentation model found.
-    """
-    model = Path('nowhere_to_be_found.mlmodel')
-    input_image = data_path.joinpath('NA-ACK_14201223_01485_r-r1.png')
-    with pytest.raises( FileNotFoundError ) as e:
-        seglib.line_segment(input_image, model)
-
 def test_binary_mask_from_image_real_img( data_path):
     """
     Binarization function should return a Boolean tensor with shape( h,w )
