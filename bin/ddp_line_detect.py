@@ -110,18 +110,22 @@ if __name__ == "__main__":
     for path in list( args.img_paths ):
         print( path )
 
-        stem = Path( path ).stem
-        # output folder name stem is the Id part of the input image folder
-        new_img_dir_stem = re.sub(r'\..+', '',  Path( path ).parent.name )
-        output_dir = Path( path ).parents[1].joinpath( f'{new_img_dir_stem}.{args.appname}.lines' )
+        #stem = Path( path ).stem
+        stem = re.sub(r'\..+', '',  Path( path ).name )
+
+        # an extra output subfolder is only useful for storing file that may derive from the segmentation (s.a. crops)
+        # + location: under the chart's folder, at same level of the chart images
+        # + name: stem is the Id part of the input image
+        # extra_output_dir = Path( path ).parent.joinpath( f'{stem}.{args.appname}.lines' )
 
         with Image.open( path, 'r' ) as img:
 
-            output_file_path = output_dir.joinpath( f'{stem}.{args.output_format}' )
+            # segmentation metadata file
+            output_file_path_wo_suffix = Path(path).parent.joinpath( f'{stem}.{args.appname}.pred' )
 
             if args.just_show:
                 # only look for existing tensor map
-                map_file_path = output_dir.joinpath(f'{stem}.pt')
+                map_file_path = output_file_path.with_suffix('.pt')
                 if map_file_path.exists():
                     polygon_map_chw = torch.load( map_file_path ) 
                     Image.fromarray( seg_io.display_polygon_set( img, polygon_map_chw ) ).show()
@@ -129,7 +133,7 @@ if __name__ == "__main__":
                     print(f"No existing segmentation map for image {repr(path)}.")
                 continue
 
-            output_dir.mkdir( exist_ok=True )
+            #extra_output_dir.mkdir( exist_ok=True )
 
             if not Path( args.model_path ).exists():
                 raise FileNotFoundError("Could not find model file", args.model_path)
@@ -138,9 +142,10 @@ if __name__ == "__main__":
             # Segmentation object
             segmentation_record = blla.segment( img, model=model )
 
+            output_file_path = Path(f'{output_file_path_wo_suffix}.{args.output_format}')
+            
             # PageXML output
             if args.output_format == 'xml':
-                output_file_path = output_dir.joinpath( f'{stem}.xml' )
                 page = serialization.serialize(
                     segmentation_record, #, image_name=img.filename,
                     image_size=img.size, template='pagexml')
@@ -151,13 +156,11 @@ if __name__ == "__main__":
             # JSON file (work from dict)
             elif args.output_format == 'json':
                 line_dictionary = segmentation_record_to_line_dict( segmentation_record )
-                output_file_path = output_dir.joinpath( f'{stem}.json' )
                 json.dumps( line_dictionary, output_file_path )
 
             # store the segmentation into a 3D polygon-map
             elif args.output_format == 'pt':
                 line_dictionary = segmentation_record_to_line_dict( segmentation_record )
-                output_file_path = output_dir.joinpath( f'{stem}.pt' )
                 # create a segmentation dictionary from Segmentation
                 polygon_map = seglib.polygon_map_from_img_segmentation_dict( img, line_dictionary )
                 torch.save( polygon_map, output_file_path )
