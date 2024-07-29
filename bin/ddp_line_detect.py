@@ -17,7 +17,6 @@ Output:
     
 Example call::
 
-
     curl -o ~/tmp/blla.mlmodel https://github.com/mittagessen/kraken/blob/main/kraken/blla.mlmodel
     export DIDIP_ROOT=. FSDB_ROOT=~/tmp/data/1000CV
     PYTHONPATH="${HOME}/htr/didipcv/src/:${DIDIP_ROOT}/apps/ddpa_lines" ${DIDIP_ROOT}/apps/ddpa_lines/bin/ddp_line_detect -img_paths "${FSDB_ROOT}"/*/*/d9ae9ea49832ed79a2238c2d87cd0765/*seals.crops/*OldText*.jpg
@@ -50,6 +49,7 @@ p = {
         "dry_run": False,
         "just_show": False,
         "mapify": False,
+        "line_type": [("polygon","bbox","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; bbox = bounding boxes, derived from the former; legacy_bbox: legacy Kraken segmentation)"],
         "output_format": [("xml", "json", "pt"), "Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons)"],
 }
 
@@ -57,7 +57,7 @@ p = {
 import sys
 import fargv
 import kraken
-from kraken import blla,serialization
+from kraken import blla, pageseg, serialization
 from kraken.containers import Segmentation
 from kraken.lib import vgsl
 from PIL import Image, ImageDraw
@@ -72,9 +72,11 @@ import seg_io
 import re
 
 
+
 def segmentation_record_to_line_dict( sr: Segmentation) -> dict:
     """
     Transforms a Kraken custom Segmentation record into a plain dictionary.
+    TEMPORARY: should be method in kraken/containers.py
 
     Args:
         segmentation_record (``Segmentation``): a structure as below::
@@ -86,6 +88,9 @@ def segmentation_record_to_line_dict( sr: Segmentation) -> dict:
 
              {type="baselines", imagename="...", ..., "lines"=[{id="...", baseline="", boundary=""], ...]}
     """
+
+    bbox_to_path = lambda bbox: [ [bbox[0],bbox[1]], [bbox[2],bbox[1]], [bbox[2],bbox[3]], [bbox[0],bbox[3]] ]
+
     segmentation_dict = {
             'type': sr.type,
             'imagename': sr.imagename,
@@ -95,9 +100,9 @@ def segmentation_record_to_line_dict( sr: Segmentation) -> dict:
     for line in segmentation_record.lines:
         line_dict = {
                 'id': line.id,
-                'baseline': line.baseline,
-                'boundary': line.boundary,
-                }
+                'baseline': line.baseline if sr.type=='baselines' else None,
+                'boundary': line.boundary if sr.type=='baselines' else bbox_to_path( line.bbox )
+                } 
         segmentation_dict['lines'].append( line_dict )
 
     return segmentation_dict
@@ -131,7 +136,7 @@ if __name__ == "__main__":
 
             if args.just_show:
                 # only look for existing tensor map
-                if map_file_path.exists():
+                if pt_file_path.exists():
                     polygon_map_chw = torch.load( pt_file_path ) 
                     Image.fromarray( seg_io.display_polygon_set( img, polygon_map_chw ) ).show()
                 else:
@@ -149,8 +154,21 @@ if __name__ == "__main__":
                 raise FileNotFoundError("Could not find model file", args.model_path)
             model = vgsl.TorchVGSLModel.load_model( args.model_path )
 
-            # Segmentation object
-            segmentation_record = blla.segment( img, model=model )
+            segmentation_record = None
+
+            # Legacy segemntation
+            if (args.line_type=='legacy_bbox'):
+                # Image needs to be binarized first
+                from kraken import binarization
+                img_bw = binarization.nlbin( img )
+                segmentation_record = pageseg.segment( img_bw )
+            else:
+                # CNN-based segmentation
+                segmentation_record = blla.segment( img, model=model )
+
+                # BBox conversion (use a custom method on Kraken_didip
+                if args.line_type == 'bbox':
+                    segmentation_record = segmentation_record.to_bbox_segmentation()
 
             output_file_path = Path(f'{output_file_path_wo_suffix}.{args.output_format}')
             

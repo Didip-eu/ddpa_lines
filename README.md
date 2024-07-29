@@ -27,7 +27,8 @@
 	-dry_run=<class 'bool'>  Default False.
 	-just_show=<class 'bool'>  Default False.
 	-mapify=<class 'bool'>  Default False.
-	-output_format=<class 'tuple'> Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons) Default ('xml', 'json', 'pt').
+    -line_type=<class 'tuple'> Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; bbox = bounding boxes, derived from the former; legacy_bbox: legacy Kraken segmentation) Default ('polygon').
+	-output_format=<class 'tuple'> Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons) Default ('xml').
 	-help=<class 'bool'> Print help and exit. Default False.
 	-bash_autocomplete=<class 'bool'> Print a set of bash commands that enable autocomplete for current program. Default False.
 	-h=<class 'bool'> Print help and exit Default False.
