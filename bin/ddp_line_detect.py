@@ -43,12 +43,13 @@ from pathlib import Path
 
 p = {
         "appname": "lines",
-        "model_path": Path.home().joinpath("tmp/models/segment/blla.mlmodel"),
+        "model_path": Path.home().joinpath("tmp/models/segmentation/blla.mlmodel"),
         "img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
         "preview": False,
         "preview_delay": 0,
         "dry_run": False,
         "just_show": False,
+        "mapify": False,
         "output_format": [("xml", "json", "pt"), "Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons)"],
 }
 
@@ -117,20 +118,29 @@ if __name__ == "__main__":
         # + location: under the chart's folder, at same level of the chart images
         # + name: stem is the Id part of the input image
         # extra_output_dir = Path( path ).parent.joinpath( f'{stem}.{args.appname}.lines' )
+        # extra_output_dir.mkdir( exist_ok=True )
 
         with Image.open( path, 'r' ) as img:
 
             # segmentation metadata file
             output_file_path_wo_suffix = Path(path).parent.joinpath( f'{stem}.{args.appname}.pred' )
 
+
+            xml_file_path = Path(f'{output_file_path_wo_suffix}.xml')
+            pt_file_path = Path(f'{output_file_path_wo_suffix}.pt')
+
             if args.just_show:
                 # only look for existing tensor map
-                map_file_path = output_file_path.with_suffix('.pt')
                 if map_file_path.exists():
-                    polygon_map_chw = torch.load( map_file_path ) 
+                    polygon_map_chw = torch.load( pt_file_path ) 
                     Image.fromarray( seg_io.display_polygon_set( img, polygon_map_chw ) ).show()
                 else:
                     print(f"No existing segmentation map for image {repr(path)}.")
+            elif args.mapify:
+                if xml_file_path.exists():
+                    segmap = seglib.polygon_map_from_img_xml_files(path, xml_file_path )
+                    print(xml_file_path,'→', pt_file_path )
+                    torch.save( segmap, pt_file_path )
                 continue
 
             #extra_output_dir.mkdir( exist_ok=True )
@@ -165,6 +175,7 @@ if __name__ == "__main__":
                 polygon_map = seglib.polygon_map_from_img_segmentation_dict( img, line_dictionary )
                 torch.save( polygon_map, output_file_path )
                 print("Segmentation output saved in {}".format( output_file_path ))
+
 
 
 
