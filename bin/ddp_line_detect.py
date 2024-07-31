@@ -63,6 +63,8 @@ from kraken.lib import vgsl
 from PIL import Image, ImageDraw
 from pathlib import Path
 import torch
+import dataclasses
+import json
 
 sys.path.append( str( Path(__file__).parents[1] ) )
 
@@ -73,39 +75,39 @@ import re
 
 
 
-def segmentation_record_to_line_dict( sr: Segmentation) -> dict:
-    """
-    Transforms a Kraken custom Segmentation record into a plain dictionary.
-    TEMPORARY: should be method in kraken/containers.py
-
-    Args:
-        segmentation_record (``Segmentation``): a structure as below::
-
-            Segmentation(type='baselines', imagename='/home/nicolas/tmp/data/1000CV/SK-SNA/f5dc4a3628ccd5307b8e97f02d9ff12a/89ce0542679f64d462a73f7e468ae812/147c32f12ef7b285bd19e44ab47e253a.img.jpg', text_direction='horizontal-lr', script_detection=False, lines=[BaselineLine(id='b219e3c1-019e-45a6-b3fa-108baeb37ae9', baseline=[[384, 748], [2172, 700]], boundary=[[2167, 652], [1879, 668], ..., [2167, 652]], text=None, base_dir=None, type='baselines', imagename=None, tags={'type': 'default'}, split=None, regions=['4750600c-e32e-4835-a9f4-00a05f9e1c92']), BaselineLine(id='ab2a0883-75a8-43e4-ad59-119ea1c75449', ... )])
-
-    Output:
-        dict: a dictionary of regions (optional) and lines::
-
-             {type="baselines", imagename="...", ..., "lines"=[{id="...", baseline="", boundary=""], ...]}
-    """
-
-    bbox_to_path = lambda bbox: [ [bbox[0],bbox[1]], [bbox[2],bbox[1]], [bbox[2],bbox[3]], [bbox[0],bbox[3]] ]
-
-    segmentation_dict = {
-            'type': sr.type,
-            'imagename': sr.imagename,
-            'text_direction': sr.text_direction,
-            'lines': []
-            }
-    for line in segmentation_record.lines:
-        line_dict = {
-                'id': line.id,
-                'baseline': line.baseline if sr.type=='baselines' else None,
-                'boundary': line.boundary if sr.type=='baselines' else bbox_to_path( line.bbox )
-                } 
-        segmentation_dict['lines'].append( line_dict )
-
-    return segmentation_dict
+#def segmentation_record_to_line_dict( sr: Segmentation) -> dict:
+#    """
+#    Transforms a Kraken custom Segmentation record into a plain dictionary.
+#    TEMPORARY: should be method in kraken/containers.py
+#
+#    Args:
+#        segmentation_record (``Segmentation``): a structure as below::
+#
+#            Segmentation(type='baselines', imagename='/home/nicolas/tmp/data/1000CV/SK-SNA/f5dc4a3628ccd5307b8e97f02d9ff12a/89ce0542679f64d462a73f7e468ae812/147c32f12ef7b285bd19e44ab47e253a.img.jpg', text_direction='horizontal-lr', script_detection=False, lines=[BaselineLine(id='b219e3c1-019e-45a6-b3fa-108baeb37ae9', baseline=[[384, 748], [2172, 700]], boundary=[[2167, 652], [1879, 668], ..., [2167, 652]], text=None, base_dir=None, type='baselines', imagename=None, tags={'type': 'default'}, split=None, regions=['4750600c-e32e-4835-a9f4-00a05f9e1c92']), BaselineLine(id='ab2a0883-75a8-43e4-ad59-119ea1c75449', ... )])
+#
+#    Output:
+#        dict: a dictionary of regions (optional) and lines::
+#
+#             {type="baselines", imagename="...", ..., "lines"=[{id="...", baseline="", boundary=""], ...]}
+#    """
+#
+#    bbox_to_path = lambda bbox: [ [bbox[0],bbox[1]], [bbox[2],bbox[1]], [bbox[2],bbox[3]], [bbox[0],bbox[3]] ]
+#
+#    segmentation_dict = {
+#            'type': sr.type,
+#            'imagename': sr.imagename,
+#            'text_direction': sr.text_direction,
+#            'lines': []
+#            }
+#    for line in segmentation_record.lines:
+#        line_dict = {
+#                'id': line.id,
+#                'baseline': line.baseline if sr.type=='baselines' else None,
+#                'boundary': line.boundary if sr.type=='baselines' else bbox_to_path( line.bbox )
+#                } 
+#        segmentation_dict['lines'].append( line_dict )
+#
+#    return segmentation_dict
 
 
 
@@ -183,14 +185,14 @@ if __name__ == "__main__":
 
             # JSON file (work from dict)
             elif args.output_format == 'json':
-                line_dictionary = segmentation_record_to_line_dict( segmentation_record )
-                json.dumps( line_dictionary, output_file_path )
+                json.dump( dataclasses.asdict( segmentation_record ), output_file_path )
 
             # store the segmentation into a 3D polygon-map
             elif args.output_format == 'pt':
-                line_dictionary = segmentation_record_to_line_dict( segmentation_record )
                 # create a segmentation dictionary from Segmentation
-                polygon_map = seglib.polygon_map_from_img_segmentation_dict( img, line_dictionary )
+                polygon_map = seglib.polygon_map_from_img_segmentation_dict( 
+                                    img, 
+                                    dataclasses.asdict( segmentation_record ))
                 torch.save( polygon_map, output_file_path )
                 print("Segmentation output saved in {}".format( output_file_path ))
 
