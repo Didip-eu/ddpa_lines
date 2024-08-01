@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
             segmentation_record = None
 
-            # Legacy segemntation
+            # Legacy segmentation
             if (args.line_type=='legacy_bbox'):
                 # Image needs to be binarized first
                 from kraken import binarization
@@ -185,7 +185,9 @@ if __name__ == "__main__":
 
             # JSON file (work from dict)
             elif args.output_format == 'json':
-                json.dump( dataclasses.asdict( segmentation_record ), output_file_path )
+                with open(output_file_path, 'w') as of:
+                    json.dump( dataclasses.asdict( segmentation_record ), of )
+                    print("Segmentation output saved in {}".format( output_file_path ))
 
             # store the segmentation into a 3D polygon-map
             elif args.output_format == 'pt':
