@@ -37,12 +37,39 @@ Output formats:
     Note that the last two formats require first converting the Segmentation object into a plain, old Python dictionary (function segmentation_record_to_line_dict())
 
 """
-
+# stdlib
+import sys
 from pathlib import Path
+import dataclasses
+import json
+import re
+import sys
+
+# 3rd party
+import torch
+from PIL import Image, ImageDraw
+
+# Didip
+import fargv
+from PIL import Image, ImageDraw
+
+
+
+root = Path(__file__).parents[1]
+sys.path.append( str( root ))
+
+# local
+from kraken import blla
+from kraken import pageseg, serialization
+from kraken.lib import vgsl, layers
+from kraken.containers import Segmentation
+import seglib
+import seg_io
+
 
 p = {
         "appname": "lines",
-        "model_path": Path.home().joinpath("tmp/models/segmentation/blla.mlmodel"),
+        "model_path": str(root.joinpath("models/blla.mlmodel")),
         "img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
         "preview": False,
         "preview_delay": 0,
@@ -52,28 +79,6 @@ p = {
         "line_type": [("polygon","bbox","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; bbox = bounding boxes, derived from the former; legacy_bbox: legacy Kraken segmentation)"],
         "output_format": [("xml", "json", "pt"), "Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons)"],
 }
-
-
-import sys
-import fargv
-import kraken
-from kraken import blla, pageseg, serialization
-from kraken.containers import Segmentation
-from kraken.lib import vgsl
-from PIL import Image, ImageDraw
-from pathlib import Path
-import torch
-import dataclasses
-import json
-
-sys.path.append( str( Path(__file__).parents[1] ) )
-
-
-import seglib
-import seg_io
-import re
-
-
 
 if __name__ == "__main__":
 
@@ -90,7 +95,7 @@ if __name__ == "__main__":
         # + name: stem is the Id part of the input image
         # extra_output_dir = Path( path ).parent.joinpath( f'{stem}.{args.appname}.lines' )
         # extra_output_dir.mkdir( exist_ok=True )
-
+        
         with Image.open( path, 'r' ) as img:
 
             # segmentation metadata file
@@ -100,18 +105,27 @@ if __name__ == "__main__":
             xml_file_path = Path(f'{output_file_path_wo_suffix}.xml')
             pt_file_path = Path(f'{output_file_path_wo_suffix}.pt')
 
+            def mapify_xml():
+                if not xml_file_path.exists():
+                    raise FileNotFoundError(f"No existing Page XML file {xml_file_path} for image {repr(path)}."
+                                             "Check that segmentation was run on this file.")
+                smp = seglib.polygon_map_from_img_xml_files(path, xml_file_path )
+                print(xml_file_path, '→', pt_file_path )
+                torch.save( smp, pt_file_path )
+
             if args.just_show:
                 # only look for existing tensor map
-                if pt_file_path.exists():
-                    polygon_map_chw = torch.load( pt_file_path ) 
-                    Image.fromarray( seg_io.display_polygon_set( img, polygon_map_chw ) ).show()
-                else:
-                    print(f"No existing segmentation map for image {repr(path)}.")
+                if not pt_file_path.exists():
+                    print(f"No existing segmentation map {pt_file_path} for image {repr(path)}."
+                           "Looking for XML page file instead.")
+                    mapify_xml()
+                    
+                polygon_map_chw = torch.load( pt_file_path ) 
+                Image.fromarray( seg_io.display_polygon_set( img, polygon_map_chw ) ).show()
+                continue
+
             elif args.mapify:
-                if xml_file_path.exists():
-                    segmap = seglib.polygon_map_from_img_xml_files(path, xml_file_path )
-                    print(xml_file_path,'→', pt_file_path )
-                    torch.save( segmap, pt_file_path )
+                mapify_xml()
                 continue
 
             #extra_output_dir.mkdir( exist_ok=True )
@@ -130,7 +144,9 @@ if __name__ == "__main__":
                 segmentation_record = pageseg.segment( img_bw )
             else:
                 # CNN-based segmentation
+                print("Starting segmentation")
                 segmentation_record = blla.segment( img, model=model )
+                print("Successful segmentation.")
 
                 # BBox conversion (use a custom method on Kraken_didip
                 if args.line_type == 'bbox':
@@ -142,7 +158,8 @@ if __name__ == "__main__":
             if args.output_format == 'xml':
                 page = serialization.serialize(
                     segmentation_record, #, image_name=img.filename,
-                    image_size=img.size, template='pagexml')
+                    image_size=img.size,
+                    template=str(root.joinpath('kraken', 'templates', 'pagexml')), template_source='custom')
 
                 with open( output_file_path, 'w' ) as fp:
                     fp.write( page )

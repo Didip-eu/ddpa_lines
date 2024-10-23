@@ -303,7 +303,7 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
 
     with open( page, 'r' ) as page_file:
         page_tree = ET.parse( page_file )
-        ns = { 'pc': "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        ns = { 'pc': "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"}
         page_root = page_tree.getroot()
 
 
