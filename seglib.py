@@ -213,7 +213,7 @@ def line_images_from_img_segmentation_dict(img_whc: Image.Image, segmentation_di
         segmentation_dict (dict): a dictionary, typically constructed from a JSON file.
 
     Returns:
-        list: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HW))
+        list: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HWC))
     """
     polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
     img_hwc = np.asarray( img_whc )
@@ -229,10 +229,10 @@ def line_images_from_img_segmentation_dict(img_whc: Image.Image, segmentation_di
         # crop both img and mask
         line_bbox = img_hwc[y_min:y_max+1, x_min:x_max+1]
         # note: mask has as many channels as the original image
-        bb_label_mask = page_polyg_mask[y_min:y_max+1, x_min:x_max+1]
+        bb_label_mask_hwc = page_polyg_mask[y_min:y_max+1, x_min:x_max+1]
 
         #pairs_line_bb_and_mask[lbl]=( line_bbox, bb_label_mask )
-        pairs_line_bb_and_mask.append( (line_bbox, bb_label_mask) )
+        pairs_line_bb_and_mask.append( (line_bbox, bb_label_mask_hwc) )
 
     return pairs_line_bb_and_mask
 

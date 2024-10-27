@@ -44,6 +44,7 @@ import dataclasses
 import json
 import re
 import sys
+import logging
 
 # 3rd party
 import torch
@@ -66,6 +67,9 @@ from kraken.containers import Segmentation
 import seglib
 import seg_io
 
+logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
+logger = logging.getLogger(__name__)
+
 
 p = {
         "appname": "lines",
@@ -85,7 +89,7 @@ if __name__ == "__main__":
     args, _ = fargv.fargv( p )
 
     for path in list( args.img_paths ):
-        print( path )
+        logger.debug( path )
 
         #stem = Path( path ).stem
         stem = re.sub(r'\..+', '',  Path( path ).name )
@@ -97,6 +101,8 @@ if __name__ == "__main__":
         # extra_output_dir.mkdir( exist_ok=True )
         
         with Image.open( path, 'r' ) as img:
+
+            ############ 1. Look first for existing segmentation data ##########
 
             # segmentation metadata file
             output_file_path_wo_suffix = Path(path).parent.joinpath( f'{stem}.{args.appname}.pred' )
@@ -110,13 +116,13 @@ if __name__ == "__main__":
                     raise FileNotFoundError(f"No existing Page XML file {xml_file_path} for image {repr(path)}."
                                              "Check that segmentation was run on this file.")
                 smp = seglib.polygon_map_from_img_xml_files(path, xml_file_path )
-                print(xml_file_path, '→', pt_file_path )
+                logger.info(xml_file_path, '→', pt_file_path )
                 torch.save( smp, pt_file_path )
 
             if args.just_show:
                 # only look for existing tensor map
                 if not pt_file_path.exists():
-                    print(f"No existing segmentation map {pt_file_path} for image {repr(path)}."
+                    logger.info(f"No existing segmentation map {pt_file_path} for image {repr(path)}."
                            "Looking for XML page file instead.")
                     mapify_xml()
                     
@@ -128,7 +134,7 @@ if __name__ == "__main__":
                 mapify_xml()
                 continue
 
-            #extra_output_dir.mkdir( exist_ok=True )
+            ############## 2. Segment the file ################
 
             if not Path( args.model_path ).exists():
                 raise FileNotFoundError("Could not find model file", args.model_path)
@@ -144,14 +150,16 @@ if __name__ == "__main__":
                 segmentation_record = pageseg.segment( img_bw )
             else:
                 # CNN-based segmentation
-                print("Starting segmentation")
+                logger.info("Starting segmentation")
                 segmentation_record = blla.segment( img, model=model )
-                print("Successful segmentation.")
+                logger.info("Successful segmentation.")
 
                 # BBox conversion (use a custom method on Kraken_didip
                 if args.line_type == 'bbox':
                     segmentation_record = segmentation_record.to_bbox_segmentation()
 
+            
+            ############ 3. Handing the output #################
             output_file_path = Path(f'{output_file_path_wo_suffix}.{args.output_format}')
             
             # PageXML output
@@ -168,7 +176,7 @@ if __name__ == "__main__":
             elif args.output_format == 'json':
                 with open(output_file_path, 'w') as of:
                     json.dump( dataclasses.asdict( segmentation_record ), of )
-                    print("Segmentation output saved in {}".format( output_file_path ))
+                    logger.info("Segmentation output saved in {}".format( output_file_path ))
 
             # store the segmentation into a 3D polygon-map
             elif args.output_format == 'pt':
@@ -177,7 +185,7 @@ if __name__ == "__main__":
                                     img, 
                                     dataclasses.asdict( segmentation_record ))
                 torch.save( polygon_map, output_file_path )
-                print("Segmentation output saved in {}".format( output_file_path ))
+                logger.info("Segmentation output saved in {}".format( output_file_path ))
 
 
 
