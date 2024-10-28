@@ -88,14 +88,14 @@ p = {
 }
 
 
-def json_segmentation_to_writeable_area( img: Image, json_segfile: Path ) -> Image:
+def concatenate_regions_of_interest( img: Image, json_segfile: Path, label='Wr:OldText' ) -> Image:
     """
     Concatenate several writable regions into one image. 
     """
     with open( json_segfile, 'r') as infile:
         seg_dict = json.load( infile )
         clsid_2_clsname = { i:n for (i,n) in enumerate( seg_dict['class_names'] )}
-        to_keep = [ i for (i,v) in enumerate( seg_dict['rect_classes'] ) if clsid_2_clsname[v]=='Img:WritableArea' ]
+        to_keep = [ i for (i,v) in enumerate( seg_dict['rect_classes'] ) if clsid_2_clsname[v]==label ]
         rectangles = []
         for coords in [ c for (index, c) in enumerate( seg_dict['rect_LTRB'] ) if index in to_keep ]:
             rectangles.append( np.asarray( img.crop( coords )))
@@ -145,7 +145,7 @@ if __name__ == "__main__":
                     raise FileNotFoundError(f"No existing Page XML file {xml_file_path} for image {repr(path)}."
                                              "Check that segmentation was run on this file.")
                 smp = seglib.polygon_map_from_img_xml_files(path, xml_file_path )
-                logger.info(xml_file_path, '→', pt_file_path )
+                logger.info(f"{xml_file_path} → {pt_file_path}" )
                 torch.save( smp, pt_file_path )
 
             if args.just_show:
@@ -170,10 +170,10 @@ if __name__ == "__main__":
             model = vgsl.TorchVGSLModel.load_model( args.model_path )
 
             if args.region_segmentation_suffix != '':
-                region_segfile = path.with_suffix( args.region_segmentation_suffix )
-                # 1. Parse segmentation file, and extract and concatenate the WritableArea crops
-                # 2. Pass this image to the segmetner
-
+                region_segfile = re.sub(r'.img.jpg', args.region_segmentation_suffix, path )
+                # parse segmentation file, and extract and concatenate the WritableArea crops
+                img = concatenate_regions_of_interest( img, region_segfile )
+                
             segmentation_record = None
 
             # Legacy segmentation
