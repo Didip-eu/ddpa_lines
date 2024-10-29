@@ -68,7 +68,7 @@ from kraken.containers import Segmentation
 import seglib
 import seg_io
 
-logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
+logging.basicConfig( level=logging.DEBUG, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
 logger = logging.getLogger(__name__)
 
 
@@ -76,8 +76,8 @@ p = {
         "appname": "lines",
         "model_path": str(root.joinpath("models/blla.mlmodel")),
         "img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
-        "seal_segmentation_class": ['Img:WritableArea', "Name of the writable area class in the Seals app."],
-        "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>; if empty, entire img file is passed to the line segmenter."],
+        "concatenate_class": ['', "Name of regions to be concatenated into a single image before detection; if empty (default), detection is run on the entire page."],
+        "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>; if empty (default), entire img file is passed to the line segmenter."],
         "preview": False,
         "preview_delay": 0,
         "dry_run": False,
@@ -92,10 +92,11 @@ def concatenate_regions_of_interest( img: Image, json_segfile: Path, label='Wr:O
     """
     Concatenate several writable regions into one image. 
     """
+    logger.debug(f"img={img}, json_segfile={json_segfile}, label={label}")
     with open( json_segfile, 'r') as infile:
         seg_dict = json.load( infile )
         clsid_2_clsname = { i:n for (i,n) in enumerate( seg_dict['class_names'] )}
-        to_keep = [ i for (i,v) in enumerate( seg_dict['rect_classes'] ) if clsid_2_clsname[v]==label ]
+        to_keep = [ i for (i,v) in enumerate( seg_dict['rect_classes'] ) if label in clsid_2_clsname[v] ]
         rectangles = []
         for coords in [ c for (index, c) in enumerate( seg_dict['rect_LTRB'] ) if index in to_keep ]:
             rectangles.append( np.asarray( img.crop( coords )))
@@ -117,11 +118,16 @@ if __name__ == "__main__":
 
     args, _ = fargv.fargv( p )
 
+    logger.debug( args )
+
     for path in list( args.img_paths ):
         logger.debug( path )
 
         #stem = Path( path ).stem
         stem = re.sub(r'\..+', '',  Path( path ).name )
+
+        # only for segmentation on Seals-detected regions
+        region_segfile = re.sub(r'.img.jpg', args.region_segmentation_suffix, path )
 
         # an extra output subfolder is only useful for storing file that may derive from the segmentation (s.a. crops)
         # + location: under the chart's folder, at same level of the chart images
@@ -140,22 +146,34 @@ if __name__ == "__main__":
             xml_file_path = Path(f'{output_file_path_wo_suffix}.xml')
             pt_file_path = Path(f'{output_file_path_wo_suffix}.pt')
 
-            def mapify_xml():
+            def mapify_xml( img_object: Image):
                 if not xml_file_path.exists():
                     raise FileNotFoundError(f"No existing Page XML file {xml_file_path} for image {repr(path)}."
                                              "Check that segmentation was run on this file.")
-                smp = seglib.polygon_map_from_img_xml_files(path, xml_file_path )
+                smp = seglib.polygon_map_from_img_object_xml_file(img_object, xml_file_path )
+                logger.debug( f"smp.shape={smp.shape}" )
                 logger.info(f"{xml_file_path} → {pt_file_path}" )
                 torch.save( smp, pt_file_path )
 
             if args.just_show:
-                # only look for existing tensor map
-                if not pt_file_path.exists():
+
+
+                # polygon map applies to a concatenation
+                if args.concatenate_class != '':
+                    img = concatenate_regions_of_interest( img, region_segfile, args.concatenate_class )
+
+                # only look for existing tensor map (and regenerate it if
+                # the XML segmentation output is more recent).
+                if not pt_file_path.exists() or xml_file_path.stat().st_ctime > pt_file_path.stat().st_ctime :
                     logger.info(f"No existing segmentation map {pt_file_path} for image {repr(path)}."
                            "Looking for XML page file instead.")
-                    mapify_xml()
+                    mapify_xml( img )
                     
                 polygon_map_chw = torch.load( pt_file_path ) 
+                logger.debug( f"polygon_map_chw.shape={polygon_map_chw.shape}" )
+                
+                logger.debug(f"img.shape={img.size}")
+
                 Image.fromarray( seg_io.display_polygon_set( img, polygon_map_chw ) ).show()
                 continue
 
@@ -169,10 +187,11 @@ if __name__ == "__main__":
                 raise FileNotFoundError("Could not find model file", args.model_path)
             model = vgsl.TorchVGSLModel.load_model( args.model_path )
 
-            if args.region_segmentation_suffix != '':
-                region_segfile = re.sub(r'.img.jpg', args.region_segmentation_suffix, path )
+            if args.concatenate_class != '':
+                logger.debug(f"Run segmentation on concatenated regions '{args.concatenate_class}', instead of whole page.")
                 # parse segmentation file, and extract and concatenate the WritableArea crops
-                img = concatenate_regions_of_interest( img, region_segfile )
+                img = concatenate_regions_of_interest( img, region_segfile, args.concatenate_class )
+                logger.debug(f"img.shape={img.size}")
                 
             segmentation_record = None
 
@@ -196,6 +215,7 @@ if __name__ == "__main__":
             ############ 3. Handing the output #################
             output_file_path = Path(f'{output_file_path_wo_suffix}.{args.output_format}')
             
+            logger.debug(f"Serializing segmentation for img.shape={img.size}")
             # PageXML output
             if args.output_format == 'xml':
                 page = serialization.serialize(
@@ -203,6 +223,7 @@ if __name__ == "__main__":
                     image_size=img.size,
                     template=str(root.joinpath('kraken', 'templates', 'pagexml')), template_source='custom')
 
+                logger.debug(f"Serializing XML with shape={img.size}")
                 with open( output_file_path, 'w' ) as fp:
                     fp.write( page )
 
@@ -218,6 +239,8 @@ if __name__ == "__main__":
                 polygon_map = seglib.polygon_map_from_img_segmentation_dict( 
                                     img, 
                                     dataclasses.asdict( segmentation_record ))
+                
+                logger.debug(f"Serializing map with shape={polygon_map.size}")
                 torch.save( polygon_map, output_file_path )
                 logger.info("Segmentation output saved in {}".format( output_file_path ))
 

@@ -67,6 +67,22 @@ def polygon_map_from_img_xml_files( img: str, page_xml: str ) -> Tensor:
         segmentation_dict = segmentation_dict_from_xml( page_xml )
         return polygon_map_from_img_segmentation_dict( input_img, segmentation_dict)
 
+def polygon_map_from_img_object_xml_file( img: Image, page_xml: str ) -> Tensor:
+    """
+    Read line polygons a PageXML file and store them into a tensor, as pixel maps.
+    Channels allow for easy storage of overlapping polygons.
+
+    Args:
+        img Image: the input image
+        page_xml (str): path of a PageXML file.
+
+    Returns:
+        Tensor: the polygons rendered as a 4-channel image (a tensor).
+    """
+
+    segmentation_dict = segmentation_dict_from_xml( page_xml )
+    return polygon_map_from_img_segmentation_dict( img, segmentation_dict)
+
 
 def polygon_map_from_img_segmentation_dict( img_wh: Image.Image, segmentation_dict: dict ) -> Tensor:
     """
