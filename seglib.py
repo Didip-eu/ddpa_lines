@@ -39,12 +39,13 @@ def polygon_map_from_img_json_files(  img: str, segmentation_json: str) -> Tenso
     Read line polygons from a JSON file and store them into a tensor, as pixel maps.
     Channels allow for easy storage of overlapping polygons.
 
-    Args:
-        img (str): the input image's file path
-        segmentation_json (str): path of a JSON file
+    :param img: the input image's file path
+    :type img: str
+    :param segmentation_json: path of a JSON file
+    :type segmentation_json: str
 
-    Returns:
-        Tensor: the polygons rendered as a 4-channel image (a tensor).
+    :returns: the polygons rendered as a 4-channel image (a tensor).
+    :rtype: Tensor
     """
     with Image.open(img, 'r') as img_wh, open( segmentation_json, 'r' ) as json_file:
         return polygon_map_from_img_segmentation_dict( img_wh, json.load( json_file ))
@@ -55,12 +56,14 @@ def polygon_map_from_img_xml_files( img: str, page_xml: str ) -> Tensor:
     Read line polygons from a PageXML file and store them into a tensor, as pixel maps.
     Channels allow for easy storage of overlapping polygons.
 
-    Args:
-        img (str): the input image's file path
-        page_xml (str): path of a PageXML file.
+    :param img: the input image's file path
+    :type img: str
 
-    Returns:
-        Tensor: the polygons rendered as a 4-channel image (a tensor).
+    :param page_xml: path of a PageXML file.
+    :type page_xml: str 
+
+    :returns: the polygons rendered as a 4-channel image (a tensor).
+    :rtype: Tensor
     """
 
     with Image.open( img ) as input_img:
@@ -72,12 +75,14 @@ def polygon_map_from_img_object_xml_file( img: Image, page_xml: str ) -> Tensor:
     Read line polygons a PageXML file and store them into a tensor, as pixel maps.
     Channels allow for easy storage of overlapping polygons.
 
-    Args:
-        img Image: the input image
-        page_xml (str): path of a PageXML file.
+    :param img: the input image
+    :type img: Image 
 
-    Returns:
-        Tensor: the polygons rendered as a 4-channel image (a tensor).
+    :param page_xml: path of a PageXML file.
+    :type page_xml: str
+
+    :returns: the polygons rendered as a 4-channel image (a tensor).
+    :rtype: Tensor
     """
 
     segmentation_dict = segmentation_dict_from_xml( page_xml )
@@ -88,9 +93,11 @@ def polygon_map_from_img_segmentation_dict( img_wh: Image.Image, segmentation_di
     """
     Store line polygons into a tensor, as pixel maps.
 
-    Args:
-        segmentation_dict (dict): kraken's segmentation output, i.e. a dictionary of the form::
+    :param segmentation_dict: 
+        kraken's segmentation output, i.e. a dictionary of the form:
 
+        .. code-block::
+        
              {  'text_direction': '$dir',
              'type': 'baseline',
              'lines': [
@@ -98,10 +105,14 @@ def polygon_map_from_img_segmentation_dict( img_wh: Image.Image, segmentation_di
                ...
              ]
              'regions': [ ... ] }
-        img_wh (Image.Image): the input image
 
-    Returns:
-        Tensor: the polygons rendered as a 4-channel image (a tensor).
+    :type segmentation_dict: dict
+
+    :param img_wh: the input image
+    :type img_wh: Image.Image 
+
+    :returns:the polygons rendered as a 4-channel image (a tensor).
+    :rtype: Tensor
     """
     polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
 
@@ -130,12 +141,14 @@ def line_binary_mask_from_img_json_files(img: str, segmentation_json: str ) -> T
     From a segmentation dictionary describing polygons, return a boolean mask where any pixel belonging
     to a polygon is 1 and the other pixels 0.
 
-    Args:
-        img (str): the input image's file path
-        segmentation_json (str): a JSON file describing the lines.
+    :param img: the input image's file path
+    :type img: str
 
-    Returns:
-        Tensor: a flat boolean tensor with size (H,W)
+    :param segmentation_json: a JSON file describing the lines.
+    :type segmentation_json: str 
+
+    :returns: a flat boolean tensor with size (H,W)
+    :rtype: Tensor
     """
     with Image.open(img, 'r') as img_wh, open( segmentation_json, 'r' ) as json_file:
         return line_binary_mask_from_img_segmentation_dict( img_wh, json.load( json_file ))
@@ -145,12 +158,14 @@ def line_binary_mask_from_img_xml_files(img: str, page_xml: str ) -> Tensor:
     From a PageXML file describing polygons, return a boolean mask where any pixel belonging
     to a polygon is 1 and the other pixels 0.
 
-    Args:
-        img (str): the input image's file path
-        page_xml (str): a Page XML file describing the lines.
+    :param img: the input image's file path
+    :type img: str 
 
-    Returns:
-        Tensor: a flat boolean tensor with size (H,W)
+    :param page_xml: a Page XML file describing the lines.
+    :type page_xml: str
+
+    :returns: a flat boolean tensor with size (H,W)
+    :rtype: Tensor
     """
     with Image.open(img, 'r') as img_wh:
         segmentation_dict = segmentation_dict_from_xml( page_xml )
@@ -164,12 +179,14 @@ def line_binary_mask_from_img_segmentation_dict(img_wh: Image.Image, segmentatio
     Note: masks can be built from a polygon map and an arbitrary selection function, with 
     the mask_from_polygon_map_functional() function below.
 
-    Args:
-        img_whc (Image.Image): the input image (needed for the size information).
-        segmentation_dict (dict): a dictionary, typically constructed from a JSON file.
+    :param img_whc: the input image (needed for the size information).
+    :type img_whc: Image.Image
 
-    Returns:
-        Tensor: a flat boolean tensor with size (H,W)
+    :param segmentation_dict: a dictionary, typically constructed from a JSON file.
+    :type segmentation_dict: dict 
+
+    :returns: a flat boolean tensor with size (H,W)
+    :rtype: Tensor
     """
 
     polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
@@ -192,12 +209,12 @@ def line_images_from_img_xml_files(img: str, page_xml: str ) -> List[Tuple[np.nd
     From an image file path and a segmentation JSON file describing polygons, return
     a list of pairs (<line cropped BB>, <polygon mask>).
 
-    Args:
-        img (str): the input image's file path
-        page_xml (str): a Page XML file describing the lines.
+    :param img: the input image's file path
+    :type img: str
+    :param page_xml: :type page_xml: str a Page XML file describing the lines.
 
-    Returns:
-        list: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HW))
+    :returns: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HW))
+    :rtype: list
     """
     with Image.open(img, 'r') as img_wh:
         segmentation_dict = segmentation_dict_from_xml( page_xml )
@@ -209,12 +226,14 @@ def line_images_from_img_json_files( img: str, segmentation_json: str ) -> List[
     From an image file path and a segmentation JSON file describing polygons, return
     a list of pairs (<line cropped BB>, <polygon mask>).
 
-    Args:
-        img (str): the input image's file path
-        segmentation_json (str): path of a JSON file
+    :param img: the input image's file path
+    :type img: str
 
-    Returns:
-        list: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HW))
+    :param segmentation_json: path of a JSON file
+    :type segmentation_json: str 
+
+    :returns: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HW))
+    :rtype: list
     """
     with Image.open(img, 'r') as img_wh, open( segmentation_json, 'r' ) as json_file:
         return line_images_from_img_segmentation_dict( img_wh, json.load( json_file ))
@@ -224,12 +243,12 @@ def line_images_from_img_segmentation_dict(img_whc: Image.Image, segmentation_di
     From a segmentation dictionary describing polygons, return a boolean mask where any pixel belonging
     to a polygon is 1 and the other pixels 0.
 
-    Args:
-        img_whc (Image.Image): the input image (needed for the size information).
-        segmentation_dict (dict): a dictionary, typically constructed from a JSON file.
+    :param img_whc: the input image (needed for the size information).
+    :type img_whc: Image.Image
+    :param segmentation_dict: :type segmentation_dict: dict a dictionary, typically constructed from a JSON file.
 
-    Returns:
-        list: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HWC))
+    :returns: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HWC))
+    :rtype: List[Tuple[np.ndarray, np.ndarray]]
     """
     polygon_boundaries = [ line['boundary'] for line in segmentation_dict['lines'] ]
     img_hwc = np.asarray( img_whc )
@@ -257,12 +276,14 @@ def line_images_from_img_polygon_map(img_wh: Image.Image, polygon_map_chw: Tenso
     From a tensor storing polygons, return a boolean mask where any pixel belonging
     to a polygon is 1 and the other pixels 0.
 
-    Args:
-        img_whc (Image.Image): the input image (needed for the size information).
-        segmentation_dict (dict): a dictionary, typically constructed from a JSON file.
+    :param img_whc: the input image (needed for the size information).
+    :type img_whc: Image.Image 
 
-    Returns:
-        list: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HW))
+    :param segmentation_dict: a dictionary, typically constructed from a JSON file.
+    :type segmentation_dict: dict
+
+    :returns: a list of pairs (<line image BB>: np.ndarray (HWC), mask: np.ndarray (HW))
+    :rtype: List[Tuple[np.ndarray, np.ndarray]]
     """
 
     max_label = torch.max( polygon_map_chw )
@@ -291,12 +312,14 @@ def expand_flat_tensor_to_n_channels( t_hw: Tensor, n: int ) -> np.ndarray:
     Expand a flat map by duplicating its only channel into n identical ones.
     Channels dimension is last for convenient use with PIL images.
 
-    Args:
-        t_hw (Tensor): a flat map.
-        n (int): number of (identical) channels in the resulting tensor.
+    :param t_hw: a flat map.
+    :type t_hw: Tensor 
 
-    Returns:
-        np.ndarray: a (H,W,n) array.
+    :param n: number of (identical) channels in the resulting tensor.
+    :type n: int
+
+    :returns: a (H,W,n) array.
+    :rtype: np.ndarray
     """
     if len(t_hw.shape) != 2:
         raise TypeError("Function expects a 2D map!")
@@ -307,14 +330,16 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
     """
     Given a pageXML file name, return a JSON dictionary describing the lines.
 
-    Args:
-        page (str): path of a PageXML file
+    :param page: path of a PageXML file
+    :type page: str
 
-    Returns:
-        dict: a dictionary of the form
+    :returns: a dictionary of the form
 
-        {"text_direction": ..., "type": "baselines", "lines": [{"tags": ..., "baseline": [ ... ]}]}
+        .. code-block:
+        
+            {"text_direction": ..., "type": "baselines", "lines": [{"tags": ..., "baseline": [ ... ]}]}
 
+    :rtype: Dict[str,Union[str,List[Any]]]
     """
     direction = {'0.0': 'horizontal-lr', '0.1': 'horizontal-rl', '1.0': 'vertical-td', '1.1': 'vertical-bu'}
 
@@ -374,14 +399,20 @@ def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, l
     can be stored on a single pixel. A label cannot be applied twice to the same 
     map.
 
-    Args:
-        label_map (np.ndarray): the map that stores the polygons
-        polygon_mask (np.ndarray): a binary mask representing the polygon to be labeled.
-        label (int): the label for this polygon; if the pixel already has a previous
-                     label l', the resulting, compound value is (l'<<8)+label.
-                     Ex. #1. Applying label 4 on a pixel that already stores label 2 yields
-                             2 << 8 + 4 = 0x204 = 8192
-                     Ex. #2. Pixel 0x10403 stores labels [1, 4, 3]
+    :param label_map: the map that stores the polygons
+    :type label_map: np.ndarray
+
+    :param polygon_mask: a binary mask representing the polygon to be labeled.
+    :type polygon_mask: np.ndarray
+
+    :param label: 
+        label for this polygon; if the pixel already has a previous label l', the resulting,
+        compound value is ``(l'<<8)+label``.
+        Eg. 1. Applying label 4 on a pixel that already stores label 2 yields
+            ``2 << 8 + 4 = 0x204 = 8192``
+        Eg. 2. Pixel ``0x10403`` stores labels ``[1, 4, 3]``
+
+    :type label: int
     """
     label_limit = 0xff
     max_three_polygon_label = 0xffffff
@@ -415,11 +446,11 @@ def array_to_rgba_uint8( img_hw: np.ndarray ) -> Tensor:
     """
     Converts a numpy array of 32-bit integers into a 4-channel tensor.
 
-    Args:
-        img_hw (np.ndarray): a flat label map of 32-bit integers.
+    :param img_hw: a flat label map of 32-bit integers.
+    :type img_hw: np.ndarray
 
-    Returns:
-        Tensor: a 4-channel (c,h,w) tensor of unsigned 8-bit integers.
+    :returns: a 4-channel (c,h,w) tensor of unsigned 8-bit integers.
+    :rtype: Tensor
     """
     if len(img_hw.shape) != 2:
         raise TypeError(format("Input map should have shape (W,H) (actual: {}).".format( img_hw.shape )))
@@ -434,13 +465,17 @@ def polygon_pixel_metrics_from_img_segmentation_dict(img: Image.Image, segmentat
     """
     Compute a IoU matrix from an image and two dictionaries describing the segmentation's output (line polygons).
 
-    Args:
-        img (Image.Image): the input page, needed for the size information and the binarization mask.
-        segmentation_dict_pred (dict): a dictionary, typically constructed from a JSON file.
-        segmentation_dict_gt (dict): a dictionary, typically constructed from a JSON file.
+    :param img: the input page, needed for the size information and the binarization mask.
+    :type img: Image.Image 
 
-    Returns:
-        np.ndarray: a 2D array, representing IoU values for each possible pair of polygons.
+    :param segmentation_dict_pred: a dictionary, typically constructed from a JSON file.
+    :type segmentation_dict_pred: dict
+
+    :param segmentation_dict_gt: a dictionary, typically constructed from a JSON file.
+    :type segmentation_dict_gt: dict
+
+    :returns: a 2D array, representing IoU values for each possible pair of polygons.
+    :rtype: np.ndarray
     """
     #polygon_img_gt: Tensor, polygon_img_pred: Tensor, mask: Tensor) -> Tensor:
     polygon_chw_pred, polygon_chw_gt = [ polygon_map_from_img_segmentation_dict( img, d ) for d in (segmentation_dict_pred, segmentation_dict_gt) ]
@@ -454,11 +489,11 @@ def get_mask( img_whc: Image.Image, thresholding_alg: Callable=ski.filters.thres
     """
     Compute a binary mask from an image, using the given thresholding algorithm: FG=1s, BG=0s
 
-    Args:
-        img (PIL image): input image
+    :param img: input image
+    :type img: PIL image 
 
-    Returns:
-        Tensor: a binary map with FG pixels=1 and BG=0.
+    :returns: a binary map with FG pixels=1 and BG=0.
+    :rtype: Tensor
     """
     img_hwc= np.array( img_whc )
     threshold = thresholding_alg( ski.color.rgb2gray( img_hwc ) if img_hwc.shape[2]>1 else img_hwc )*255
@@ -472,17 +507,20 @@ def polygon_pixel_metrics_from_polygon_maps_and_mask(polygon_chw_pred: Tensor, p
     Compute pixel-based metrics from two tensors that each encode (potentially overlapping) polygons
     and a FG mask.
 
-    Args:
-        polygon_chw_gt (Tensor): a 4-channel image, where each position may store up to 3 overlapping labels
-                                 (one for each channel)
-        polygon_chw_pred (Tensor): a 4-channel image, where each position may store up to 3 overlapping labels
-                                   (one for each channel)
-        binary_hw_mask (Tensor): a boolean mask that selects the input image's FG pixel
+    :param polygon_chw_gt: a 4-channel image, where each position may store up to 3 overlapping labels (one for each channel)
+    :type polygon_chw_gt: Tensor
 
-    Returns:
-        np.ndarray: metrics (intersection, union, precision, recall, f1) values for each possible pair of labels
-                    (i,j) with i ∈  map1 and j ∈ map2. Shared pixels in each map (i.e. overlapping polygons) have
-                    their weight decreased according to the number of polygons they vote for.
+    :param polygon_chw_pred: a 4-channel image, where each position may store up to 3 overlapping labels (one for each channel)
+    :type polygon_chw_pred: Tensor
+
+    :param binary_hw_mask: a boolean mask that selects the input image's FG pixel
+    :type binary_hw_mask: Tensor
+
+    :returns: 
+        metrics (intersection, union, precision, recall, f1) values for each possible pair of labels
+        (i,j) with i ∈  map1 and j ∈ map2. Shared pixels in each map (i.e. overlapping polygons) have
+        their weight decreased according to the number of polygons they vote for.
+    :rtype: np.ndarray
     """
 
     if binary_hw_mask is None:
@@ -509,12 +547,14 @@ def retrieve_polygon_mask_from_map( label_map_chw: Tensor, label: int) -> Tensor
     compute a binary mask that covers _all_ pixels for the label, whether they belong to an
     intersection or not.
 
-    Args:
-        label_map_chw (Tensor): a 4-channel tensor, where each pixel can store up to 4 labels.
-        label (int): the label to be selected.
+    :param label_map_chw: a 4-channel tensor, where each pixel can store up to 4 labels.
+    :type label_map_chw: Tensor
 
-    Returns:
-        Tensor: a flat, boolean mask for the polygon of choice.
+    :param label: the label to be selected.
+    :type label: int 
+
+    :returns: a flat, boolean mask for the polygon of choice.
+    :rtype: Tensor
     """
     if len(label_map_chw.shape) != 3 and label_map_chw.shape[0] != 4:
         raise TypeError("Wrong type: label map should be a 4-channel tensor (shape={} instead).".format( label_map_chw.shape ))
@@ -528,11 +568,14 @@ def array_has_label( label_map_hw: np.ndarray, label: int ) -> bool:
     From a flat label map (as generated from a segmentation dictionary) where each pixel can store up to 3 values,
     test whether a given polygon has been stored already.
 
-    Args:
-            label_map_hw (np.ndarray): a 2D map, where each 32-bit integer store up to 4 labels.
-            label (int): the label to be checked for.
-    Returns:
-            bool: True if map already stores the given label; False otherwise.
+    :param label_map_hw: a 2D map, where each 32-bit integer store up to 4 labels.
+    :type label_map_hw: np.ndarray
+
+    :param label: the label to be checked for.
+    :type label: int 
+
+    :returns: True if map already stores the given label; False otherwise.
+    :rtype: bool
     """
     if len(label_map_hw.shape) > 2:
         raise TypeError("Map should be a flat map of integers.")
@@ -552,13 +595,16 @@ def polygon_pixel_metrics_two_maps( map_chw_1: Tensor, map_chw_2: Tensor, label_
     Shared pixels in each map (i.e. overlapping polygons) have their weight decreased according
     to the number of polygons they vote for. 
 
-    Args:
-        map_chw_1 (Tensor): the predicted map, i.e. a 4-channel map with labeled polygons, with potential overlaps.
-        map_hw_2 (Tensor): the GT map, i.e. a 4-channel map with labeled polygons, with potential overlaps.
+    :param map_chw_1: the predicted map, i.e. a 4-channel map with labeled polygons, with potential overlaps.
+    :type map_chw_1: Tensor
 
-    Returns:
-        np.ndarray: a 4 channel array, where each cell [i,j] stores respectively intersection and union counts,
-                    as well as precision and recall for a pair of labels [i,j].
+    :param map_hw_2: the GT map, i.e. a 4-channel map with labeled polygons, with potential overlaps.
+    :type map_hw_2: Tensor
+
+    :returns: 
+        a 4 channel array, where each cell [i,j] stores respectively intersection and union counts,
+        as well as precision and recall for a pair of labels [i,j].
+    :rtype: np.ndarray
     """
     min_label_1, max_label_1 = int(torch.min( map_chw_1[ map_chw_1 > 0 ] ).item()), int(torch.max( map_chw_1 ).item())
     min_label_2, max_label_2 = int(torch.min( map_chw_2[ map_chw_2 > 0 ] ).item()), int(torch.max( map_chw_2 ).item())
@@ -624,13 +670,13 @@ def map_to_depth(map_chw: Tensor) -> Tensor:
     Compute depth of each pixel in the input map, i.e. how many polygons intersect on this pixel.
     Note: 0-valued pixels have depth 1.
 
-    Args:
-        map_chw (Tensor): the input tensor (4 channels)
+    :param map_chw: the input tensor (4 channels)
+    :type map_chw: Tensor
 
-    Returns:
-        Tensor: a tensor of integers, where each value represents the
-                number of intersecting polygons for the same position
-                in the input map.
+    :returns: 
+        a tensor of integers, where each value represents the number of intersecting polygons
+        for the same position in the input map.
+    :rtype: Tensor
     """
     depth_map = torch.sum( map_chw != 0, dim=0)
     depth_map[ depth_map == 0 ]=1
@@ -657,12 +703,16 @@ def polygon_pixel_metrics_to_line_based_scores( metrics: np.ndarray, threshold: 
     + Line-based, per-page IoU [or Jaccard index]= TP/(TP+FP+FN)
     + Document-wide, pixel-based IoU_px  = TP_px/TP_px + FP_px + FN_px}.
 
-    Args:
-        metrics (np.ndarray): metrics matrix, with indices [0..m-1, 0..n-1] for labels 1..m, where m and n are the max.
-                              labels of of the predicted and GT maps respectively. In the channels: intersection count,
-                              union count, precision, recall.
-    Out:
-        tuple: a 5-tuple with the TP-, FP-, and FN-counts, as well as the Jaccard (aka. IoU) and F1 score at the line level.
+    :param metrics: 
+        metrics matrix, with indices [0..m-1, 0..n-1] for labels 1..m, where m and n are the max.
+        labels of of the predicted and GT maps respectively. In the channels: intersection count,
+        union count, precision, recall.
+    :type metrics: np.ndarray 
+
+    :returns: 
+        a 5-tuple with the TP-, FP-, and FN-counts, as well as the Jaccard (aka. IoU)
+        and F1 score at the line level.
+    :rtype: tuple
     """
     label_count_pred, label_count_gt = metrics.shape[:2]
 
@@ -727,11 +777,13 @@ def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[f
 
     TODO: verify that threshold value is not relevant for this metric.
 
-    Args:
-        metrics (np.ndarray): metrics matrix, with indices [0..m-1, 0..m-1] for labels 1..m, where m is the maximum label in either
-                            GT or predicted maps. In channels: intersection count, union count, precision, recall.
-    Out:
-        tuple: a pair (Pixel IU, Matched Pixel IU)
+    :param metrics: 
+        metrics matrix, with indices [0..m-1, 0..m-1] for labels 1..m, where m is the maximum label in either
+        GT or predicted maps. In channels: intersection count, union count, precision, recall.
+    :type metrics: np.ndarray
+
+    :returns: a pair (Pixel IU, Matched Pixel IU)
+    :rtype: tuple
     """
     label_count_pred, label_count_gt = metrics.shape[:2]
 
@@ -788,7 +840,7 @@ def polygon_pixel_metrics_to_pixel_based_scores( metrics: np.ndarray) -> Tuple[f
 #                              each entry is a [intersection_count, union_count, precision, recall] sequence.
 #        threshold_range: a series of threshold values, between 0 and 1 (default: [0, 0.05, 0.1, ..., 0.95, 1])
 #
-#    Returns:
+#    :returns:
 #        np.ndarray: a 2D array, with precisions in row 0 and recalls in row 1.
 #
 #    """
@@ -804,11 +856,11 @@ def recover_labels_from_map_value( px: int) -> list:
     Retrieves intersecting polygon labels from a single map pixel value (for
     diagnosis purpose).
 
-    Args:
-        vl (int): a map pixel, whose value is a 32-bit signed integer.
-                  labels).
-    Returns:
-        list: a list of labels
+    :param vl: a map pixel, whose value is a 32-bit signed integer.
+    :type vl: int
+
+    :returns:a list of labels
+    :rtype: list
     """
     return [ b for b in np.array( [px], dtype='int32').view('uint8')[::-1] if b ]
 
@@ -817,17 +869,19 @@ def mask_from_polygon_map_functional( polygon_map: Tensor, test: Callable) -> Te
     """
     Given a 3D map of polygons (where each pixel contains at most 4 labels,
     select labels based on a boolean function.
-    Eg. mask_from_functional( polygon_map, lambda m: m % 2 ) cover all odd-labeled
+    Eg. ``mask_from_functional( polygon_map, lambda m: m % 2 )`` covers all odd-labeled
         polygons.
 
-        mask_from_function( polygon_map, lambda m: m 
+    :param polygon_map: polygon set, encoded as a 4-channel, 8-bit tensor.
+    :type polygon_map: Tensor 
 
-    Args:
-        polygon_map (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
-        test (Callable): a boolean function, to be applied to the map; a partial
-                         function may be passed, if added parameters are needed.
-    Returns:
-        Tensor: a boolean, flat mask.
+    :param test: 
+        a boolean function, to be applied to the map; a partial function may be passed,
+        if added parameters are needed.
+    :type test: Callable
+
+    :returns: a boolean, flat mask.
+    :rtype: Tensor
     """
     if polygon_map.dtype != torch.uint8:
         raise TypeError("First parameter should be a Tensor of uint8.")
