@@ -1,23 +1,64 @@
-from PIL import Image, ImageDraw
 from pathlib import Path
+import random
+from typing import Tuple
 
+import numpy as np
+from PIL import Image, ImageDraw
+import skimage as ski
 import torch
 from torch import Tensor
 
-import numpy as np
 from . import seglib
-import random
-from typing import Tuple
-import skimage as ski
+
+
+def display_polygon_lines_from_img_and_xml_files( img_file: str, page_xml: str, color_count=2) -> np.ndarray:
+    """
+    Render a single set of polygons, as lines.
+
+    Args:
+        img_file (str): path to the original manuscript image.
+        page_xml (str): path to the segmentation metadata (PageXML)
+        color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
+    Returns:
+        np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
+    """
+    with Image.open(img_file) as input_img_hw:
+
+        colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(int( polygon_count ))
+        colors = [ tuple(c) for c in colors ]
+        draw = ImageDraw.Draw( input_img_hw )
+        segmentation_dict = seglib.segmentation_dict_from_xml( page_xml )
+        polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in segmentation_dict['lines']]
+        for p, polyg in enumerate(polygon_boundaries, start=1):
+            draw.line( polyg, fill=colors[ p%len(colors) ], width=3 )
+        return np.array( input_img_hw )
+            
+
+
+def display_polygon_set_from_img_and_xml_files( img_file: str, page_xml: str, color_count=0, alpha=.75) -> np.ndarray:
+    """
+    Render a single set of polygons, as a map.
+
+    Args:
+        img_file (str): path to the original manuscript image.
+        page_xml (str): path to the pickled polygon set, encoded as a 4-channel, 8-bit tensor.
+        color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
+    Returns:
+        np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
+    """
+    with Image.open(img_file) as input_img_hw:
+        polygons_chw = seglib.polygon_map_from_img_xml_files( img_file, page_xml ) 
+        return display_polygon_set( input_img_hw, polygons_chw, color_count, alpha )
 
 def display_polygon_set_from_img_and_tensor_files( img_file: str, polygon_file: str, color_count=0, alpha=.75) -> np.ndarray:
     """
-    Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
+    Render a single set of polygons.
 
     Args:
         img_file (str): path to the original manuscript image.
         polygon_file (str): path to the pickled polygon set, encoded as a 4-channel, 8-bit tensor.
-    Output:
+        color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
+    Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
     with Image.open(img_file) as input_img_hw:
@@ -31,7 +72,8 @@ def display_polygon_set_from_img_and_polygon_map( img_file: str, polygons_chw: T
     Args:
         img_file (str): path to the original manuscript image.
         polygons_chw (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
-    Output:
+        color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
+    Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
     with Image.open(img_file) as input_img_hw:
@@ -45,7 +87,7 @@ def display_two_polygon_sets_from_img_and_tensor_files( img_file: str, polygon_f
         img_file (str): path to the original manuscript image.
         polygon_file_1 (str): path to the first pickled polygon set, encoded as a 4-channel, 8-bit tensor.
         polygon_file_2 (str): path to the second pickled polygon set, encoded as a 4-channel, 8-bit tensor.
-    Output:
+    Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
     with Image.open(img_file) as input_img_hw:
@@ -55,12 +97,14 @@ def display_two_polygon_sets_from_img_and_tensor_files( img_file: str, polygon_f
 
 def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_count=0, alpha=.75 ) -> np.ndarray:
     """
-    Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
+    Render a single set of polygons.
 
     Args:
         input_img_hw (Image.Image): the original manuscript image, as opened with PIL.
         polygons_chw (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
-    Output:
+        color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
+       
+    Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
 
@@ -99,7 +143,7 @@ def display_two_polygon_sets( input_img_hw: Image.Image, polygons_1_chw: Tensor,
         input_img (Image.Image): the original manuscript image, as opened with PIL.
         polygons_1_chw (Tensor): polygon set #1, encoded as a 4-channel, 8-bit tensor.
         polygons_2_chw (Tensor): polygon set #2, encoded as a 4-channel, 8-bit tensor.
-    Output:
+    Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
     input_img_hwc = np.asarray( input_img_hw )
@@ -140,7 +184,7 @@ def get_n_color_palette(n: int, s=.85, v=.95) -> list:
     Args:
         n (int): number of color to generate.
 
-    Output:
+    Returns:
         list: a list of (R,G,B) tuples
     """
     golden_ratio_conjugate = 0.618033988749895
