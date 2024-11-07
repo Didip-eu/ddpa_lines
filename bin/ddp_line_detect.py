@@ -65,8 +65,8 @@ from kraken import blla
 from kraken import pageseg, serialization
 from kraken.lib import vgsl, layers
 from kraken.containers import Segmentation
-import seglib
-import seg_io
+from seglib import seglib
+from seglib import seg_io
 
 logging.basicConfig( level=logging.DEBUG, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
 logger = logging.getLogger(__name__)

@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 
 import numpy as np
-import seglib
+from . import seglib
 import random
 from typing import Tuple
 import skimage as ski
@@ -22,6 +22,19 @@ def display_polygon_set_from_img_and_tensor_files( img_file: str, polygon_file: 
     """
     with Image.open(img_file) as input_img_hw:
         polygons_chw = torch.load( polygon_file ) 
+        return display_polygon_set( input_img_hw, polygons_chw, color_count, alpha )
+
+def display_polygon_set_from_img_and_polygon_map( img_file: str, polygons_chw: Tensor, color_count=0, alpha=.75) -> np.ndarray:
+    """
+    Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
+
+    Args:
+        img_file (str): path to the original manuscript image.
+        polygons_chw (Tensor): polygon set, encoded as a 4-channel, 8-bit tensor.
+    Output:
+        np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
+    """
+    with Image.open(img_file) as input_img_hw:
         return display_polygon_set( input_img_hw, polygons_chw, color_count, alpha )
 
 def display_two_polygon_sets_from_img_and_tensor_files( img_file: str, polygon_file_1: str, polygon_file_2: str, bg_alpha=.75) -> np.ndarray:
