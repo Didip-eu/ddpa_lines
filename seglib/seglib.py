@@ -5,6 +5,7 @@ import json
 from typing import List, Tuple, Callable, Optional, Dict, Union, Mapping, Any
 import itertools
 import re
+import copy
 
 # 3rd-party
 from PIL import Image, ImageDraw
@@ -436,16 +437,30 @@ def merge_regseg_lineseg( regseg: dict, region_label: str, *linesegs: dict):
     charter_img_suffix = '.img.jpg'
 
     def translate( dictionary, translation ):
+        print("Translate by ", translation)
+        print("Input dictionary has", len(dictionary["lines"]), "lines")
+        new_lines = []
         for line in dictionary['lines']:
+            new_line = copy.deepcopy( line )
+            print("Before:", line['baseline'])
             for k in ('baseline', 'boundary'):
-                line[k] = [ (x+translation[0],y+translation[1]) for (x,y) in line[k]]
+                new_line[k] = [ [int(x+translation[0]),int(y+translation[1])] for (x,y) in line[k]]
+            new_lines.append( new_line )
+            print("After:", new_line['baseline'])
+        print("translated", len( new_lines ))
+
+        print("Input dictionary has", len(dictionary["lines"]), "lines")
+        return new_lines
 
     # extract mapping region type id -> region name
     clsid_2_clsname = { i:n for (i,n) in enumerate( regseg['class_names'] )}
     to_keep = [ i for (i,v) in enumerate( regseg['rect_classes'] ) if region_label in clsid_2_clsname[v] ]
 
     # assumptions: line segs are passed in the same order as the region order in the regseg
+    print("To keep:", to_keep)
+    print("Number of segs", len(linesegs))
     to_keep = to_keep[:len(linesegs)]
+    print("To keep:", to_keep)
 
     # go through local line segmentations (and corresponding rectangle in regseg),
     # and translate every x,y coordinates by value of the rectangle's origin (left,top)
@@ -453,8 +468,8 @@ def merge_regseg_lineseg( regseg: dict, region_label: str, *linesegs: dict):
     img_name = Path(linesegs[0]['imagename']).parents[1].joinpath( regseg['img_md5'] ).with_suffix( charter_img_suffix )
 
     for (lineseg, coords) in zip( linesegs, [ c for (index, c) in enumerate( regseg['rect_LTRB'] ) if index in to_keep ]):
-        translate( lineseg, translation=coords[:2] )
-        lines.extend( lineseg['lines'] )
+        lines.extend( translate( lineseg, translation=coords[:2] ))
+        print("merged lines have now", len(lines))
 
     merged_seg = { "type": "baselines", 
                    "imagename": img_name,
