@@ -343,7 +343,38 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
     """
     direction = {'0.0': 'horizontal-lr', '0.1': 'horizontal-rl', '1.0': 'vertical-td', '1.1': 'vertical-bu'}
 
-    page_dict: Dict[str, Union['str', List[Any]]] = { 'type': 'baselines' }
+    page_dict: Dict[str, Union['str', List[Any]]] = { 'type': 'baselines', 'text_direction': 'horizontal-lr' }
+
+    def construct_line_entry(line: ET.Element, regions: list = [] ) -> dict:
+            print(regions)
+            line_id = line.get('id')
+            baseline_elt = line.find('./pc:Baseline', ns)
+            if baseline_elt is None:
+                return None
+            bl_points = baseline_elt.get('points')
+            if bl_points is None:
+                return None
+            baseline_points = [ [ int(p) for p in pt.split(',') ] for pt in bl_points.split(' ') ]
+            coord_elt = line.find('./pc:Coords', ns)
+            if coord_elt is None:
+                return None
+            c_points = coord_elt.get('points')
+            if c_points is None:
+                return None
+            polygon_points = [ [ int(p) for p in pt.split(',') ] for pt in c_points.split(' ') ]
+
+            return {'line_id': line_id, 'baseline': baseline_points, 
+                    'boundary': polygon_points, 'regions': regions} 
+
+    def process_region( region: ET.Element, line_accum: list, regions:list ):
+        regions = regions + [ region.get('id') ]
+        for elt in list(region.iter())[1:]:
+            if elt.tag == "{{{}}}TextLine".format(ns['pc']):
+                line_entry = construct_line_entry( elt, regions )
+                if line_entry is not None:
+                    line_accum.append( construct_line_entry( elt, regions ))
+            elif elt.tag == "{{{}}}TextRegion".format(ns['pc']):
+                process_region(elt, line_accum, regions)
 
     with open( page, 'r' ) as page_file:
 
@@ -359,38 +390,82 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
         if 'pc' not in ns:
             raise ValueError(f"Could not find a name space in file {page}. Parsing aborted.")
 
+        lines = []
+
         page_tree = ET.parse( page_file )
         page_root = page_tree.getroot()
 
-        textRegionElement = page_root.find('.//pc:TextRegion', ns) 
-        if textRegionElement is not None:
-            orientation = textRegionElement.get( 'orientation' )
-            if orientation is not None:
-                page_dict['text_direction'] = direction[ orientation ]
+        pageElement = page_root.find('./pc:Page', ns)
+        page_dict['imagename']=pageElement.get('imageFilename')
+        
+        for textRegionElement in pageElement.findall('./pc:TextRegion', ns):
+            process_region( textRegionElement, lines, [] )
 
-        lines_object = []
-        for line in page_root.findall('.//pc:TextLine', ns):
-            line_id = line.get('id')
-            baseline_elt = line.find('./pc:Baseline', ns)
-            if baseline_elt is None:
-                continue
-            bl_points = baseline_elt.get('points')
-            if bl_points is None:
-                continue
-            baseline_points = [ [ int(p) for p in pt.split(',') ] for pt in bl_points.split(' ') ]
-            coord_elt = line.find('./pc:Coords', ns)
-            if coord_elt is None:
-                continue
-            c_points = coord_elt.get('points')
-            if c_points is None:
-                continue
-            polygon_points = [ [ int(p) for p in pt.split(',') ] for pt in c_points.split(' ') ]
-
-            lines_object.append( {'line_id': line_id, 'baseline': baseline_points, 'boundary': polygon_points} )
-
-        page_dict['lines'] = lines_object
+        page_dict['lines'] = lines
 
     return page_dict 
+
+def merge_regseg_lineseg( regseg: dict, region_label: str, *linesegs: dict):
+    """
+    Merge 2 segmentation outputs into a single one:
+
+    * the page-wide yolo/seals segmentation (with OldText, ... regions)
+    * the line segmentation for the regions defined in the first one
+
+    The resulting file is a page-wide line-segmentation JSON.
+
+    :param regseg: the regional segmentation json, as given by the 'seals' app
+    :type regseg: dict
+
+    :param *linesegs: 
+        a number of local line segmentations for the region defined in the first file, of the
+        form:
+
+        .. code-block::
+        
+            {"type": "baseline", "imagename": ..., lines: [ {"id": "... }, ... ] }
+    :type *linesegs: dict
+
+    :param region_label: 
+        in the region segmentation, label of those regions that have been line-segmented.
+    :type region_label: str
+
+    :returns: a page-wide line-segmentation dictionary.
+    :rtype: dict
+    """
+    charter_img_suffix = '.img.jpg'
+
+    def translate( dictionary, translation ):
+        for line in dictionary['lines']:
+            for k in ('baseline', 'boundary'):
+                line[k] = [ (x+translation[0],y+translation[1]) for (x,y) in line[k]]
+
+    # extract mapping region type id -> region name
+    clsid_2_clsname = { i:n for (i,n) in enumerate( regseg['class_names'] )}
+    to_keep = [ i for (i,v) in enumerate( regseg['rect_classes'] ) if region_label in clsid_2_clsname[v] ]
+
+    # assumptions: line segs are passed in the same order as the region order in the regseg
+    to_keep = to_keep[:len(linesegs)]
+
+    # go through local line segmentations (and corresponding rectangle in regseg),
+    # and translate every x,y coordinates by value of the rectangle's origin (left,top)
+    lines = []
+    img_name = Path(linesegs[0]['imagename']).parents[1].joinpath( regseg['img_md5'] ).with_suffix( charter_img_suffix )
+
+    for (lineseg, coords) in zip( linesegs, [ c for (index, c) in enumerate( regseg['rect_LTRB'] ) if index in to_keep ]):
+        translate( lineseg, translation=coords[:2] )
+        lines.extend( lineseg['lines'] )
+
+    merged_seg = { "type": "baselines", 
+                   "imagename": img_name,
+                   "text_direction": 'horizontal-lr',
+                   "script_detection": False,
+                   "lines": lines,
+                 }
+
+    return merged_seg
+        
+
 
 
 def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int) -> None:
