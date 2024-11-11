@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 
 def compute_segmentation_map(im: PIL.Image.Image,
-                             mask: Optional[np.ndarray] = None,
+                             mask: Optional[PIL.Image.Image] = None,
                              model: vgsl.TorchVGSLModel = None,
                              device: str = 'cpu',
                              autocast: bool = False) -> Dict[str, Any]:
@@ -98,7 +98,7 @@ def compute_segmentation_map(im: PIL.Image.Image,
     scal_im = np.array(res_tf(im).convert('L'))
 
     tensor_im = transforms(im)
-    if mask:
+    if mask is not None:
         if mask.mode != '1' and not is_bitonal(mask):
             logger.error('Mask is not bitonal')
             raise KrakenInputException('Mask is not bitonal')

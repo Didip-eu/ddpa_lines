@@ -482,6 +482,33 @@ def merge_regseg_lineseg( regseg: dict, region_label: str, *linesegs: dict):
         
 
 
+def seals_region_mask( regseg: dict, region_labels: List[str]) -> np.ndarray:
+    """
+    From the page-wide yolo/seals segmentation (with OldText, ... regions),
+    construct a binary mask for regions of choice.
+
+    :param regseg: the regional segmentation json, as given by the 'seals' app
+    :type regseg: dict
+
+    :param region_label: labels for those regions that should be left unmasked.
+    :type region_label: List[str]
+
+    :returns: a (H,W) boolean array
+    :rtype: np.ndarray
+    """
+    clsid_2_clsname = { i:n for (i,n) in enumerate( regseg['class_names'] )}
+    to_keep = [ i for (i,v) in enumerate( regseg['rect_classes'] ) if clsid_2_clsname[v] in region_labels ]
+
+    print("To keep:", to_keep)
+
+    mask_hw = np.zeros( regseg['image_wh'][::-1] )
+    for rect_idx in to_keep:
+        start = regseg['rect_LTRB'][rect_idx][:2][::-1]
+        extent = [ regseg['rect_LTRB'][rect_idx][i]-regseg['rect_LTRB'][rect_idx][i-2] for i in (2,3) ][::-1]
+        rect = ski.draw.rectangle( start=start, extent=extent, shape=mask.shape )
+        mask_hw[ rect[0], rect[1]] = 1
+    return mask_hw
+
 
 def apply_polygon_mask_to_map(label_map: np.ndarray, polygon_mask: np.ndarray, label: int) -> None:
     """

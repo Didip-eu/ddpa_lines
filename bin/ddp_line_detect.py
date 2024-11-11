@@ -65,10 +65,9 @@ from kraken import blla
 from kraken import pageseg, serialization
 from kraken.lib import vgsl, layers
 from kraken.containers import Segmentation
-from seglib import seglib
-from seglib import seg_io
+from seglib import seglib, seg_io
 
-logging.basicConfig( level=logging.DEBUG, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
+logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
 logger = logging.getLogger(__name__)
 
 
@@ -76,8 +75,8 @@ p = {
         "appname": "lines",
         "model_path": str(root.joinpath("models/blla.mlmodel")),
         "img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
-        "concatenate_class": ['', "Name of regions to be concatenated into a single image before detection; if empty (default), detection is run on the entire page."],
-        "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>; if empty (default), entire img file is passed to the line segmenter."],
+        "mask_class": ['', "Name of regions for which to construct a image-wide mask to pass to the line detection algorithm. Eg. 'Wr:OldText'. If empty (default), detection is run on the entire page."],
+        "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>"],
         "preview": False,
         "preview_delay": 0,
         "dry_run": False,
@@ -86,32 +85,6 @@ p = {
         "line_type": [("polygon","bbox","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; bbox = bounding boxes, derived from the former; legacy_bbox: legacy Kraken segmentation)"],
         "output_format": [("xml", "json", "pt"), "Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons)"],
 }
-
-
-def concatenate_regions_of_interest( img: Image, json_segfile: Path, label='Wr:OldText' ) -> Image:
-    """
-    Concatenate several writable regions into one image. 
-    """
-    logger.debug(f"img={img}, json_segfile={json_segfile}, label={label}")
-    with open( json_segfile, 'r') as infile:
-        seg_dict = json.load( infile )
-        clsid_2_clsname = { i:n for (i,n) in enumerate( seg_dict['class_names'] )}
-        to_keep = [ i for (i,v) in enumerate( seg_dict['rect_classes'] ) if label in clsid_2_clsname[v] ]
-        rectangles = []
-        for coords in [ c for (index, c) in enumerate( seg_dict['rect_LTRB'] ) if index in to_keep ]:
-            rectangles.append( np.asarray( img.crop( coords )))
-        channels, dtype = rectangles[-1].shape[-1], rectangles[-1].dtype
-        w_concat = max( r.shape[1] for r in rectangles ) 
-        h_concat = sum( r.shape[0] for r in rectangles )
-        
-        concatenation = np.zeros( (h_concat, w_concat, channels), dtype=dtype )
-        offset=0
-        for r in rectangles:
-            concatenation[offset:offset+r.shape[0], :r.shape[1]] = r
-            offset += r.shape[0]
-
-        return Image.fromarray( concatenation )
-
 
 
 if __name__ == "__main__":
@@ -157,11 +130,6 @@ if __name__ == "__main__":
 
             if args.just_show:
 
-
-                # polygon map applies to a concatenation
-                if args.concatenate_class != '':
-                    img = concatenate_regions_of_interest( img, region_segfile, args.concatenate_class )
-
                 # only look for existing tensor map (and regenerate it if
                 # the XML segmentation output is more recent).
                 if not pt_file_path.exists() or xml_file_path.stat().st_ctime > pt_file_path.stat().st_ctime :
@@ -187,11 +155,10 @@ if __name__ == "__main__":
                 raise FileNotFoundError("Could not find model file", args.model_path)
             model = vgsl.TorchVGSLModel.load_model( args.model_path )
 
-            if args.concatenate_class != '':
-                logger.debug(f"Run segmentation on concatenated regions '{args.concatenate_class}', instead of whole page.")
-                # parse segmentation file, and extract and concatenate the WritableArea crops
-                img = concatenate_regions_of_interest( img, region_segfile, args.concatenate_class )
-                logger.debug(f"img.shape={img.size}")
+            mask = None
+            if args.mask_class != '':
+                with open( region_segfile, 'r') as regseg_if:
+                    mask = Image.fromarray( seglib.seals_region_mask( json.load( regseg_if ), [args.mask_class] ), mode='1')
                 
             segmentation_record = None
 
@@ -204,7 +171,7 @@ if __name__ == "__main__":
             else:
                 # CNN-based segmentation
                 logger.info("Starting segmentation")
-                segmentation_record = blla.segment( img, model=model )
+                segmentation_record = blla.segment( img, model=model, mask=mask )
                 logger.info("Successful segmentation.")
 
                 # BBox conversion (use a custom method on Kraken_didip
