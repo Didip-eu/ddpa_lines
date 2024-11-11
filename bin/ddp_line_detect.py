@@ -76,42 +76,16 @@ p = {
         "appname": "lines",
         "model_path": str(root.joinpath("models/blla.mlmodel")),
         "img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
-        "concatenate_class": ['', "Name of regions to be concatenated into a single image before detection; if empty (default), detection is run on the entire page."],
-        "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>; if empty (default), entire img file is passed to the line segmenter."],
+        "mask_classes": [set([]), "Names of the seals-app regions on which lines are to be detected. Eg. '[Wr:OldText']. If empty (default), detection is run on the entire page."],
+        "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>."],
         "preview": False,
         "preview_delay": 0,
         "dry_run": False,
         "just_show": False,
         "mapify": False,
-        "line_type": [("polygon","bbox","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; bbox = bounding boxes, derived from the former; legacy_bbox: legacy Kraken segmentation)"],
+        "line_type": [("polygon","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; legacy_bbox: legacy Kraken segmentation)"],
         "output_format": [("xml", "json", "pt"), "Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons)"],
 }
-
-
-def concatenate_regions_of_interest( img: Image, json_segfile: Path, label='Wr:OldText' ) -> Image:
-    """
-    Concatenate several writable regions into one image. 
-    """
-    logger.debug(f"img={img}, json_segfile={json_segfile}, label={label}")
-    with open( json_segfile, 'r') as infile:
-        seg_dict = json.load( infile )
-        clsid_2_clsname = { i:n for (i,n) in enumerate( seg_dict['class_names'] )}
-        to_keep = [ i for (i,v) in enumerate( seg_dict['rect_classes'] ) if label in clsid_2_clsname[v] ]
-        rectangles = []
-        for coords in [ c for (index, c) in enumerate( seg_dict['rect_LTRB'] ) if index in to_keep ]:
-            rectangles.append( np.asarray( img.crop( coords )))
-        channels, dtype = rectangles[-1].shape[-1], rectangles[-1].dtype
-        w_concat = max( r.shape[1] for r in rectangles ) 
-        h_concat = sum( r.shape[0] for r in rectangles )
-        
-        concatenation = np.zeros( (h_concat, w_concat, channels), dtype=dtype )
-        offset=0
-        for r in rectangles:
-            concatenation[offset:offset+r.shape[0], :r.shape[1]] = r
-            offset += r.shape[0]
-
-        return Image.fromarray( concatenation )
-
 
 
 if __name__ == "__main__":
@@ -157,11 +131,6 @@ if __name__ == "__main__":
 
             if args.just_show:
 
-
-                # polygon map applies to a concatenation
-                if args.concatenate_class != '':
-                    img = concatenate_regions_of_interest( img, region_segfile, args.concatenate_class )
-
                 # only look for existing tensor map (and regenerate it if
                 # the XML segmentation output is more recent).
                 if not pt_file_path.exists() or xml_file_path.stat().st_ctime > pt_file_path.stat().st_ctime :
@@ -187,62 +156,78 @@ if __name__ == "__main__":
                 raise FileNotFoundError("Could not find model file", args.model_path)
             model = vgsl.TorchVGSLModel.load_model( args.model_path )
 
-            if args.concatenate_class != '':
-                logger.debug(f"Run segmentation on concatenated regions '{args.concatenate_class}', instead of whole page.")
+
+            if args.mask_classes != []:
+                logger.debug(f"Run segmentation on masked regions '{args.mask_classes}', instead of whole page.")
                 # parse segmentation file, and extract and concatenate the WritableArea crops
-                img = concatenate_regions_of_interest( img, region_segfile, args.concatenate_class )
-                logger.debug(f"img.shape={img.size}")
-                
-            segmentation_record = None
+                with open(region_segfile) as regseg_if:
+                    regseg = json.load( regseg_if )
+                   
+                    # iterate over seals crops and segment
+                    crops_hw, classes = seglib.seals_regseg_to_crops( img, regseg, args.mask_classes )
+                    line_seg_dicts = [ dataclasses.asdict( blla.segment( crop, model=model )) for crop in crops_hw ]
+                    for (i, lsd, clsname) in zip(range(len(classes)), line_seg_dicts, classes):
+                        lsd['imagename']=str(Path(img.filename).with_suffix('.seals.crops').joinpath('{}.{}.jpg'.format(i, clsname.replace(':','_'))))
+                    # combine
+                    seg_dict = seglib.merge_seals_regseg_lineseg( regseg, args.mask_classes, *line_seg_dicts )
 
-            # Legacy segmentation
-            if (args.line_type=='legacy_bbox'):
-                # Image needs to be binarized first
-                from kraken import binarization
-                img_bw = binarization.nlbin( img )
-                segmentation_record = pageseg.segment( img_bw )
+                    output_file_path = Path(f'{output_file_path_wo_suffix}.json')
+                    print(output_file_path, "type=", type(output_file_path))
+                    print(seg_dict, "type=", type(seg_dict))
+
+                    with open(output_file_path, 'w') as of:
+                        print(of, "type=", type(of))
+                        json.dump( seg_dict, of )
+                        logger.info("Segmentation output saved in {}".format( output_file_path ))
+
             else:
-                # CNN-based segmentation
-                logger.info("Starting segmentation")
-                segmentation_record = blla.segment( img, model=model )
-                logger.info("Successful segmentation.")
-
-                # BBox conversion (use a custom method on Kraken_didip
-                if args.line_type == 'bbox':
-                    segmentation_record = segmentation_record.to_bbox_segmentation()
-
-            
-            ############ 3. Handing the output #################
-            output_file_path = Path(f'{output_file_path_wo_suffix}.{args.output_format}')
-            
-            logger.debug(f"Serializing segmentation for img.shape={img.size}")
-            # PageXML output
-            if args.output_format == 'xml':
-                page = serialization.serialize(
-                    segmentation_record, #, image_name=img.filename,
-                    image_size=img.size,
-                    template=str(root.joinpath('kraken', 'templates', 'pagexml')), template_source='custom')
-
-                logger.debug(f"Serializing XML with shape={img.size}")
-                with open( output_file_path, 'w' ) as fp:
-                    fp.write( page )
-
-            # JSON file (work from dict)
-            elif args.output_format == 'json':
-                with open(output_file_path, 'w') as of:
-                    json.dump( dataclasses.asdict( segmentation_record ), of )
-                    logger.info("Segmentation output saved in {}".format( output_file_path ))
-
-            # store the segmentation into a 3D polygon-map
-            elif args.output_format == 'pt':
-                # create a segmentation dictionary from Segmentation
-                polygon_map = seglib.polygon_map_from_img_segmentation_dict( 
-                                    img, 
-                                    dataclasses.asdict( segmentation_record ))
                 
-                logger.debug(f"Serializing map with shape={polygon_map.size}")
-                torch.save( polygon_map, output_file_path )
-                logger.info("Segmentation output saved in {}".format( output_file_path ))
+                segmentation_record = None
+
+                # Legacy segmentation
+                if (args.line_type=='legacy_bbox'):
+                    # Image needs to be binarized first
+                    from kraken import binarization
+                    img_bw = binarization.nlbin( img )
+                    segmentation_record = pageseg.segment( img_bw )
+                else:
+                    # CNN-based segmentation
+                    logger.info("Starting segmentation")
+                    segmentation_record = blla.segment( img, model=model )
+                    logger.info("Successful segmentation.")
+
+                
+                ############ 3. Handing the output #################
+                output_file_path = Path(f'{output_file_path_wo_suffix}.{args.output_format}')
+                
+                logger.debug(f"Serializing segmentation for img.shape={img.size}")
+                # PageXML output
+                if args.output_format == 'xml':
+                    page = serialization.serialize(
+                        segmentation_record, #, image_name=img.filename,
+                        image_size=img.size,
+                        template=str(root.joinpath('kraken', 'templates', 'pagexml')), template_source='custom')
+
+                    logger.debug(f"Serializing XML with shape={img.size}")
+                    with open( output_file_path, 'w' ) as fp:
+                        fp.write( page )
+
+                # JSON file (work from dict)
+                elif args.output_format == 'json':
+                    with open(output_file_path, 'w') as of:
+                        json.dump( dataclasses.asdict( segmentation_record ), of )
+                        logger.info("Segmentation output saved in {}".format( output_file_path ))
+
+                # store the segmentation into a 3D polygon-map
+                elif args.output_format == 'pt':
+                    # create a segmentation dictionary from Segmentation
+                    polygon_map = seglib.polygon_map_from_img_segmentation_dict( 
+                                        img, 
+                                        dataclasses.asdict( segmentation_record ))
+                    
+                    logger.debug(f"Serializing map with shape={polygon_map.size}")
+                    torch.save( polygon_map, output_file_path )
+                    logger.info("Segmentation output saved in {}".format( output_file_path ))
 
 
 

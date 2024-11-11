@@ -71,7 +71,7 @@ def polygon_map_from_img_xml_files( img: str, page_xml: str ) -> Tensor:
         segmentation_dict = segmentation_dict_from_xml( page_xml )
         return polygon_map_from_img_segmentation_dict( input_img, segmentation_dict)
 
-def polygon_map_from_img_object_xml_file( img: Image, page_xml: str ) -> Tensor:
+def polygon_map_from_img_object_xml_file( img: Image.Image, page_xml: str ) -> Tensor:
     """
     Read line polygons a PageXML file and store them into a tensor, as pixel maps.
     Channels allow for easy storage of overlapping polygons.
@@ -406,7 +406,7 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
 
     return page_dict 
 
-def merge_regseg_lineseg( regseg: dict, region_label: str, *linesegs: dict):
+def merge_seals_regseg_lineseg( regseg: dict, region_labels: List[str], *linesegs: dict) -> dict:
     """
     Merge 2 segmentation outputs into a single one:
 
@@ -427,49 +427,50 @@ def merge_regseg_lineseg( regseg: dict, region_label: str, *linesegs: dict):
             {"type": "baseline", "imagename": ..., lines: [ {"id": "... }, ... ] }
     :type *linesegs: dict
 
-    :param region_label: 
-        in the region segmentation, label of those regions that have been line-segmented.
-    :type region_label: str
+    :param region_labels: 
+        in the region segmentation, labels of those regions that have been line-segmented.
+    :type region_labels: List[str]
 
     :returns: a page-wide line-segmentation dictionary.
     :rtype: dict
     """
     charter_img_suffix = '.img.jpg'
 
+    print( region_labels)
     def translate( dictionary, translation ):
-        print("Translate by ", translation)
-        print("Input dictionary has", len(dictionary["lines"]), "lines")
+        #print("Translate by ", translation)
+        #print("Input dictionary has", len(dictionary["lines"]), "lines")
         new_lines = []
         for line in dictionary['lines']:
             new_line = copy.deepcopy( line )
-            print("Before:", line['baseline'])
+            #print("Before:", line['baseline'])
             for k in ('baseline', 'boundary'):
                 new_line[k] = [ [int(x+translation[0]),int(y+translation[1])] for (x,y) in line[k]]
             new_lines.append( new_line )
-            print("After:", new_line['baseline'])
-        print("translated", len( new_lines ))
+            #print("After:", new_line['baseline'])
+        #print("translated", len( new_lines ))
 
-        print("Input dictionary has", len(dictionary["lines"]), "lines")
+        #print("Input dictionary has", len(dictionary["lines"]), "lines")
         return new_lines
 
     # extract mapping region type id -> region name
     clsid_2_clsname = { i:n for (i,n) in enumerate( regseg['class_names'] )}
-    to_keep = [ i for (i,v) in enumerate( regseg['rect_classes'] ) if region_label in clsid_2_clsname[v] ]
+    to_keep = [ i for (i,v) in enumerate( regseg['rect_classes'] ) if clsid_2_clsname[v] in region_labels ]
 
     # assumptions: line segs are passed in the same order as the region order in the regseg
-    print("To keep:", to_keep)
-    print("Number of segs", len(linesegs))
+    #print("To keep:", to_keep)
+    #print("Number of segs", len(linesegs))
     to_keep = to_keep[:len(linesegs)]
-    print("To keep:", to_keep)
+    #print("To keep:", to_keep)
 
     # go through local line segmentations (and corresponding rectangle in regseg),
     # and translate every x,y coordinates by value of the rectangle's origin (left,top)
     lines = []
-    img_name = Path(linesegs[0]['imagename']).parents[1].joinpath( regseg['img_md5'] ).with_suffix( charter_img_suffix )
+    img_name = str(Path(linesegs[0]['imagename']).parents[1].joinpath( regseg['img_md5'] ).with_suffix( charter_img_suffix ))
 
     for (lineseg, coords) in zip( linesegs, [ c for (index, c) in enumerate( regseg['rect_LTRB'] ) if index in to_keep ]):
         lines.extend( translate( lineseg, translation=coords[:2] ))
-        print("merged lines have now", len(lines))
+        #print("merged lines have now", len(lines))
 
     merged_seg = { "type": "baselines", 
                    "imagename": img_name,
@@ -480,6 +481,55 @@ def merge_regseg_lineseg( regseg: dict, region_label: str, *linesegs: dict):
 
     return merged_seg
         
+def seals_regseg_to_crops( img: Image.Image, regseg: dict, region_labels: List[str] ) -> Tuple[List[Image.Image], List[str]]:
+    """
+    From a seals-app segmentation dictionary, returns the regions with matching 
+    labels as a list of images.
+
+    :param img: Image to crop.
+    :type img: Image.Image
+
+    :param regseg: the regional segmentation json, as given by the 'seals' app
+    :type regseg: dict
+
+    :param region_labels: Labels to be extracted.
+    :type region_labels: List[str]
+
+    :returns: a pair with a list of images (H,W)> and a list of class names.
+    :rtype: Tuple[List[Image.Image], List[str]] 
+    """
+
+    clsid_2_clsname = { i:n for (i,n) in enumerate( regseg['class_names'] )}
+    to_keep = [ i for (i,v) in enumerate( regseg['rect_classes'] ) if clsid_2_clsname[v] in region_labels ]
+
+    return ( [ img.crop( regseg['rect_LTRB'][i] ) for i in to_keep ],
+             [ clsid_2_clsname[ regseg['rect_classes'][i]]  for i in to_keep ] )
+
+
+def seals_regseg_check_class(regseg: dict, region_labels: List[str] ) -> List[bool]:
+    """
+    From a seals-app segmentation dictionary, check if rectangle with given labels
+    have been detected.
+
+    :param regseg: the regional segmentation json, as given by the 'seals' app
+    :type regseg: dict
+
+    :param region_labels: Labels to check.
+    :type region_labels: List[str]
+
+    :returns: a list of boolean values.
+    :rtype: List[bool]
+    """
+
+    clsname_2_clsid = { n:i for (i,n) in enumerate( regseg['class_names'] )}
+    
+    output = None
+    try:
+        output = [ clsname_2_clsid[l] in regseg['rect_classes'] for l in region_labels ]
+    except KeyError as e:
+        print(f"Class label {e} does not exist in the segmentation file.")
+    return output
+
 
 
 
