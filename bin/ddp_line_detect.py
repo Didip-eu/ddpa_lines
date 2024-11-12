@@ -82,7 +82,6 @@ p = {
         "preview_delay": 0,
         "dry_run": False,
         "just_show": False,
-        "mapify": False,
         "line_type": [("polygon","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; legacy_bbox: legacy Kraken segmentation)"],
         "output_format": [("xml", "json", "pt"), "Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons)"],
 }
@@ -96,12 +95,13 @@ if __name__ == "__main__":
 
     for path in list( args.img_paths ):
         logger.debug( path )
+        path = Path(path)
 
         #stem = Path( path ).stem
-        stem = re.sub(r'\..+', '',  Path( path ).name )
+        stem = re.sub(r'\..+', '', path.name )
 
         # only for segmentation on Seals-detected regions
-        region_segfile = re.sub(r'.img.jpg', args.region_segmentation_suffix, path )
+        region_segfile = re.sub(r'.img.jpg', args.region_segmentation_suffix, str(path) )
 
         # an extra output subfolder is only useful for storing file that may derive from the segmentation (s.a. crops)
         # + location: under the chart's folder, at same level of the chart images
@@ -114,7 +114,7 @@ if __name__ == "__main__":
             ############ 1. Look first for existing segmentation data ##########
 
             # segmentation metadata file
-            output_file_path_wo_suffix = Path(path).parent.joinpath( f'{stem}.{args.appname}.pred' )
+            output_file_path_wo_suffix = path.parent.joinpath( f'{stem}.{args.appname}.pred' )
 
 
             json_file_path = Path(f'{output_file_path_wo_suffix}.json')
