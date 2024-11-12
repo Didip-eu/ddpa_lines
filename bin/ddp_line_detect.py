@@ -173,6 +173,7 @@ if __name__ == "__main__":
                     output_file_path = Path(f'{output_file_path_wo_suffix}.json')
 
                     with open(output_file_path, 'w') as of:
+                        json.dump( seg_dict, of )
                         logger.info("Segmentation output saved in {}".format( output_file_path ))
 
 
