@@ -34,36 +34,36 @@ def display_polygon_lines_from_img_and_xml_files( img_file: str, page_xml: str, 
             draw.line( polyg, fill=colors[ p%len(colors) ], width=3 )
         return np.array( input_img_hw )
             
-def display_polygon_lines_from_img_and_json_segfile( img_file: str, json_seg: str, color_count=2) -> np.ndarray:
+def display_polygon_lines_from_img_and_json_files( img_file: str, seg_json: str, color_count=2) -> np.ndarray:
     """
     Render a single set of polygons, as lines.
 
     Args:
         img_file (str): path to the original manuscript image.
-        json_seg (str): path to the segmentation metadata (JSON)
+        seg_json (str): path to the segmentation metadata (JSON)
         color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
     Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
-    with Image.open(img_file) as input_img_hw, open(json_seg) as json_seg_file:
+    with Image.open(img_file) as input_img_hw, open(seg_json) as seg_json_file:
 
         colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(int( polygon_count ))
         colors = [ tuple(c) for c in colors ]
         draw = ImageDraw.Draw( input_img_hw )
-        segmentation_dict = json.load( json_seg_file )
+        segmentation_dict = json.load( seg_json_file )
         polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in segmentation_dict['lines']]
         for p, polyg in enumerate(polygon_boundaries, start=1):
             draw.line( polyg, fill=colors[ p%len(colors) ], width=3 )
         return np.array( input_img_hw )
             
 
-def display_polygon_lines_from_img_and_json_segdict( img_file: str, json_seg: dict, color_count=2) -> np.ndarray:
+def display_polygon_lines_from_img_and_json_dict( img_file: str, segdict_json: dict, color_count=2) -> np.ndarray:
     """
     Render a single set of polygons, as lines.
 
     Args:
         img_file (str): path to the original manuscript image.
-        json_seg (str): segmentation metadata (a JSON dictionary)
+        segdict_json (str): segmentation metadata (a JSON dictionary)
         color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
     Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
@@ -74,7 +74,7 @@ def display_polygon_lines_from_img_and_json_segdict( img_file: str, json_seg: di
         colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(int( polygon_count ))
         colors = [ tuple(c) for c in colors ]
         draw = ImageDraw.Draw( input_img_hw )
-        polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in json_seg['lines']]
+        polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in segdict_json['lines']]
         print(polygon_boundaries)
         for p, polyg in enumerate(polygon_boundaries, start=1):
             print("draw_line()", polygon_boundaries)

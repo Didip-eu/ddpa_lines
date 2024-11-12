@@ -1,0 +1,50 @@
+ 2181  ipython
+ 2182  cd
+ 2183  cd graz/htr/vre/
+ 2184  cd ddpa_lines/
+ 2185  ls
+ 2186  history
+ 2187  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext"
+ 2188  vim kraken/blla.py 
+ 2189  git diff
+ 2190  vim kraken/blla.py 
+ 2191  git diff
+ 2192  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext"
+ 2193  vim kraken/blla.py 
+ 2194  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext"
+ 2195  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext" -just_show 1
+ 2196  PYTHONPATH=. bin/ddp_line_detect.py -output_format xml -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext" -just_show 1
+ 2197  PYTHONPATH=. bin/ddp_line_detect.py -output_format xml -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext" 
+ 2198  PYTHONPATH=. bin/ddp_line_detect.py -output_format xml -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext" -just_show 1
+ 2199  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext"
+ 2200  less /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.lines.pred.json
+ 2201  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext"
+ 2202  vim kraken/lib/layers.py 
+ 2203  vim kraken/lib/vgsl.py 
+ 2204  vim kraken/lib/layers.py 
+ 2205  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext"
+ 2206  git push
+ 2207  git diff
+ 2208  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:Oldtext"
+ 2209  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class "Wr:OldText"
+ 2210  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class ["Wr:OldText"]
+ 2211  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_class Wr:OldText Wr:NewText
+ 2212  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_classes Wr:OldText Wr:NewText
+ 2213  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_classes Wr:OldText 
+ 2214  ls /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.seals.crops/
+ 2215  PYTHONPATH=. bin/ddp_line_detect.py -output_format json -img_paths /home/nicolas/tmp/data/1000CV/DE-UBHD/d1a4bad336e80ecc271a565184c28103/c234580f40562e6007243a738ff41b3f/6cc42e4ce1cc464b488fcf6cdbd40cb1.img.jpg -mask_classes Wr:OldText 
+ 2216  git diff
+ 2217  git status
+ 2218  git add bin/ddp_line_detect.py 
+ 2219  git add seglib/seglib.py 
+ 2220  git status
+ 2221  git commit -m "Testing seals/region segmentation in memory, with ensuing merge."
+ 2222  git push
+ 2223  ls
+ 2224  git branch
+ 2225  git switch lines_from_region_mask 
+ 2226  git checkout
+ 2227  git push
+ 2228  git push --set-upstream origin lines_from_region_mask
+ 2229  git switch main
+ 2230  history | tail -50 > shell_history.txt
