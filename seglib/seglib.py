@@ -466,7 +466,10 @@ def merge_seals_regseg_lineseg( regseg: dict, region_labels: List[str], *lineseg
     # go through local line segmentations (and corresponding rectangle in regseg),
     # and translate every x,y coordinates by value of the rectangle's origin (left,top)
     lines = []
-    img_name = str(Path(linesegs[0]['imagename']).parents[1].joinpath( regseg['img_md5'] ).with_suffix( charter_img_suffix ))
+    #print(f"{linesegs[0]['imagename']}")
+    #print(f"{regseg['img_md5']}")
+    #img_name = str(Path(linesegs[0]['imagename']).parents[1].joinpath( regseg['img_md5'] ).with_suffix( charter_img_suffix ))
+    img_name = "TODO (ANGULAS)"
 
     for (lineseg, coords) in zip( linesegs, [ c for (index, c) in enumerate( regseg['rect_LTRB'] ) if index in to_keep ]):
         lines.extend( translate( lineseg, translation=coords[:2] ))

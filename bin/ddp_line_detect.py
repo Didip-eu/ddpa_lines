@@ -55,10 +55,11 @@ import fargv
 from PIL import Image, ImageDraw
 import json
 import numpy as np
+import glob
 
 
-root = Path(__file__).parents[1]
-sys.path.append( str( root ))
+src_root = Path(__file__).parents[1]
+sys.path.append( str( src_root ))
 
 # local
 from kraken import blla
@@ -68,14 +69,16 @@ from kraken.containers import Segmentation
 from seglib import seglib
 from seglib import seg_io
 
-logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
+#logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
+logging.basicConfig( level=logging.DEBUG, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
 logger = logging.getLogger(__name__)
 
 
 p = {
         "appname": "lines",
-        "model_path": str(root.joinpath("models/blla.mlmodel")),
-        "img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
+        "model_path": str(src_root.joinpath("models/blla.mlmodel")),
+        #"img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
+        "img_paths": set([]),
         "charter_dirs": set(["./"]),
         "mask_classes": [set(['Wr:OldText']), "Names of the seals-app regions on which lines are to be detected. Eg. '[Wr:OldText']. If empty (default), detection is run on the entire page."],
         "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>."],
@@ -91,10 +94,6 @@ p = {
 if __name__ == "__main__":
 
     args, _ = fargv.fargv( p )
-
-
-
-    args, _ = fargv.fargv(p)
 
     all_img_paths = list(sorted(args.img_paths))
     for charter_dir in args.charter_dirs:
@@ -191,7 +190,7 @@ if __name__ == "__main__":
                     output_file_path = Path(f'{output_file_path_wo_suffix}.json')
 
                     with open(output_file_path, 'w') as of:
-                        json.dump( seg_dict, of )
+                        json.dump( seg_dict, of, indent=2 )
                         logger.info("Segmentation output saved in {}".format( output_file_path ))
 
 
@@ -222,7 +221,7 @@ if __name__ == "__main__":
                     page = serialization.serialize(
                         segmentation_record, #, image_name=img.filename,
                         image_size=img.size,
-                        template=str(root.joinpath('kraken', 'templates', 'pagexml')), template_source='custom')
+                        template=str(src_root.joinpath('kraken', 'templates', 'pagexml')), template_source='custom')
 
                     logger.debug(f"Serializing XML with shape={img.size}")
                     with open( output_file_path, 'w' ) as fp:
