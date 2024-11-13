@@ -68,7 +68,7 @@ from kraken.containers import Segmentation
 from seglib import seglib
 from seglib import seg_io
 
-logging.basicConfig( level=logging.DEBUG, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
+logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
 logger = logging.getLogger(__name__)
 
 
@@ -76,6 +76,7 @@ p = {
         "appname": "lines",
         "model_path": str(root.joinpath("models/blla.mlmodel")),
         "img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
+        "charter_dirs": set(["./"]),
         "mask_classes": [set(['Wr:OldText']), "Names of the seals-app regions on which lines are to be detected. Eg. '[Wr:OldText']. If empty (default), detection is run on the entire page."],
         "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>."],
         "preview": False,
@@ -90,6 +91,23 @@ p = {
 if __name__ == "__main__":
 
     args, _ = fargv.fargv( p )
+
+
+
+    args, _ = fargv.fargv(p)
+
+    all_img_paths = list(sorted(args.img_paths))
+    for charter_dir in args.charter_dirs:
+        logger.debug(f"Charter Dir: {charter_dir}")
+        if Path(charter_dir).is_dir() and Path(f"{charter_dir}/CH.cei.xml").exists():
+            #all_img_paths += [str(f) for f in list(Path(charter_dir).glob("*.img.*"))]
+            img_glob = f"{charter_dir}/*.img.*"
+            charter_images = [str(f) for f in glob.glob(img_glob)]
+            print(f"{img_glob} Added {len(charter_images)} images")
+            all_img_paths += charter_images
+
+        args.img_paths = list(all_img_paths)
+        print("AFTER:",args.img_paths)
 
     logger.debug( args )
 
