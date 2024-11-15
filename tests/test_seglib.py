@@ -15,7 +15,7 @@ import sys
 # Append app's root directory to the Python search path
 sys.path.append( str( Path(__file__).parents[1] ) )
 
-import seglib
+from seglib import seglib
 
 
 
@@ -51,13 +51,12 @@ def test_binary_mask_from_image_fg_bg():
     assert torch.sum(binary_map).item() == 1 # remaining pixels = F
 
 
-def test_line_binary_mask_from_img_segmentation_dict( data_path, ndarrays_regression ):
+def test_line_binary_mask_from_segmentation_dict( data_path, ndarrays_regression ):
     """
-    Provided an image and a segmentation dictionary, should return a boolean mask for all lines.
+    Provided a segmentation dictionary, should return a boolean mask for all lines.
     """
-    input_img = Image.open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r')
     segmentation_dict = json.load(open(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'), 'r'))
-    mask = seglib.line_binary_mask_from_img_segmentation_dict( input_img, segmentation_dict )
+    mask = seglib.line_binary_mask_from_segmentation_dict( segmentation_dict )
     ndarrays_regression.check( { 'mask': mask.numpy() } ) 
 
 
@@ -570,47 +569,43 @@ def test_retrieve_polygon_mask_from_map_2():
                                [False, False, False, False, False, False]]))
 
 
-def test_segmentation_polygon_map_from_img_segmentation_dict_label_count(  data_path ):
+def test_segmentation_polygon_map_from_segmentation_dict_label_count(  data_path ):
     """
-    seglib.polygon_map_from_img_segmentation_dict(dict, image) should return a tuple (labels, polygons)
+    seglib.polygon_map_from_segmentation_dict(dict, image) should return a tuple (labels, polygons)
     """
-    with open( data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r') as segdict_file, Image.open( data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'), 'r') as input_image:
+    with open( data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'), 'r') as segdict_file:
         segdict = json.load( segdict_file )
-        polygons = seglib.polygon_map_from_img_segmentation_dict( input_image, segdict )
+        polygons = seglib.polygon_map_from_segmentation_dict( segdict )
         assert type(polygons) is torch.Tensor
         assert torch.max(polygons) == 4
-        assert polygons.shape == (4,)+input_image.size[::-1]
+        assert polygons.shape == (4,)+tuple(segdict['image_wh'][::-1])
 
 
-def test_segmentation_polygon_map_from_img_json_files(  data_path ):
-    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+def test_segmentation_polygon_map_from_json_file(  data_path ):
     json_file = str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'))
-    polygons = seglib.polygon_map_from_img_json_files( img_file, json_file )
+    polygons = seglib.polygon_map_from_json_file( json_file )
     assert type(polygons) is torch.Tensor
     assert torch.max(polygons) == 4
 
 
 
-def test_segmentation_polygon_map_from_img_xml_files(  data_path ):
-    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+def test_segmentation_polygon_map_from_xml_file(  data_path ):
     xml_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.xml'))
-    polygons = seglib.polygon_map_from_img_xml_files( img_file, xml_file )
+    polygons = seglib.polygon_map_from_xml_file( xml_file )
     assert type(polygons) is torch.Tensor
     assert torch.max(polygons) == 4
 
 
 
-def test_line_binary_mask_from_img_json_files(  data_path ):
-    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+def test_line_binary_mask_from_json_file(  data_path ):
     json_file = str(data_path.joinpath('segdict_NA-ACK_14201223_01485_r-r1+model_20_reduced.json'))
-    mask = seglib.line_binary_mask_from_img_json_files( img_file, json_file )
+    mask = seglib.line_binary_mask_from_json_file( json_file )
     assert type(mask) is torch.Tensor
     assert mask.dtype == torch.bool
 
-def test_line_binary_mask_from_img_xml_files(  data_path ):
-    img_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
+def test_line_binary_mask_from_xml_file(  data_path ):
     xml_file = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.xml'))
-    mask = seglib.line_binary_mask_from_img_xml_files( img_file, xml_file )
+    mask = seglib.line_binary_mask_from_xml_file( xml_file )
     assert type(mask) is torch.Tensor
     assert mask.dtype == torch.bool
 
@@ -1258,7 +1253,7 @@ def test_mask_from_polygon_map_functional_all_line_images( data_path ):
     input_img = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.png'))
     dict_gt = str(data_path.joinpath('NA-ACK_14201223_01485_r-r1_reduced.json'))
 
-    polygon_map = seglib.polygon_map_from_img_json_files( input_img, dict_gt )
+    polygon_map = seglib.polygon_map_from_json_file( dict_gt )
 
     assert torch.equal( seglib.mask_from_polygon_map_functional(polygon_map, lambda m: m > 0),
-                        seglib.line_binary_mask_from_img_json_files( input_img, dict_gt))
+                        seglib.line_binary_mask_from_json_file( dict_gt))

@@ -57,13 +57,13 @@ def display_polygon_lines_from_img_and_json_files( img_file: str, seg_json: str,
         return np.array( input_img_hw )
             
 
-def display_polygon_lines_from_img_and_json_dict( img_file: str, segdict_json: dict, color_count=2) -> np.ndarray:
+def display_polygon_lines_from_img_and_dict( img_file: str, segdict: dict, color_count=2) -> np.ndarray:
     """
     Render a single set of polygons, as lines.
 
     Args:
         img_file (str): path to the original manuscript image.
-        segdict_json (str): segmentation metadata (a JSON dictionary)
+        segdict (str): segmentation metadata (a JSON dictionary)
         color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
     Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
@@ -74,7 +74,7 @@ def display_polygon_lines_from_img_and_json_dict( img_file: str, segdict_json: d
         colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(int( polygon_count ))
         colors = [ tuple(c) for c in colors ]
         draw = ImageDraw.Draw( input_img_hw )
-        polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in segdict_json['lines']]
+        polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in segdict['lines']]
         print(polygon_boundaries)
         for p, polyg in enumerate(polygon_boundaries, start=1):
             print("draw_line()", polygon_boundaries)
@@ -83,7 +83,7 @@ def display_polygon_lines_from_img_and_json_dict( img_file: str, segdict_json: d
             
 
 
-def display_polygon_set_from_img_and_xml_files( img_file: str, page_xml: str, color_count=0, alpha=.75) -> np.ndarray:
+def display_polygon_map_from_img_and_xml_files( img_file: str, page_xml: str, color_count=0, alpha=.75) -> np.ndarray:
     """
     Render a single set of polygons, as a map.
 
@@ -95,25 +95,25 @@ def display_polygon_set_from_img_and_xml_files( img_file: str, page_xml: str, co
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
     with Image.open(img_file) as input_img_hw:
-        polygons_chw = seglib.polygon_map_from_img_xml_files( img_file, page_xml ) 
+        polygons_chw = seglib.polygon_map_from_xml_file( page_xml ) 
         return display_polygon_set( input_img_hw, polygons_chw, color_count, alpha )
 
-def display_polygon_set_from_img_and_tensor_files( img_file: str, polygon_file: str, color_count=0, alpha=.75) -> np.ndarray:
+def display_polygon_map_from_img_and_json_files( img_file: str, seg_json: str, color_count=0, alpha=.75) -> np.ndarray:
     """
-    Render a single set of polygons.
+    Render a single set of polygons, as a map.
 
     Args:
         img_file (str): path to the original manuscript image.
-        polygon_file (str): path to the pickled polygon set, encoded as a 4-channel, 8-bit tensor.
+        seg_json (str): path to the pickled polygon set, encoded as a 4-channel, 8-bit tensor.
         color_count (int): number of colors in the palette. If 0 (default), use as many colors as polygons.
     Returns:
         np.ndarray: a RGB image (H,W,3), 8-bit unsigned integers.
     """
     with Image.open(img_file) as input_img_hw:
-        polygons_chw = torch.load( polygon_file ) 
+        polygons_chw = seglib.polygon_map_from_json_file( seg_json )
         return display_polygon_set( input_img_hw, polygons_chw, color_count, alpha )
 
-def display_polygon_set_from_img_and_polygon_map( img_file: str, polygons_chw: Tensor, color_count=0, alpha=.75) -> np.ndarray:
+def display_polygon_map_from_img_and_polygon_map( img_file: str, polygons_chw: Tensor, color_count=0, alpha=.75) -> np.ndarray:
     """
     Render a single set of polygons using two colors (alternate between odd- and even-numbered lines).
 
