@@ -4,17 +4,6 @@
 Read cropped writeable areas produced by the 'seals' app and 
 segment it into lines (use the Kraken engine, for now) 
 
-Note: f.i.;, the 'seals' apps has been called as follow::
-
-    PYTHONPATH="${HOME}/htr/didipcv/src/:${DIDIP_ROOT}/apps/ddpa_seals" "${DIDIP_ROOT}/apps/ddpa_seals/bin/ddp_seals_detect" -img_paths "${FSDB_ROOT}"/*/*/*/*.img.* -weights ~/tmp/ddp_yolov5.pt -save_crops 1 -preview 0 -crop_classes='["Wr:OldText"]' 
-i
-Input:
-    "${FSDB_ROOT}"/*/*/d9ae9ea49832ed79a2238c2d87cd0765/*seals.crops/*OldText*.jpg
-
-Output:
-    - PageXML file
-    - multiplexed image, with polygons as masks
-    
 Example call::
 
     curl -o ~/tmp/blla.mlmodel https://github.com/mittagessen/kraken/blob/main/kraken/blla.mlmodel
@@ -52,10 +41,8 @@ from PIL import Image, ImageDraw
 
 # Didip
 import fargv
-from PIL import Image, ImageDraw
 import json
 import numpy as np
-import glob
 
 
 src_root = Path(__file__).parents[1]
@@ -67,7 +54,6 @@ from kraken import pageseg, serialization
 from kraken.lib import vgsl, layers
 from kraken.containers import Segmentation
 from seglib import seglib
-from seglib import seg_io
 
 #logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
 logging.basicConfig( level=logging.DEBUG, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
@@ -82,10 +68,7 @@ p = {
         "charter_dirs": set(["./"]),
         "mask_classes": [set(['Wr:OldText']), "Names of the seals-app regions on which lines are to be detected. Eg. '[Wr:OldText']. If empty (default), detection is run on the entire page."],
         "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>."],
-        "preview": False,
-        "preview_delay": 0,
         "dry_run": False,
-        "just_show": False,
         "line_type": [("polygon","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; legacy_bbox: legacy Kraken segmentation)"],
         "output_format": [("xml", "json", "pt"), "Segmentation output: xml=<Page XML>, json=<JSON file>, tensor=<a (4,H,W) label map where each pixel can store up to 4 labels (for overlapping polygons)"],
 }
@@ -97,12 +80,10 @@ if __name__ == "__main__":
 
     all_img_paths = list(sorted(args.img_paths))
     for charter_dir in args.charter_dirs:
+        charter_dir_path = Path( charter_dir )
         logger.debug(f"Charter Dir: {charter_dir}")
-        if Path(charter_dir).is_dir() and Path(f"{charter_dir}/CH.cei.xml").exists():
-            #all_img_paths += [str(f) for f in list(Path(charter_dir).glob("*.img.*"))]
-            img_glob = f"{charter_dir}/*.img.*"
-            charter_images = [str(f) for f in glob.glob(img_glob)]
-            print(f"{img_glob} Added {len(charter_images)} images")
+        if charter_dir_path.is_dir() and charter_dir_path.joinpath("CH_cei.xml").exists():
+            charter_images = [str(f) for f in charter_dir_path.glob("*.img.*")]
             all_img_paths += charter_images
 
         args.img_paths = list(all_img_paths)
@@ -120,50 +101,14 @@ if __name__ == "__main__":
         # only for segmentation on Seals-detected regions
         region_segfile = re.sub(r'.img.jpg', args.region_segmentation_suffix, str(path) )
 
-        # an extra output subfolder is only useful for storing file that may derive from the segmentation (s.a. crops)
-        # + location: under the chart's folder, at same level of the chart images
-        # + name: stem is the Id part of the input image
-        # extra_output_dir = Path( path ).parent.joinpath( f'{stem}.{args.appname}.lines' )
-        # extra_output_dir.mkdir( exist_ok=True )
-        
         with Image.open( path, 'r' ) as img:
 
-            ############ 1. Look first for existing segmentation data ##########
-
-            # segmentation metadata file
             output_file_path_wo_suffix = path.parent.joinpath( f'{stem}.{args.appname}.pred' )
-
 
             json_file_path = Path(f'{output_file_path_wo_suffix}.json')
             xml_file_path = Path(f'{output_file_path_wo_suffix}.xml')
             pt_file_path = Path(f'{output_file_path_wo_suffix}.pt')
 
-
-            if args.just_show:
-
-            # look at existing files, choose the most recent one
-                candidates = sorted([ (f, f.stat().st_mtime) for f in (json_file_path, xml_file_path, pt_file_path ) if f.exists() ], key=lambda x: x[1], reverse=True)
-
-                if candidates == []:
-                    logger.info("Could not find a segmentation file.")
-                    continue
-
-                if candidates[0][0].suffix == '.json':
-                    logger.info("Reading from newest segmentation file {}...".format( json_file_path ))
-                    Image.fromarray( seg_io.display_polygon_lines_from_img_and_json_files( path, json_file_path )).show()
-                 
-                elif candidates[0][0].suffix == '.xml':
-                    logger.info("Reading from newest segmentation file {}...".format( xml_file_path ))
-                    Image.fromarray( seg_io.display_polygon_lines_from_img_and_xml_files( path, xml_file_path )).show()
-                
-                elif candidates[0][0].suffix == '.pt':
-                    logger.info("Reading from newest segmentation map {}...".format( pt_file_path ))
-                    polygon_map_chw = torch.load( pt_file_path ) 
-                    logger.debug( f"polygon_map_chw.shape={polygon_map_chw.shape}" )
-                    Image.fromarray( seg_io.display_polygon_set( img, polygon_map_chw ) ).show()
-                continue
-
-            ############## 2. Segment the file ################
 
             if not Path( args.model_path ).exists():
                 raise FileNotFoundError("Could not find model file", args.model_path)
@@ -172,7 +117,6 @@ if __name__ == "__main__":
 
             # Option 1: go JSON all the way and use this format to segment the region crops (from seals),
             # before merging them into a single, page-wide file
-
             if args.mask_classes != []:
                 logger.debug(f"Run segmentation on masked regions '{args.mask_classes}', instead of whole page.")
                 # parse segmentation file, and extract and concatenate the WritableArea crops
@@ -194,7 +138,7 @@ if __name__ == "__main__":
                         logger.info("Segmentation output saved in {}".format( output_file_path ))
 
 
-            #" Option 2: single-file segmentation, with a choice of output formats.
+            # Option 2: single-file segmentation, with a choice of output formats.
             else:
                 
                 segmentation_record = None
@@ -230,6 +174,8 @@ if __name__ == "__main__":
                 # JSON file (work from dict)
                 elif args.output_format == 'json':
                     with open(output_file_path, 'w') as of:
+                        segmentation_dict = dataclasses.asdict( segmentation_record )
+                        segmentation_dict['image_wh']=img.size
                         json.dump( dataclasses.asdict( segmentation_record ), of )
                         logger.info("Segmentation output saved in {}".format( output_file_path ))
 
