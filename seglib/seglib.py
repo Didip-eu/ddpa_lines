@@ -291,7 +291,7 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
     page_dict: Dict[str, Union['str', List[Any]]] = { 'type': 'baselines', 'text_direction': 'horizontal-lr' }
 
     def construct_line_entry(line: ET.Element, regions: list = [] ) -> dict:
-            print(regions)
+            #print(regions)
             line_id = line.get('id')
             baseline_elt = line.find('./pc:Baseline', ns)
             if baseline_elt is None:

@@ -31,7 +31,7 @@ def display_polygon_lines_from_img_and_xml_files( img_file: str, page_xml: str, 
         segmentation_dict = seglib.segmentation_dict_from_xml( page_xml )
         polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in segmentation_dict['lines']]
         for p, polyg in enumerate(polygon_boundaries, start=1):
-            draw.line( polyg, fill=colors[ p%len(colors) ], width=3 )
+            draw.polygon( polyg, fill=colors[ p%len(colors) ], width=5 )
         return np.array( input_img_hw )
             
 def display_polygon_lines_from_img_and_json_files( img_file: str, seg_json: str, color_count=2) -> np.ndarray:
@@ -53,7 +53,7 @@ def display_polygon_lines_from_img_and_json_files( img_file: str, seg_json: str,
         segmentation_dict = json.load( seg_json_file )
         polygon_boundaries = [ [ tuple(xy) for xy in line['boundary']] for line in segmentation_dict['lines']]
         for p, polyg in enumerate(polygon_boundaries, start=1):
-            draw.line( polyg, fill=colors[ p%len(colors) ], width=3 )
+            draw.polygon( polyg, fill=colors[ p%len(colors) ], width=5 )
         return np.array( input_img_hw )
             
 
@@ -78,7 +78,7 @@ def display_polygon_lines_from_img_and_dict( img_file: str, segdict: dict, color
         print(polygon_boundaries)
         for p, polyg in enumerate(polygon_boundaries, start=1):
             print("draw_line()", polygon_boundaries)
-            draw.line( polyg, fill=colors[ p%len(colors) ], width=3 )
+            draw.polygon( polyg, fill=colors[ p%len(colors) ], width=5 )
         return np.array( input_img_hw )
             
 
