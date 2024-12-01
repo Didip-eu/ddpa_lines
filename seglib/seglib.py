@@ -326,9 +326,9 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
         # extract namespace
         ns = {}
         for line in page_file:
-            m = re.match(r'\s*<PcGts\s+xmlns=[\'"]([^"]+)["\']', line)
+            m = re.match(r'\s*<([^:]+:)?PcGts\s+xmlns(:[^=]+)?=[\'"]([^"]+)["\']', line)
             if m:
-                ns['pc'] = m.group(1)
+                ns['pc'] = m.group(3)
                 page_file.seek(0)
                 break
 
@@ -341,6 +341,7 @@ def segmentation_dict_from_xml(page: str) -> Dict[str,Union[str,List[Any]]]:
         page_root = page_tree.getroot()
 
         pageElement = page_root.find('./pc:Page', ns)
+        
         page_dict['imagename']=pageElement.get('imageFilename')
         page_dict['image_wh']=[ int(pageElement.get('imageWidth')), int(pageElement.get('imageHeight'))]
         

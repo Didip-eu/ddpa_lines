@@ -157,6 +157,9 @@ def display_polygon_set( input_img_hw: Image.Image, polygons_chw: Tensor, color_
     """
 
     input_img_hwc = np.asarray( input_img_hw )
+    if tuple(polygons_chw.shape[1:]) != input_img_hwc.shape[:2]:
+        raise ValueError("Polygon map and input image have different height/length: respectively {} and {}".format( tuple(polygons_chw.shape[1:]), input_img_hwc.shape[:2]) +
+                "\nCheck that the source for the map (an XML segmentation file or a dictionary) correctly describes the image size.")
     polygon_count = torch.max( polygons_chw )
 
     colors = get_n_color_palette( color_count ) if color_count else get_n_color_palette(int( polygon_count ))
