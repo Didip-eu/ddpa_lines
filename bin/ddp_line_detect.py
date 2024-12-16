@@ -82,7 +82,7 @@ if __name__ == "__main__":
     for charter_dir in args.charter_dirs:
         charter_dir_path = Path( charter_dir )
         logger.debug(f"Charter Dir: {charter_dir}")
-        if charter_dir_path.is_dir() and charter_dir_path.joinpath("CH_cei.xml").exists():
+        if charter_dir_path.is_dir() and charter_dir_path.joinpath("CH.cei.xml").exists():
             charter_images = [str(f) for f in charter_dir_path.glob("*.img.*")]
             all_img_paths += charter_images
 
