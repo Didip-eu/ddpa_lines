@@ -66,7 +66,8 @@ p = {
         #"img_paths": set([Path.home().joinpath("tmp/data/1000CV/AT-AES/d3a416ef7813f88859c305fb83b20b5b/207cd526e08396b4255b12fa19e8e4f8/4844ee9f686008891a44821c6133694d.img.jpg")]),
         "img_paths": set([]),
         "charter_dirs": set(["./"]),
-        "mask_classes": [set(['Wr:OldText']), "Names of the seals-app regions on which lines are to be detected. Eg. '[Wr:OldText']. If empty (default), detection is run on the entire page."],
+        #"mask_classes": [set(['Wr:OldText']), "Names of the seals-app regions on which lines are to be detected. Eg. '[Wr:OldText']. If empty (default), detection is run on the entire page."],
+        "mask_classes": [set(), "Names of the seals-app regions on which lines are to be detected. Eg. '[Wr:OldText']. If empty (default), detection is run on the entire page."],
         "region_segmentation_suffix": [".seals.pred.json", "Regions are given by segmentation file that is <img name stem>.<suffix>."],
         "dry_run": False,
         "line_type": [("polygon","legacy_bbox"), "Line segmentation type: polygon = Kraken (CNN-inferred) baselines + polygons; legacy_bbox: legacy Kraken segmentation)"],
@@ -117,7 +118,7 @@ if __name__ == "__main__":
 
             # Option 1: go JSON all the way and use this format to segment the region crops (from seals),
             # before merging them into a single, page-wide file
-            if args.mask_classes != []:
+            if args.mask_classes.length:
                 logger.debug(f"Run segmentation on masked regions '{args.mask_classes}', instead of whole page.")
                 # parse segmentation file, and extract and concatenate the WritableArea crops
                 with open(region_segfile) as regseg_if:
