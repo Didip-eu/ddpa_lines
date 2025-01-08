@@ -168,6 +168,7 @@ def vec_lines(heatmap: torch.Tensor,
               suppl_obj: List[np.ndarray] = None,
               topline: Optional[bool] = False,
               raise_on_error: bool = False,
+              baseline_only: bool = False,
               **kwargs) -> List[Dict[str, Any]]:
     r"""
     Computes lines from a stack of heatmaps, a class mapping, and scaling
@@ -190,6 +191,7 @@ def vec_lines(heatmap: torch.Tensor,
                  centerline.
         raise_on_error: Raises error instead of logging them when they are
                         not-blocking
+        baseline_only: Do not compute the polygons.
 
     Returns:
         A list of dictionaries containing the baselines, bounding polygons, and
@@ -226,19 +228,27 @@ def vec_lines(heatmap: torch.Tensor,
         for reg_idx, reg_pol in enumerate(reg_pols):
             if is_in_region(bl_ls, reg_pol):
                 suppl_obj.append(regions[reg_idx])
-        pol = calculate_polygonal_environment(baselines=[bl[1]],
-                                              im_feats=im_feats,
-                                              suppl_obj=suppl_obj,
-                                              topline=topline,
-                                              raise_on_error=raise_on_error)
-        if pol[0] is not None:
-            lines.append((bl[0], bl[1], pol[0]))
+
+        if not baseline_only:
+            pol = calculate_polygonal_environment(baselines=[bl[1]],
+                                                  im_feats=im_feats,
+                                                  suppl_obj=suppl_obj,
+                                                  topline=topline,
+                                                  raise_on_error=raise_on_error)
+            if pol[0] is not None:
+                lines.append((bl[0], bl[1], pol[0]))
+        else:
+            lines.append((bl[0], bl[1]))
 
     logger.debug('Scaling vectorized lines')
-    sc = scale_polygonal_lines([x[1:] for x in lines], scale)
+    sc = scale_polygonal_lines([x[1:] for x in lines], scale, baseline_only=True)
+    if not baseline_only:
+        lines = list(zip([x[0] for x in lines], [x[0] for x in sc], [x[1] for x in sc]))
+        return [{'tags': {'type': bl_type}, 'baseline': bl, 'boundary': pl} for bl_type, bl, pl in lines]
+    else:
+        lines = list(zip([x[0] for x in lines], [x[0] for x in sc]))
+        return [{'tags': {'type': bl_type}, 'baseline': bl} for bl_type, bl in lines]
 
-    lines = list(zip([x[0] for x in lines], [x[0] for x in sc], [x[1] for x in sc]))
-    return [{'tags': {'type': bl_type}, 'baseline': bl, 'boundary': pl} for bl_type, bl, pl in lines]
 
 
 def segment(im: PIL.Image.Image,
@@ -344,7 +354,8 @@ def segment(im: PIL.Image.Image,
                            text_direction=text_direction,
                            suppl_obj=suppl_obj,
                            topline=net.user_metadata['topline'] if 'topline' in net.user_metadata else False,
-                           raise_on_error=raise_on_error)
+                           raise_on_error=raise_on_error,
+                           baseline_only=True)
 
         if 'ro_model' in net.aux_layers:
             logger.info(f'Using reading order model found in segmentation model {net}.')

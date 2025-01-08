@@ -790,7 +790,8 @@ def calculate_polygonal_environment(im: Image.Image = None,
 
 def polygonal_reading_order(lines: Sequence[Dict],
                             text_direction: Literal['lr', 'rl'] = 'lr',
-                            regions: Optional[Sequence[geom.Polygon]] = None) -> Sequence[int]:
+                            regions: Optional[Sequence[geom.Polygon]] = None,
+                            baseline_only=False) -> Sequence[int]:
     """
     Given a list of baselines and regions, calculates the correct reading order
     and applies it to the input.
@@ -804,7 +805,11 @@ def polygonal_reading_order(lines: Sequence[Dict],
     Returns:
         The indices of the ordered input.
     """
-    lines = [(line['tags']['type'], line['baseline'], line['boundary']) for line in lines]
+    lines = []
+    if not baseline_only:
+        lines = [(line['tags']['type'], line['baseline'], line['boundary']) for line in lines]
+    else:
+        lines = [(line['tags']['type'], line['baseline']) for line in lines]
 
     bounds = []
     if regions is None:
@@ -972,21 +977,26 @@ def scale_regions(regions: Sequence[Tuple[List[int], List[int]]],
     return scaled_regions
 
 
-def scale_polygonal_lines(lines: Sequence[Tuple[List, List]], scale: Union[float, Tuple[float, float]]) -> Sequence[Tuple[List, List]]:
+def scale_polygonal_lines(lines: Sequence[Tuple[List, List]], scale: Union[float, Tuple[float, float]], baseline_only: bool=False) -> Sequence[Tuple[List, List]]:
     """
     Scales baselines/polygon coordinates by a certain factor.
 
     Args:
         lines: List of tuples containing the baseline and its polygonization.
         scale: Scaling factor
+        baseline_only: no polygons. 
     """
     if isinstance(scale, float):
         scale = (scale, scale)
     scaled_lines = []
     for line in lines:
-        bl, pl = line
-        scaled_lines.append(((np.array(bl) * scale).astype('int').tolist(),
-                             (np.array(pl) * scale).astype('int').tolist()))
+        if baseline_only:
+            bl = line[0]
+            scaled_lines.append(((np.array(bl) * scale).astype('int').tolist()))
+        else:
+            bl, pl = line
+            scaled_lines.append(((np.array(bl) * scale).astype('int').tolist(),
+                                 (np.array(pl) * scale).astype('int').tolist()))
     return scaled_lines
 
 
