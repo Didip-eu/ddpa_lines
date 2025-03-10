@@ -53,7 +53,7 @@ from kraken import blla
 from kraken import pageseg, serialization
 from kraken.lib import vgsl, layers
 from kraken.containers import Segmentation
-from seglib import seglib
+from libs import seglib
 
 #logging.basicConfig( level=logging.INFO, format="%(asctime)s - %(funcName)s: %(message)s", force=True )
 logging.basicConfig( level=logging.DEBUG, format="%(asctime)s - %(funcName)s: %(message)s", force=True )

@@ -161,7 +161,7 @@ def line_binary_mask_from_segmentation_dict( segmentation_dict: dict ) -> Tensor
 
 
 def line_images_from_img_xml_files(img: str, page_xml: str ) -> List[Tuple[np.ndarray, np.ndarray]]:
-    """From an image file path and a segmentation JSON file describing polygons, return
+    """From an image file path and a segmentation PageXML file describing polygons, return
     a list of pairs (<line cropped BB>, <polygon mask>).
 
     Args:
@@ -193,8 +193,8 @@ def line_images_from_img_json_files( img: str, segmentation_json: str ) -> List[
         return line_images_from_img_segmentation_dict( img_wh, json.load( json_file ))
 
 def line_images_from_img_segmentation_dict(img_whc: Image.Image, segmentation_dict: dict ) -> List[Tuple[np.ndarray, np.ndarray]]:
-    """From a segmentation dictionary describing polygons, return a boolean mask where any pixel belonging
-    to a polygon is 1 and the other pixels 0.
+    """From a segmentation dictionary describing polygons, return 
+    a list of pairs (<line cropped BB>, <polygon mask>).
 
     Args:
         img_whc (Image.Image): the input image (needed for the size information).
@@ -211,12 +211,10 @@ def line_images_from_img_segmentation_dict(img_whc: Image.Image, segmentation_di
 
     for lbl, polyg in enumerate( polygon_boundaries ):
 
-        # polygon's points ( x <-> y )
-        points = np.array( polyg )[:,::-1]
+        points = np.array( polyg )[:,::-1] # polygon's points ( x <-> y )
         page_polyg_mask = ski.draw.polygon2mask( img_hwc.shape, points ) # np.ndarray (H,W,C)
         y_min, x_min, y_max, x_max = np.min( points[:,0] ), np.min( points[:,1] ), np.max( points[:,0] ), np.max( points[:,1] )
-        # crop both img and mask
-        line_bbox = img_hwc[y_min:y_max+1, x_min:x_max+1]
+        line_bbox = img_hwc[y_min:y_max+1, x_min:x_max+1] # crop both img and mask
         # note: mask has as many channels as the original image
         bb_label_mask_hwc = page_polyg_mask[y_min:y_max+1, x_min:x_max+1]
 
@@ -226,8 +224,7 @@ def line_images_from_img_segmentation_dict(img_whc: Image.Image, segmentation_di
     return pairs_line_bb_and_mask
 
 def line_images_from_img_polygon_map(img_wh: Image.Image, polygon_map_chw: Tensor) -> List[Tuple[np.ndarray, np.ndarray]]:
-    """From a tensor storing polygons, return a boolean mask where any pixel belonging
-    to a polygon is 1 and the other pixels 0.
+    """From a tensor storing polygons, return a list of pairs (<line cropped BB>, <polygon mask>).
 
     Args:
         img_whc (Image.Image): the input image (needed for the size information).
@@ -256,6 +253,68 @@ def line_images_from_img_polygon_map(img_wh: Image.Image, polygon_map_chw: Tenso
         pairs_line_bb_and_mask.append( (line_bbox, bb_label_mask) )
 
     return pairs_line_bb_and_mask
+
+
+
+def line_masks_from_img_xml_files(img: str, page_xml: str ) -> List[Tuple[np.ndarray, np.ndarray]]:
+    """From an image file path and a segmentation PageXML file describing polygons, return
+    the bounding box coordinates and the boolean masks.
+
+    Args:
+        img (str): the input image's file path
+        page_xml (page_xml): str a Page XML file describing the lines.
+
+    Returns:
+        Tuple[np.ndarray,np.ndarray]: a pair of tensors: a tensor (N,4) of BB coordinates tuples,
+            and a tensor (N,H,W) of page-wide line masks.
+    """
+    with Image.open(img, 'r') as img_wh:
+        segmentation_dict = segmentation_dict_from_xml( page_xml )
+        return line_masks_from_img_segmentation_dict( img_wh, segmentation_dict )
+
+
+def line_masks_from_img_json_files( img: str, segmentation_json: str, key='boundary' ) -> List[Tuple[np.ndarray, np.ndarray]]:
+    """From an image file path and a segmentation JSON file describing polygons, return
+    the bounding box coordinates and the boolean masks.
+
+    Args:
+        img (str): the input image's file path
+        segmentation_json (str): path of a JSON file
+
+    Returns:
+        Tuple[np.ndarray,np.ndarray]: a pair of tensors: a tensor (N,4) of BB coordinates tuples,
+            and a tensor (N,H,W) of page-wide line masks.
+    """
+    with Image.open(img, 'r') as img_wh, open( segmentation_json, 'r' ) as json_file:
+        return line_masks_from_img_segmentation_dict( img_wh, json.load( json_file ), key=key)
+
+def line_masks_from_img_segmentation_dict(img_whc: Image.Image, segmentation_dict: dict, key='boundary' ) -> List[Tuple[np.ndarray, np.ndarray]]:
+    """From a segmentation dictionary describing polygons, return 
+    the bounding box coordinates and the boolean masks.
+
+    Args:
+        img_whc (Image.Image): the input image (needed for the size information).
+        segmentation_dict: :type segmentation_dict: dict a dictionary, typically constructed from a JSON file.
+
+    Returns:
+        Tuple[np.ndarray,np.ndarray]: a pair of tensors: a tensor (N,4) of BB coordinates tuples,
+            and a tensor (N,H,W) of page-wide line masks.
+    """
+    polygon_boundaries = [ line[key] for line in segmentation_dict['lines'] ]
+    img_hwc = np.asarray( img_whc )
+
+    bbs = []
+    masks = []
+
+    for polyg in polygon_boundaries:
+        points = np.array( polyg )[:,::-1]  # polygon's points ( x <-> y )
+        page_polyg_mask = ski.util.img_as_ubyte(ski.draw.polygon2mask( img_hwc.shape[:2], points )) # np.ndarray (H,W)
+        y_min, x_min, y_max, x_max = [ float(p) for p in (np.min( points[:,0] ), np.min( points[:,1] ), np.max( points[:,0] ), np.max( points[:,1] )) ]
+        bbs.append( (x_min,y_min,x_max,y_max) )
+        masks.append( page_polyg_mask )
+
+    return (np.stack( bbs ), np.stack( masks ))
+
 
 
 def expand_flat_tensor_to_n_channels( t_hw: Tensor, n: int ) -> np.ndarray:
